@@ -1,0 +1,25 @@
+#!/bin/sh
+THISCAL=$0
+THISCMD=${0##*/}   #`echo $0 | sed 's:.*/\(.*\):\1:'`
+THISCMDPATH=`echo $0 | sed 's:\(.*/\)\(.*\):\1:'  | sed 's:\(.*\)/:\1:'`
+
+THISPATH=`pwd`
+THISDIR=`pwd | sed 's:.*/\(.*\):\1:'`
+THISUPPATH=`pwd | sed 's:\(.*/\)\(.*\):\1:'`
+
+THISTID=`date +%Y%m%d%H%M%S`
+THISDATESET=`date +%m%d%H%M%Y.%S`
+THISMAC=`/sbin/ifconfig eth0 | grep 'HWaddr' | sed 's/.*HWaddr \(.*\)/\1/'`
+THISIP=`/sbin/ifconfig eth0 | grep 'inet addr' | sed 's/.*addr:\(.*\)\(  Bcast.*\)/\1/'`
+THISUSR=`whoami`
+THISHOST=`uname -n`
+THISKV=`uname -v`
+THISARGC=$#
+THISARGV=$@
+
+RES_COL=40
+MOVE_TO_COL="echo -en \\033[${RES_COL}G"
+SETCOLOR_SUCCESS="echo -en \\033[1;32m"
+SETCOLOR_FAILURE="echo -en \\033[1;31m"
+SETCOLOR_WARNING="echo -en \\033[1;33m"
+SETCOLOR_NORMAL="echo -en \\033[0;39m"

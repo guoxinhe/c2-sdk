@@ -1,0 +1,13 @@
+
+
+tar xzvf c2-jazz2-sdk-100914-hdmi-bin.tar.gz -C /tmp
+jazz2hdmi/jazz2hdmi_drv/hdmi_jazz2.ko
+
+
+this part is not toolchain
+tar xzvf c2-jazz2-sdk-100914-gfx_2d-bin.tar.gz -C /tmp
+build/sdk/drivers/galcore.ko
+build/sdk/drivers/libdirectfb_gal.so
+build/sdk/drivers/libGAL.so
+
+

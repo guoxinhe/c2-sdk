@@ -1,0 +1,182 @@
+#!/bin/sh
+
+SD=$$.sdz
+work=$$.work.tar.gz
+kernel=$$.kernel.tar.gz
+devtools=$$.devtools.tar.gz
+tmp=/tmp
+tm_a=`date +%s`
+recho_time_consumed()
+{
+    tm_b=`date +%s`
+    tm_c=$(($tm_b-$tm_a))
+    tm_h=$(($tm_c/3600))
+    tm_m=$(($tm_c/60))
+    tm_m=$(($tm_m%60))
+    tm_s=$(($tm_c%60))
+    echo "$@" "$tm_c seconds / $tm_h:$tm_m:$tm_s consumed."
+}
+disk_check()
+{
+    umount  "/dev/$SD"1  "/dev/$SD"5  "/dev/$SD"6  
+    [ ! -z "$CONFIG_FSCHECK" ] && umount "/dev/$SD"7
+    fsck.vfat "/dev/$SD"1
+    fsck.ext2 "/dev/$SD"5
+    fsck.ext3 "/dev/$SD"6
+    [ ! -z "$CONFIG_FSCHECK" ] && fsck.ext2 "/dev/$SD"7
+}
+disk_umount()
+{
+    pushd $tmp
+        umount sd1 sd5 sd6
+        [ ! -z "$CONFIG_FSCHECK" ] && umount sd7
+    popd
+}
+disk_mount()
+{
+    pushd $tmp
+	echo mount sd card contents...
+        mkdir -p sd1 sd5 sd6 sd7
+        mount "/dev/$SD"1 sd1
+        mount "/dev/$SD"5 sd5
+        mount "/dev/$SD"6 sd6
+        [ ! -z "$CONFIG_FSCHECK" ] && mount "/dev/$SD"7 sd7
+        ls sd1 sd5 sd6 sd7
+    popd
+}
+disk_remove()
+{
+    pushd $tmp
+        rm -rf sd1/vmlinux.bin sd5/* 
+        [ $CONFIG_FSCHECK ] && rm -rf sd7/*
+    popd
+}
+disk_existcheck()
+{
+    if [ ! -b /dev/$SD ] ; then
+        echo "no device: /dev/$SD*  using -sd [sdb|sdc|sdd|sde|sdf|sdg]"
+        err=$(($err+1))
+    fi
+    if [ "$SD" = "sda" ] ; then
+        echo device /dev/sda is not allowed.
+        err=$(($err+1))
+    fi
+}
+help()
+{
+    cat <<-EOF >&2
+
+    usage: ./${0##*/} < -sd p [ -rm | -ls ] > < -k p > < -w p > < -t p > [ -sdk ] [ -tmp tmp_dir ]
+    -k  path-kernel-bin.tar.gz
+    -w  path-work-bin.tar.gz
+    -t  path-devtools-bin.tar.gz
+    -sd sd card device name, sdb = /dev/sdb
+    -ls mount sd card, ls, and exit.
+    -rm remove content in sd card and exit.
+    -sdk auto detect the kernel work toolchain in current folder.
+    -tmp tmp dir, default to /tmp
+    -fsck force fscheck before any operation
+
+    Warning: all files in sd card is removed.
+    Note : need sudo and password during make a sd card
+        sd card should already have 4 partitions: p1:fat, p5:ext2, p6:ext3, p7:ext2
+
+    example: sudo ./${0##*/} -sd sde -k ... -w ... -t ...
+
+	EOF
+}
+
+while [ $# -gt 0 ]; do
+    case $1 in
+    -t)
+        devtools=$2
+        shift 2;;
+    -w)
+        work=$2
+        shift 2;;
+    -k)
+        kernel=$2
+        shift 2;;
+    -sd)
+        SD=$2
+        shift 2;;
+    -ls)
+	disk_mount
+        exit 0;;
+    -rm)
+	if [ -b /dev/$SD ] ; then
+		echo Remove contents in /dev/$SD
+		disk_check
+		disk_mount
+		disk_remove
+		disk_umount
+		echo Remove contents in /dev/$SD done.
+	else
+		echo no sd device found
+	fi
+        exit 0
+        shift;;
+    -sdk)
+	kernel=`pwd`/c2-*-kernel-bin.tar.gz
+        work=`pwd`/c2box/c2-*-c2box-bin.tar.gz
+        devtools=`pwd`/c2-*-devtools-bin.tar.gz
+        shift;;
+    -tmp)
+        tmp=$2
+        shift 2;;
+    -fsck)
+        CONFIG_FSCHECK=1
+        shift;;
+    *)
+        echo unknown command $1
+	exit 0
+        ;;
+    esac
+done
+
+err=0
+disk_existcheck
+if [ ! -f $work ] ; then
+    echo "no work: $work   using -w full-path-name-c2box.bin.tar.gz"
+    err=$(($err+1))
+fi
+if [ ! -f $kernel ] ; then
+    echo "no kernel: $kernel  using -k full-path-name-kernel.bin.tar.gz"
+    err=$(($err+1))
+fi
+mkdir -p $tmp
+if [ ! -d $tmp/c2 ]; then
+  if [ ! -f $devtools ] ; then
+    echo "no devtools(/c2/local/c2/daily-jazz2 is not fit for this):" $devtools
+    err=$(($err+1))
+  else
+    tar xzvf $devtools -C $tmp
+  fi
+fi
+
+if [ $err -gt 0 ] ; then
+    help
+    exit $err
+fi
+export PATH=$tmp/c2/daily/bin:$PATH
+
+disk_check
+disk_mount
+disk_remove
+disk_umount
+
+rm -rf $tmp/prebuilt
+tar xzvf $kernel -C $tmp
+pushd $tmp/prebuilt/sw/kernel
+    make SD=/dev/$SD install
+popd
+sleep 5
+
+disk_mount
+cp -f $work $tmp/sd1
+[ -f $HOME/c2logo.bmp ] && cp -f $HOME/c2logo.bmp $tmp/sd1
+[ -f $HOME/c2logo.bmp ] && cp -f $HOME/logo.bmp $tmp/sd1
+sync
+disk_umount
+recho_time_consumed
+

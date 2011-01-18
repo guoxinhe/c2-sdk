@@ -1,0 +1,255 @@
+Index: linux-2.6/arch/c2/Kconfig.debug
+===================================================================
+--- linux-2.6.orig/arch/c2/Kconfig.debug
++++ linux-2.6/arch/c2/Kconfig.debug
+@@ -63,6 +63,14 @@ config RUNTIME_DEBUG
+ 	  include/asm-mips/debug.h for debuging macros.
+ 	  If unsure, say N.
+ 
++config GUOXINHE_DEBUG
++	bool "Enable guoxinhe's debugging"
++	depends on DEBUG_KERNEL
++	help
++	  If you say Y here, Guo Xinhe's debug code works.
++	  If you say N here, no this code works
++	  If unsure, say N.
++
+ config FPGA_JTAG_DEBUG_CHANNEL
+ 	bool "JTAG based debug channel"
+ 	depends on C2_HW
+Index: linux-2.6/arch/c2/kernel/Makefile
+===================================================================
+--- linux-2.6.orig/arch/c2/kernel/Makefile
++++ linux-2.6/arch/c2/kernel/Makefile
+@@ -22,6 +22,7 @@ obj-$(CONFIG_I8259)		+= i8259.o
+ 
+ obj-$(CONFIG_KGDB)		+= gdb-low.o gdb-stub.o
+ obj-$(CONFIG_PROC_FS)		+= proc.o
++obj-$(CONFIG_GUOXINHE_DEBUG)	+= gtrace.o
+ 
+ obj-$(CONFIG_GEN_RTC)		+= genrtc.o
+ 
+Index: linux-2.6/arch/c2/kernel/gtrace.c
+===================================================================
+--- /dev/null
++++ linux-2.6/arch/c2/kernel/gtrace.c
+@@ -0,0 +1,219 @@
++/*
++ * Copyright 2010, Guo Xinhe, C2 Microsystems.
++ *
++ * Licensed under the GPL-2 or later.
++ */
++
++#include <linux/module.h>
++#include <linux/kernel.h>
++#include <linux/init.h>
++#include <linux/proc_fs.h>
++
++#include <asm/current.h>
++#include <asm/uaccess.h>
++#include <asm/system.h>
++
++extern  int gtrace_st(char *fmt, int a, int b, int c);
++extern  int gtrace_prints(char *fmt);;
++extern  int gtrace_printf(char *fmt, ...);
++
++struct gtrace_t{
++#define NR_GTSTS 160
++#define NR_GTCFG 16
++   int state;
++   int flag;
++   int st[NR_GTSTS];
++   int cfg[NR_GTCFG];
++   int szcmd;
++   char cmd[256];
++
++   int szbuf,szwrite,lpwrite;
++   char *pstart, *pend, *p;
++   char buf[1];
++};
++struct gtrace_t *gtrace=NULL;
++
++int gtrace_loopcopy(char *ptr, int sz)
++{
++    struct gtrace_t *g=gtrace;
++    int done=0,once;
++    if(!g) return -1;
++    while(sz && done<g->szbuf) {
++        if(g->p>=g->pend) {
++            g->lpwrite++;
++            g->p=g->pstart;
++        }
++        once=g->pend-g->p;
++        if(once>sz) once=sz;
++        memcpy(g->p,ptr,once);
++        g->p+=once;
++        ptr+=once;
++        g->szwrite+=once;
++        done+=once;
++        sz-=once;
++    }
++    return done;
++}
++
++int gtrace_st(char *fmt, int a, int b, int c)
++{
++    struct gtrace_t *g=gtrace;
++    int ch,sy;
++    if(!g) return -1;
++
++    #define _cti(a,b,c,d) ((((a)<<24)&0xFF000000) | (((b)<<16)&0x00FF0000) | (((c)<<8)&0x0000FF00) | (((d))&0x000000FF) )
++    //TODO: parse syntax in fmt, and using parameters in a b c
++    while(*fmt) {
++        ch=*fmt++;
++        sy=*fmt++;
++        if(sy==0) break;
++        switch((ch<<8) | sy){
++        case _cti(0,0,'a','+') : g->st[a]+=b; break;
++        case _cti(0,0,'a','%') : g->st[a]=b; break;
++        default: 
++            return -1;
++        }
++    }
++    return 0;
++}
++EXPORT_SYMBOL(gtrace_st);
++int gtrace_prints(char *fmt)
++{
++    struct gtrace_t *g=gtrace;
++    if(!g) return -1;
++
++    while(*fmt) {
++        int c=*fmt++;
++        if(c<NR_GTSTS) g->st[c]++;
++    }
++    return 0;
++}
++EXPORT_SYMBOL(gtrace_prints);
++int gtrace_printf(char *fmt, ...)
++{
++    va_list args;
++    char buf[1024];
++    int len;
++
++    va_start(args, fmt);
++    len=vsprintf(buf, fmt, args);
++    va_end(args);
++
++    if(len>sizeof(buf)) len=sizeof(buf);
++    len=gtrace_loopcopy(buf, len);
++
++    return len;
++}
++EXPORT_SYMBOL(gtrace_printf);
++
++
++static int gtrace_read_proc(char *page, char **start, off_t off,
++				 int count, int *eof, void *data)
++{
++    struct gtrace_t *g=gtrace;
++	int len=0,i,once;
++    if(!g) return -1;
++
++	len += sprintf(page+len,"Banner, page=0x08%X,start=0x08%X,off=0x08%X,count=0x08%X,eof=0x08%X,data=0x08%X\n",
++               (int)page,(int)start,(int)off,(int)count,(int)eof,(int)data);
++	//print user command
++	if(g->szcmd)
++	    len += sprintf(page+len,"last command: %s",g->cmd);
++
++	//print config
++	len += sprintf(page+len,"configs[%d]:\n",NR_GTCFG);
++	for(i=0;i<NR_GTCFG;i++) {
++	    len += sprintf(page+len,"%8X ",g->cfg[i]);
++	    if((i&15)==15) len += sprintf(page+len,"\n");
++	}
++	
++	//print statistics
++	len += sprintf(page+len,"stats[%d] in decimal:\n",NR_GTSTS);
++        g->st[128]=g->lpwrite;
++        g->st[129]=g->szwrite;
++	for(i=0;i<NR_GTSTS;i++) {
++	    len += sprintf(page+len,"%8d ",g->st[i]);
++	    if((i&15)==15) len += sprintf(page+len,"\n");
++	}
++	//print loopbuffers
++	once=g->szwrite;
++	if(once>g->szbuf) once=g->szbuf;
++	len += sprintf(page+len,"loopbuffer[%d]:\n",once);
++	memcpy(page+len,g->pstart,once);
++        len+=once;
++
++	if (len <= off+count)
++		*eof = 1;
++	*start = page + off;
++	len -= off;
++	if (len > count) {
++                gtrace_st("a+",0,1,0);
++		len = count;
++        }
++	if (len < 0) {
++                gtrace_st("a+",1,1,0);
++		len = 0;
++        }
++	return len;
++}
++
++static int gtrace_write_proc(struct file *file, const char *buffer,
++				 unsigned long count, void *data)
++{
++    struct gtrace_t *g=gtrace;
++    int sz;
++    char *s;
++    if(!g) return -1;
++	if (count >= 256)
++		g->szcmd = 255;
++	else
++		g->szcmd = count;
++
++	memcpy(g->cmd, buffer, count);
++	g->cmd[g->szcmd] = 0;
++        sz=g->szcmd;
++
++	if(0==strncmp(g->cmd,s="clear",strlen(s))) { 
++	    g->p=g->pstart;g->szwrite=0;g->lpwrite=0;*g->p='\0';g->szcmd=0;g->cmd[0]='\0';
++	    {int i;for(i=0;i<NR_GTSTS;i++) {g->st[i]=0;}}
++	}
++
++
++	//TODO: add parse code here
++	return sz;
++}
++
++static int __init gtrace_init(void)
++{
++	struct proc_dir_entry *entry;
++        struct gtrace_t* g;
++
++	entry = create_proc_entry("gtrace", 0, NULL);
++	if (entry == NULL)
++		return -ENOMEM;
++#define SZ_GTNODE (PAGE_SIZE<<3)  //if big, app can not read all
++	entry->read_proc = gtrace_read_proc;
++	entry->write_proc = gtrace_write_proc;
++	entry->data = NULL;
++
++        g=(struct gtrace_t*)kmalloc(SZ_GTNODE, GFP_KERNEL);
++        if(g) {
++            memset(g, 0, SZ_GTNODE);
++            entry->data = g;
++            gtrace=g;
++            g->szbuf=SZ_GTNODE - sizeof(*g) + 1;
++            g->pstart=g->p=&g->buf[0];
++            g->pend=g->pstart+g->szbuf;
++        }
++
++	return 0;
++}
++
++static void __exit gtrace_exit(void)
++{
++	remove_proc_entry("gtrace", NULL);
++}
++
++module_init(gtrace_init);
++module_exit(gtrace_exit);
++MODULE_LICENSE("GPL");

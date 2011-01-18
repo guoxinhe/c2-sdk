@@ -1,0 +1,108 @@
+#!/bin/sh
+THISCAL=$0
+THISCMD=`echo $0 | sed 's:.*/\(.*\):\1:'`
+THISPATH=`pwd`
+THISDIR=`pwd | sed 's:.*/\(.*\):\1:'`
+THISUSR=`whoami`
+THISTID=`date +%Y%m%d%H%M%S`
+THISSDK=/mnts200/sdk/jazz2
+
+
+webhost=access.c2micro.com
+webusr=hguo
+webdir=/home/$webusr/public_html/qareport2010
+webtgz=$THISTID.tgz
+
+
+func_help(){
+    echo "$THISCMD :Copy a file/folder to access.c2micro.com"
+    echo "$THISCMD [file/folder name] "
+    echo "$THISCMD [--diff] [--install] [--uninstall]"
+    echo Version 0.1.1
+    echo Copyright 2010, C2QA, all rights reservered.
+    exit 0
+}
+
+func_diff(){
+    local ret
+    for x in `diff -N /usr/bin/$THISCMD ./$THISCMD` ; do ret=$x; done
+    if [ "$ret" = "" ]; then
+        echo Checkin : Up to date.
+    else
+        echo "Checkin : Differ /usr/bin/$THISCMD ./$THISCMD"
+        diff -N /usr/bin/$THISCMD ./$THISCMD
+    fi
+    exit 0
+}
+func_install(){
+    cp -f $THISCMD  /usr/bin/$THISCMD
+    cp -f $THISCMD  /video/qabin/$THISCMD
+    exit 0
+}
+func_uninstall(){
+    rm -f /usr/bin/$THISCMD
+    rm -f /video/qabin/$THISCMD
+    exit 0
+}
+
+
+while [ "$1" != "" ]; do
+    case $1 in
+    -a|-b|-c|-d|-e|-f|-g)
+        shift
+        cfg_something=$1
+        echo func_dosomething
+        ;;
+    help|-help|--help|h|-h|--h)
+        func_help        
+        exit 0
+        ;;
+    --diff) #upgrade to system check only
+        func_diff
+        ;;
+    --install) #force a new install
+        func_install
+        ;;
+    --uninstall) #force a new uninstall
+        func_uninstall
+        ;;
+
+    *)
+	break;
+        ;;
+    esac
+    shift
+done
+
+
+
+
+
+
+if [ -f $1 ]; then
+    echo ssh $webusr@$webhost
+    echo tar czvf $webtgz $1
+    echo scp $webtgz $webusr@$webhost:$webdir/
+    tar czvf $webtgz $1
+    scp $webtgz $webusr@$webhost:$webdir/
+
+
+    if [ "$2" != "" ]; then
+        echo ssh $webusr@$webhost  "cd $webdir; $webdir/autounzip $webtgz $2"
+        ssh $webusr@$webhost  "cd $webdir; $webdir/autounzip $webtgz $2"
+    fi
+
+    exit 0
+fi
+
+if [ -d $1 ]; then
+    echo ssh $webusr@$webhost
+    echo tar czvf $webtgz $1
+    echo scp $webtgz $webusr@$webhost:$webdir/
+    tar czvf $webtgz $1
+    scp $webtgz $webusr@$webhost:$webdir/
+    exit 0
+fi
+
+echo Do not know what $1 is.
+

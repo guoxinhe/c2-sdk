@@ -1,0 +1,6 @@
+#!/bin/sh
+
+for d in `find . -path "*/CVS/Root" -print | xargs`
+do
+  echo $CVSROOT > $d
+done

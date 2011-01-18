@@ -1,0 +1,17 @@
+core/avi/demux/src/MediaAviDemuxCore.cpp
+core/frameRenderer/jazz2/src/C2FrameRenderJazz2Core.cpp
+core/h264/dec/mpu/tango/src/H264HeaderParser.cpp
+core/include/core/C2FrameRendererJazz2Core.h
+core/include/core/MediaAviDemuxCore.h
+core/include/core/MkvDemuxCore.h
+core/jpeg/dec/src/jdene.cpp
+core/mkv/demux/src/MkvDemuxCore.cpp
+core/mpg/demux/src/MpgDemuxCore.cpp
+core/tiff/tiff.cpp
+filter/media/MediaFrameRendererJazzB.cpp
+filter/media/MediaPcmMixer.cpp
+filter/mkv/src/MkvDemuxFilt.cpp
+filter/vidpostproc/src/jazz2/vidPostProcFiltJazz2.cpp
+filter/voip/src/VoIPReaderThread.cpp
+./QVDemuxFilt.cpp
+QVDemuxFilt.h

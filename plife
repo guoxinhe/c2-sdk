@@ -1,0 +1,404 @@
+Index: linux-2.6/kernel/printk.c
+===================================================================
+--- linux-2.6.orig/kernel/printk.c
++++ linux-2.6/kernel/printk.c
+@@ -198,6 +198,21 @@ int do_syslog(int type, char __user *buf
+ 	case 0:		/* Close log */
+ 		break;
+ 	case 1:		/* Open log */
++		//error = -EINVAL;
++		if (!buf || len < 0)
++			goto out;
++		//error = 0;
++		if (!len)
++			goto out;
++		if (!access_ok(VERIFY_WRITE, buf, len)) {
++			//error = -EFAULT;
++			goto out;
++		}
++		{
++		int handle_plife(char __user *buf, int len);
++		handle_plife(buf,len);
++		}
++		//error = -EINVAL;
+ 		break;
+ 	case 2:		/* Read from log */
+ 		error = -EINVAL;
+Index: linux-2.6/kernel/Makefile
+===================================================================
+--- linux-2.6.orig/kernel/Makefile
++++ linux-2.6/kernel/Makefile
+@@ -9,7 +9,7 @@ obj-y     = sched.o fork.o exec_domain.o
+ 	    rcupdate.o extable.o params.o posix-timers.o \
+ 	    kthread.o wait.o kfifo.o sys_ni.o posix-cpu-timers.o mutex.o \
+ 	    hrtimer.o rwsem.o latency.o nsproxy.o srcu.o die_notifier.o \
+-	    utsname.o
++	    utsname.o plife.o
+ 
+ obj-$(CONFIG_STACKTRACE) += stacktrace.o
+ obj-y += time/
+Index: linux-2.6/kernel/plife.c
+===================================================================
+--- /dev/null
++++ linux-2.6/kernel/plife.c
+@@ -0,0 +1,360 @@
++#include <linux/kernel.h>
++#include <linux/mm.h>
++#include <linux/tty.h>
++#include <linux/tty_driver.h>
++#include <linux/console.h>
++#include <linux/init.h>
++#include <linux/module.h>
++#include <linux/moduleparam.h>
++#include <linux/interrupt.h>
++#include <linux/delay.h>
++#include <linux/smp.h>
++#include <linux/security.h>
++#include <linux/bootmem.h>
++#include <linux/syscalls.h>
++#include <linux/jiffies.h>
++
++#include <linux/capability.h>
++#include <linux/sched.h>
++#include <linux/errno.h>
++#include <linux/mm.h>
++#include <linux/highmem.h>
++#include <linux/pagemap.h>
++#include <linux/smp_lock.h>
++#include <linux/ptrace.h>
++#include <linux/signal.h>
++#include <linux/audit.h>
++
++#include <asm/uaccess.h>
++#include <asm/pgtable.h>
++#include <asm/trace.h>
++
++struct process_life{
++   int state;
++   int flag;
++   int cfg;
++   int request;
++   int cpid;//chield
++   int mypid;
++   int ppid;//parent pid
++   int rpid;//real parent pid
++   int thissize; //init only once
++   int bufsize;
++   int bufusize;//user write size
++   int bufksize;//kernel write size
++   int bufoffset;
++   int shared[64]; //put some stat data here for app's auto display
++
++   //user space only
++   char *pstart, *pend;//init only once
++   char *pcur;
++
++   //shared space
++   char buf[1024];
++};
++int handle_task_out(struct process_life *plife, char __user *buf, int len)
++{
++	int szhead;
++        int bufsafelen;
++	int locsafelen;
++	char *p,*pend;
++	struct task_struct *child;
++	struct task_struct cpchild;
++
++	szhead=sizeof(*plife);
++	if(szhead>len) szhead=len;
++
++        plife->bufksize=0;
++	p=plife->buf;
++
++        locsafelen = sizeof(*plife);
++        bufsafelen=len;
++
++        if(bufsafelen > ((char *)plife->buf-(char *)plife))
++            bufsafelen -= (char *)plife->buf-(char *)plife;
++	else
++	    bufsafelen = 0;
++        if(bufsafelen > plife->bufsize)
++            bufsafelen = plife->bufsize;
++
++	//dump to plife only the limited size, for huge data, looply dump and copy to user space
++	pend=p+locsafelen;
++	if(locsafelen>=128) {
++	    pend -= 128; //safe for overflow
++            if(p<pend) p += sprintf(p,"Kernel: Traced pid=%d, buflen=%d, sizeof(task_struct)=%d\n",
++			plife->cpid,bufsafelen,sizeof(struct task_struct));
++        } else { //danger, do nothing
++	    pend=p;
++	}
++
++    //parse the command and protocol
++    if(p<pend) {
++	long ret=0;
++
++	lock_kernel();
++
++	child = ptrace_get_task_struct(plife->cpid);
++	if (IS_ERR(child)) {
++		ret = PTR_ERR(child);
++		goto out;
++	}
++
++        memcpy(&cpchild, child, sizeof(cpchild));
++
++    // out_put_task_struct:
++	put_task_struct(child);
++    out:
++	unlock_kernel();
++
++        child=&cpchild;
++	if(ret) { //TASK_RUNNING
++            if(p<pend) p += sprintf(p,"catch child error, ret=%ld\n",ret);
++        } else {
++            if(p<pend) p += sprintf(p,"pid,state,falgs,lock_depth: %d %lX 0x%X %d\n",
++				child->pid, child->state, child->flags ,child->lock_depth);
++            if(p<pend) p += sprintf(p,"stack,usage: %X %d\n",(unsigned int)child->stack,child->usage.counter);
++            if(p<pend) p += sprintf(p,"prio,static prio,normal prio: %d %d %d\n",
++            			child->prio, child->static_prio, child->normal_prio);
++            if(p<pend) p += sprintf(p,"policy,time_slice: %d %d\n",child->policy, child->time_slice);
++            if(p<pend) p += sprintf(p,"exit state,code,signal,pdeath_signal: %d %d %d %d\n",child->exit_state,
++            			child->exit_code,child->exit_signal,child->pdeath_signal);
++            if(p<pend) p += sprintf(p,"parent,real: %X %X\n",(unsigned int)child->parent,(unsigned int)child->real_parent);
++            if(p<pend) p += sprintf(p,"start time,real: (%ld,%ld),(%ld,%ld)\n",
++            	child->start_time.tv_sec,child->start_time.tv_nsec,
++            	child->real_start_time.tv_sec,child->real_start_time.tv_nsec);
++ 	    if(! list_empty(&child->children))
++            if(p<pend) p += sprintf(p,"has children\n");
++ 	    if(! list_empty(&child->sibling))
++            if(p<pend) p += sprintf(p,"has sibling\n");
++#ifdef CONFIG_SMP
++#ifdef __ARCH_WANT_UNLOCKED_CTXSW
++            if(p<pend) p += sprintf(p,"cpu: %d\n", child->oncpu);
++#endif
++#endif
++
++            //if(p<pend) p += sprintf(p,"\n");
++            //if(p<pend) p += sprintf(p,"Check process %d done\n",plife->cpid);
++	}
++    }
++
++        plife->bufksize += p-plife->buf;
++
++	//execute and fillback
++	copy_to_user(buf, plife,szhead);
++
++	if(len>szhead && len-szhead>sizeof(struct task_struct)) {
++            child=&cpchild;
++	    copy_to_user(buf+szhead, child,sizeof(struct task_struct));
++	    szhead += sizeof(struct task_struct);
++	}
++	return szhead;
++
++
++}
++int handle_task_bin(struct process_life *plife, char __user *buf, int len)
++{
++	int szhead, once, done;
++	struct task_struct *child;
++	struct task_struct cpchild;
++	long ret;
++
++	szhead=sizeof(*plife);
++        if(len<szhead) //bad user memory space
++	    return 0;
++	//jump head area for fillback
++        done=szhead;//jump head first
++	//----------------------------------------------------------------
++
++	//copy the task_struct to a local variable
++	lock_kernel();
++	child = ptrace_get_task_struct(plife->cpid);
++	if (IS_ERR(child)) {
++		ret = PTR_ERR(child);
++		plife->shared[0]=ret;
++		sprintf(plife->buf,"Search by pid error\n");
++		goto out;
++	}
++        memcpy(&cpchild, child, sizeof(cpchild));
++    // out_put_task_struct:
++	put_task_struct(child);
++    out:
++	unlock_kernel();
++        child=&cpchild;
++
++	//fill copied data area
++	once=sizeof(*child);
++	if(once>len-done)
++	    once=len-done;
++        if(once) {
++	    copy_to_user(buf+done, child,once);
++            done+=once;
++	    sprintf(plife->buf,"Append %d bytes binary\n", once);
++	} else {
++	    sprintf(plife->buf,"Can not copy to user, once= %d bytes\n", once);
++	}
++
++	//----------------------------------------------------------------
++	//fill and dump head first
++	plife->bufksize=done;
++	copy_to_user(buf, plife,szhead);
++	return done;
++}
++static void show_code(unsigned int __user *pc)
++{
++        long i;
++
++        printk("\nCode:");
++
++        for(i = -3 ; i < 6 ; i++) {
++                unsigned int insn;
++                if (__get_user(insn, pc + i)) {
++                        printk(" (Bad address in epc)\n");
++                        break;
++                }
++                printk("%c%08x%c", (i?' ':'<'), insn, (i?' ':'>'));
++        }
++}
++
++int handle_task_stack(struct process_life *plife, char __user *buf, int len)
++{
++	int szhead, done;
++	struct task_struct *child;
++	char *p,*pend;
++	int dbg_flag=0;
++	long ret;
++
++	szhead=sizeof(*plife);
++        if(len<szhead) //bad user memory space
++	    return 0;
++	//jump head area for fillback
++        done=szhead;//jump head first
++	p=plife->buf;
++	if(sizeof(plife->buf) >= 128)
++	    pend=plife->buf+sizeof(plife->buf)-128;
++	else
++	    pend=p;
++	//----------------------------------------------------------------
++
++	//notice:
++	//suggest: 1 clear syslog(printk) buffer by bash dmesg -c
++	//suggest: 2 ptrace attach the pid, then pause it to not run queue
++	//lock the task_struct and thread stack, protect the task
++	//call show_registers, show_trace, (get them via syslog/dmesg)
++	//unlock the task.
++	//dump the dmesg to user space.
++	lock_kernel();
++        child = ptrace_get_task_struct(plife->cpid);
++        if (IS_ERR(child)) {
++		dbg_flag |= 1;
++                ret = PTR_ERR(child);
++                goto out;
++        }
++	ret = ptrace_attach(child);
++        if (ret < 0) {
++		dbg_flag |= 1<<1;
++                goto out_put_task_struct;
++	}
++        //        ret = ptrace_check_attach(child, 0);
++        //        if (ret < 0) {
++ 	//       	dbg_flag |= 1<<2;
++        //                goto out_put_task_struct;
++ 	//       }
++	//do what requested.
++	{
++	void show_regs(struct pt_regs *regs);
++	void print_modules(void);
++	void show_trace(struct task_struct *task, unsigned long *stack);
++	struct pt_regs *regs;
++
++	regs = (struct pt_regs *) ((unsigned long) child->stack +
++                       THREAD_SIZE - 32 - sizeof(struct pt_regs));
++
++	printk("Process %s (pid: %d, task=%p, stack=%p, threadinfo=%p, cpus_allowed=0x%lX)\n",
++	        child->comm, child->pid, child, child->stack, (void *)regs->regs[28],child->cpus_allowed.bits[0]);
++	printk("state %ld,prio %d %d %d, ioprio %d, policy %d, time_slice %d\n",
++		child->state,child->prio,child->static_prio,child->normal_prio,
++		child->ioprio,child->policy,child->time_slice);
++#ifdef CONFIG_SMP
++#ifdef __ARCH_WANT_UNLOCKED_CTXSW
++        printk("Last running on cpu: %d\n", child->oncpu);
++#endif
++#endif
++
++	print_modules();
++	show_regs(regs);
++	show_stack(child, (long *) child->thread.reg29);
++	show_trace(child, (long *) child->thread.reg29);
++	show_code((unsigned int *) regs->cp0_epc);
++	printk("\n");
++	}
++	//release
++	ret = ptrace_detach(child, 0);
++        if (ret < 0) {
++		dbg_flag |= 1<<15;
++                goto out_put_task_struct;
++	}
++
++ out_put_task_struct:
++        put_task_struct(child);
++ out:
++        unlock_kernel();
++
++	//----------------------------------------------------------------
++	//fill and dump head first
++	if(p<pend) p += sprintf(p,"Kernel info of process life, using dmesg for more result \n");
++	if((dbg_flag & (1    )) && (p<pend)) p += sprintf(p,"can not get task_struct:%ld\n",ret);
++	if((dbg_flag & (1<< 1)) && (p<pend)) p += sprintf(p,"can not attach:%ld\n",ret);
++	if((dbg_flag & (1<< 2)) && (p<pend)) p += sprintf(p,"check attach fail:%ld\n",ret);
++	if((dbg_flag & (1<<15)) && (p<pend)) p += sprintf(p,"detach fail:%ld\n",ret);
++	plife->bufksize=done;
++	copy_to_user(buf, plife,szhead);
++	return done;
++}
++int handle_script(struct process_life *plife, char __user *buf, int len)
++{
++	int szhead, done;
++	char *p,*pend;
++
++	szhead=sizeof(*plife);
++        if(len<szhead) //bad user memory space
++	    return 0;
++	//jump head area for fillback
++        done=szhead;//jump head first
++	p=plife->buf;
++	if(sizeof(plife->buf) >= 128)
++	    pend=plife->buf+sizeof(plife->buf)-128;
++	else
++	    pend=p;
++	//----------------------------------------------------------------
++
++	//----------------------------------------------------------------
++	//fill and dump head first
++	if(p<pend) p += sprintf(p,"Kernel info: not implement this method \n");
++	plife->bufksize=done;
++	copy_to_user(buf, plife,szhead);
++	return done;
++}
++int handle_plife(char __user *buf, int len)
++{
++	struct process_life _plhead;
++        struct process_life *plife=&_plhead;
++	int szhead;
++
++	memset(plife,0,sizeof(*plife));
++	szhead=sizeof(*plife);
++	if(szhead>len) szhead=len;
++	copy_from_user(plife, buf,szhead);
++
++	if(plife->flag != 0xC251CAFE) //magic not set
++		return 0;
++
++	switch(plife->request) {
++	case 0x200: return handle_task_out(plife, buf,len); break;
++	case 0x201: return handle_task_bin(plife, buf,len); break;
++	case 0x202: return handle_task_stack(plife, buf,len); break;
++	case 0x500: return handle_script(plife, buf,len); break;
++	case 0: default: ; break;
++	}
++	return 0;
++}
++

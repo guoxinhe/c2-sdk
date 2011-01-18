@@ -1,0 +1,766 @@
+#!/bin/sh
+
+MAX_THREADNR=5
+MAX_TIMEOUTHOUR=20
+MAX_SLEEP=60
+#CVS_TAG=jazz2-SDK-0_10-1L-10
+CVS_TAG=
+#split big projects to smaller ones
+task_list="
+checkout:projects/sw/sdk
+checkout:projects/sw/cmd/busybox-1.5.1
+checkout:projects/sw/devtools
+checkout:projects/sw/oprofile
+build:mod.devtools
+checkout:projects/sw/prom
+build:mod.diag
+build:mod.uboot
+checkout:projects/sw/cmd
+build:mod.c2goodies
+checkout:projects/sw/Qt/qt-everywhere-opensource-src-4.6.0
+checkout:projects/sw/Qt/qt-everywhere-opensource-src-4.6.1
+checkout:projects/sw/Qt/qt-embedded-linux-opensource-src-4.5.0
+checkout:projects/sw/Qt/qt-embedded-linux-opensource-src-4.5.1
+build:mod.qt 
+checkout:projects/sw/bsp/hdmi
+checkout:projects/sw/kernel
+buildpvr:mod.kernel
+checkout:projects/sw/sw_media
+checkout:sw_media
+buildpvr:mod.sw_media
+checkout:projects/sw/c2apps
+checkout:sw_c2apps
+checkout:projects/sw/bsp/vivante
+buildpvr:mod.vivante
+buildpvr:mod.c2apps
+build:factory-udisk
+checkout:projects/sw/directfb/DirectFB-1.2.6
+checkout:projects/jazzb/doc
+checkout:projects/alg/app-doc
+checkout:projects/alg/App_eng-doc
+checkout:projects/alg/arch
+checkout:projects/alg/doc
+checkout:projects/alg/dtv-doc
+checkout:projects/alg/fae-doc
+checkout:projects/alg/ipcam-doc
+checkout:projects/alg/marketing
+checkout:projects/alg/qa-doc
+checkout:projects/alg/research
+checkout:projects/alg/sdk-doc
+checkout:projects/alg/sys-doc
+checkout:projects/alg/tools
+checkout:projects/alg/video
+checkout:projects/jazz/bin
+checkout:projects/jazz/c2_system_hardware_EVB
+checkout:projects/jazz/csim
+checkout:projects/jazz/design
+checkout:projects/jazz/devplat
+checkout:projects/jazz/env
+checkout:projects/jazz/evalplat
+checkout:projects/jazz/fpga
+checkout:projects/jazz/lib
+checkout:projects/jazz/top
+checkout:projects/jazz/ver
+checkout:projects/csim
+checkout:projects/sw/jtag
+checkout:projects/sw/intrinsics
+checkout:projects/sw/sw_arch_defs
+checkout:projects/sw/media
+checkout:projects/sw/doc
+checkout:projects/sw/win32
+checkout:projects/sw/build
+"
+
+#---------dev env 
+export CVSROOT=:pserver:hguo@cvs.c2micro.com:/cvsroot
+PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:$HOME/bin:$HOME/sdk
+pathlist="/c2/pclocal/c2/daily /c2/local/c2/daily-jazz2 /c2/local/c2/daily"
+for i in $pathlist; do
+  if [ -h $i ]; then
+    a=$i
+    b=`ls -l $a`
+    #get pointed file 
+    c=`echo $b | sed 's,.* -> \(.*\),\1,'`
+    d=`echo $c | grep -m 1 jazz1`
+    if [ "$d" = "" ]; then #find
+        C2PATH=$i/bin
+        break;
+    fi
+  fi
+done
+[ "$C2PATH" = "" ] && C2PATH=/c2/local/c2/daily/bin
+export C2PATH
+export PATH=$C2PATH:$PATH
+
+#-----------configurable info
+sdkdir=/local/hguo/autopoll
+runforever=
+debug=
+
+while [ $# -gt 0 ];do
+    case $1 in
+    --help|-h)
+        echo "$0 [ -t target_dir ] [ -tag checkout tag ] [ -debug ] [ --forever ] [ --install ] [ --help ]"
+        exit
+        ;;
+    --install)
+        install_list=autoflow\ runbgret\ Makefile\ Makefile.pvr\ mkimage
+        sudo cp $install_list /usr/bin/ 
+             cp $install_list $HOME/sdk/
+            scp $install_list codec:$HOME/sdk/
+            scp $install_list saturn:$HOME/sdk/
+        echo installed to /usr/bin/, $HOME/sdk/ bj:$HOME/sdk/ sj:$HOME/sdk/
+        exit
+        ;;
+    --forever) runforever=1;;
+    -tag)  CVS_TAG=$2; shift;;
+    -t) sdkdir=$2;  shift;;
+    -debug) debug=1;;
+    -du)
+        for i in $task_list ; do
+            du -sh $i
+        done
+        exit
+        ;;
+    exit)exit 0;;
+    *)  echo unknown command $@;exit 0;;
+    esac
+    shift
+done
+
+#---------------create help folders
+timeid=`date +%Y%m%d%H%M%S`
+mkdir -p $sdkdir
+#rlog: report log, hlog: history log, slog: state machine log
+if [ "$CVS_TAG" = "" ]; then
+    rlog=$sdkdir/slog
+    hlog=$sdkdir/slog/old
+    slog=$sdkdir/slog/$timeid
+else
+    rlog=$sdkdir/slog/$CVS_TAG
+    hlog=$sdkdir/slog/$CVS_TAG.old
+    slog=$sdkdir/slog/$timeid
+fi
+
+pathsearch="$(pwd) $HOME/sdk $HOME/bin /usr/local/bin /usr/bin /bin /usr/sbin /sbin"
+for i in $pathsearch; do
+     runbgret=$i/runbgret   
+     if [ -f $runbgret ];then break; fi
+done
+if [ ! -f $runbgret ];then
+    echo Error: can not find the utility script: runbgret
+    exit 255
+fi
+
+
+nr_done=0
+sys_busy=
+tm_start=`date`
+tm_a=`date +%s`
+update_time()
+{
+  tm_b=`date +%s`
+  tm_c=$(($tm_b-$tm_a))
+
+  tm_h=$(($tm_c/3600))
+  tm_m=$(($tm_c/60))
+  tm_m=$(($tm_m%60))
+  tm_s=$(($tm_c%60))
+}
+wordis()
+{
+   local f=$1
+   local w=$2
+   if [ -f $f ]; then 
+     a=`grep -m 1 $2: $1 | sed "s,$2:\(.*\),\1,g"`
+     if [ "$a" = "$3" ]; then
+        echo ture
+     else
+        echo false
+     fi
+   fi
+   echo false
+}
+wordint()
+{
+   local f=$1
+   local w=$2
+   if [ -f $f ]; then 
+     a=`grep -m 1 $2: $1 | sed "s,$2:\(.*\),\1,g"`
+     if [ "$a" = "" ]; then echo 0;
+     else  echo $a;
+     fi
+   else
+     echo 0
+   fi
+}
+wordstr()
+{
+   local f=$1
+   local w=$2
+   if [ -f $f ]; then 
+     grep -m 1 $2: $1 | sed "s,$2:\(.*\),\1,g"
+   fi
+}
+wordline()
+{
+   local f=$1
+   local w=$2
+   if [ -f $f ]; then grep -m 1 $2: $1 ; fi
+}
+wordwrite()
+{
+   local f=$1
+   local w=$2
+   if [ ! -f $f ] ; then 
+       shift 2
+       echo $w:$@>>$f
+       return 0
+   fi
+   ret="$(grep -m 1 $2: $1)"
+   if [ "$ret" = "" ]; then
+       shift 2
+       echo $w:$@>>$f
+   else
+      shift 2
+      left="$@"
+       sed -i  "s,$w:.*,$w:$left,g" $f
+   fi
+}
+load_average()
+{
+    #17:30:46 up 5 days,  1:34, 19 users,  load average: 2.42, 2.75, 1.24
+    ave=`uptime | sed 's/.*load average: .*, \(.*\), .*/\1/g'`
+    #or  ave=`uptime | awk -F"," '{print $5}' |awk '{print $1}'`
+    sys_busy=`echo $ave |awk '$1>1.5 { printf($1); }'`
+
+    [ "$busy" != "" ] && return 1
+    return 0
+}
+file_tointeger()
+{
+    #must has $1 defined.
+    if [ -f $1 ]; then
+        n=`cat $1`
+    else
+        n=0;
+    fi
+    echo $n
+}
+file_increase()
+{
+    #must has $1 defined.
+    if [ -f $1 ]; then
+        t=`cat $1`
+    else
+        t=0;
+    fi
+    t=$(($t+1))
+    echo $t >$1
+}
+file_decrease()
+{
+    #must has $1 defined.
+    if [ -f $1 ]; then
+        t=`cat $1`
+    else
+        t=0;
+    fi
+    [ $t -gt 0 ] &&  t=$(($t-1))
+    echo $t >$1
+}
+path_totoken()
+{
+    #convert all the /.- to _ for $1
+    local tkn=`echo $1 | sed -e 's:/:_:g' -e 's:-:_:g'  -e 's:\.:_:g'`
+    echo $tkn
+    return 0
+}
+
+kill_task()
+{
+    local f=`path_totoken $1`
+    if [ -f $slog/$f.task.id ]; then
+	tid=`cat $slog/$f.task.id`
+        kill -9 $tid
+    fi
+}
+add_done_module()
+{
+    local f=`path_totoken $1`
+
+    if [ ! -f $slog/$f.task.alldone ]; then
+      touch $slog/$f.task.alldone
+      nr_done=$(($nr_done+1))
+    fi
+}
+nr_oflist()
+{
+  local nr=0
+  for i in $1 ; do
+    echo $i >/dev/null
+    nr=$(($nr+1))
+  done
+  echo $nr
+  return $nr
+}
+dep_check_modules()
+{
+    local tname=
+    local dep_list=$1
+    local flagi=
+    local i=
+    for i in $dep_list; do 
+        #check if in format tname:task......
+        tname=`echo $i | sed 's/\(.*\):\(.*\)/\1/g'`
+        tpath=`echo $i | sed 's/\(.*\):\(.*\)/\2/g'`
+        flagi=`path_totoken $tpath`
+        if [ ! -f $slog/$flagi.$tname.done ]; then
+            echo "    "waiting for $slog/$flagi.$tname.done >>$slog/state.round
+            return 1;
+        fi
+        if [ -f $slog/$flagi.$tname.fail ]; then
+            echo "    "blocked by $slog/$flagi.$tname.fail >>$slog/state.round
+            return 2;
+        fi
+    done
+    return 0
+}
+
+dep_build_mod_devtools()
+{
+    dep_list="
+checkout:projects/sw/devtools
+checkout:projects/sw/oprofile
+checkout:projects/sw/cmd/busybox-1.5.1
+"
+    dep_check_modules "$dep_list"
+    return $?
+}
+dep_build_mod_diag()
+{
+    dep_list="
+checkout:projects/sw/prom
+build:mod.devtools
+"
+    dep_check_modules "$dep_list"
+    return $?
+}
+dep_build_mod_uboot()
+{
+    dep_list="
+checkout:projects/sw/prom
+build:mod.devtools
+"
+    dep_check_modules "$dep_list"
+    return $?
+}
+dep_build_mod_c2goodies()
+{
+    dep_list="
+checkout:projects/sw/cmd
+build:mod.devtools
+"
+    dep_check_modules "$dep_list"
+    return $?
+}
+dep_build_mod_qt()
+{
+    dep_list="
+checkout:projects/sw/Qt/qt-everywhere-opensource-src-4.6.0
+checkout:projects/sw/Qt/qt-everywhere-opensource-src-4.6.1
+checkout:projects/sw/Qt/qt-embedded-linux-opensource-src-4.5.0
+checkout:projects/sw/Qt/qt-embedded-linux-opensource-src-4.5.1
+build:mod.devtools
+"
+    dep_check_modules "$dep_list"
+    return $?
+}
+
+dep_build_factory_udisk()
+{
+    dep_list="
+build:mod.uboot
+buildpvr:mod.kernel
+buildpvr:mod.c2apps
+"
+    dep_check_modules "$dep_list"
+    return $?
+}
+
+
+dep_buildpvr_mod_kernel()
+{
+    dep_list="
+checkout:projects/sw/bsp/hdmi
+checkout:projects/sw/kernel
+"
+    dep_check_modules "$dep_list"
+    return $?
+}
+
+dep_buildpvr_mod_sw_media()
+{
+    dep_list="
+checkout:sw_media
+"
+    dep_check_modules "$dep_list"
+    return $?
+}
+
+dep_buildpvr_mod_vivante()
+{
+    dep_list="
+checkout:projects/sw/bsp/vivante
+"
+    dep_check_modules "$dep_list"
+    return $?
+}
+
+dep_buildpvr_mod_c2apps()
+{
+    dep_list="
+checkout:sw_c2apps
+"
+    dep_check_modules "$dep_list"
+    return $?
+}
+
+check_depend()
+{
+    local tname=$1  #always = $task_name
+    local ppath=$2  #always = second part of <task_name>:<name parameter>
+    #local fext=`echo $2 | sed -e 's:/:_:g' -e 's:-:_:g'  -e 's:\.:_:g'`
+    local fext=`path_totoken $2`
+
+    if [ "$tname" = "checkout" ] ; then return 0; fi
+
+    #echo checking dep: tname=$tname, ppath=$ppath, call=dep_$tname"_"$fext
+    dep_$tname"_"$fext 
+    return $?
+}
+thread_start()
+{
+    local tname=$1  #always = $task_name
+    local ppath=$2  #always = second part of <task_name>:<name parameter>
+    local f=`path_totoken $2`
+    local cmdlist="$3 $4 $5 $6 $7 $8 $9"
+
+    #for cvs checkout, always greenlight.
+    load_average
+    if [ "$tname" = "checkout" ]; then
+        sys_busy=
+    fi
+    if [ "$debug" = "1" ]; then
+        sys_busy=
+    fi
+    if [ "$sys_busy" != "" ]; then
+        #system busy
+        echo "    "System busy: $sys_busy, pending task $tname $ppath >>$slog/state.round
+        return 0;
+    fi
+    nr=`file_tointeger  $slog/state.$tname.nr`
+    if [ $nr -gt $MAX_THREADNR ]; then
+        #system busy
+        echo "    "System busy: running $nr $tname already, pending task $tname $ppath >>$slog/state.round
+        return 0;
+    fi
+
+    #check depend
+    # if tname in build buildpvr, etc.
+    # if check_depend $tname, $ppath != 0 : return 0
+    check_depend  $tname $ppath
+    dep=$?
+    if [ $dep -eq 1 ]; then
+        #echo "    "wait for conditions >>$slog/state.round
+        return 0;
+    fi
+    if [ $dep -eq 2 ]; then
+        echo "    "pre conditions fails >>$slog/state.round
+        touch $slog/$f.$tname.start
+        touch $slog/$f.$tname.done
+        touch $slog/$f.$tname.fail
+        return 0;
+    fi
+
+    touch $slog/$f.$tname.start
+    file_increase  $slog/state.$tname.nr
+    $runbgret $slog/$f.task.status $slog/$f.task.log $cmdlist &   #hope  it runs within seconds
+    id=$!
+    echo $id > $slog/$f.task.id
+    echo $runbgret -$tname -tid$timeid $slog/$f.task.status $slog/$f.task.log $cmdlist  >>$slog/$f.$tname.start
+    echo "    "start at `date`  >>$slog/$f.$tname.start
+
+    sleep $MAX_SLEEP
+}
+thread_poll()
+{
+    local tname=$1  #always = $task_name
+    local ppath=$2  #always = second part of <task_name>:<name parameter>
+    local f=`path_totoken $2`
+
+    tid=`cat $slog/$f.task.id`
+    running=`ps x| grep ^\ *$tid\ `
+    if [ "$running" != "" ]; then #still running
+        return 0
+    fi
+    #task done
+    echo polling $tname $ppath id: $tid , process finished.
+    ret=`cat $slog/$f.task.status`
+    if [ $ret -ne 0 ]; then  #return result is not success
+        touch $slog/$f.$tname.fail
+    fi
+
+    #TODO: after done
+    touch $slog/$f.$tname.done
+    echo "    "done at `date`  >>$slog/$f.$tname.start
+    echo "    "done at `date`  >>$slog/$f.$tname.done
+    file_decrease  $slog/state.$tname.nr
+    return 0
+}
+thread_fail_email()
+{
+    local tname=$1  #always = $task_name
+    local ppath=$2  #always = second part of <task_name>:<name parameter>
+    local f=`path_totoken $2`
+
+    cp $slog/$f.task.log $hlog/$f.task.log.$timeid.$nr_biground
+    cp $slog/$f.$tname.fail.email $hlog/$f.$tname.fail.email.$timeid.$nr_biground
+
+    touch $slog/$f.$tname.fail.email
+    echo Dear Sir/Lady: >$slog/$f.$tname.fail.email
+    echo "    "fail: $tname $ppath >>$slog/$f.$tname.fail.email
+    echo get full log at $(uname -n):$hlog/$f.task.log.$timeid.$nr_biground>>$slog/$f.$tname.fail.email
+    echo "    "  >>$slog/$f.$tname.fail.email
+    echo tail of $hlog/$f.task.log.$timeid.$nr_biground>>$slog/$f.$tname.fail.email
+    tail  --lines=32  $slog/$f.task.log   >>$slog/$f.$tname.fail.email
+    echo "    "  >>$slog/$f.$tname.fail.email
+    cat  $slog/state.config  >>$slog/$f.$tname.fail.email
+    echo Thanks,                >>$slog/$f.$tname.fail.email
+    echo $(whoami) / $(uname -n)>>$slog/$f.$tname.fail.email
+    date >>$slog/$f.$tname.fail.email
+
+    mail_to=henix.guo@google.com
+    mail_cc=henix@yeah.net
+    mail_title="fail: $tname $ppath"
+    cat $slog/$f.$tname.fail.email | mail -s "$mail_title" $mail_to
+}
+
+#** Main code goes here
+#*************************************************************
+nr_all=`nr_oflist "$task_list"`
+nr_biground=0
+
+if [ -z "$CVS_TAG" ]; then
+CHECKOUT_OPTION=
+else
+CHECKOUT_OPTION="-r $CVS_TAG"
+fi
+
+while : ; do #repeat forever, default not
+#*************************************************************
+  nr_biground=$(($nr_biground+1))
+  tm_start=`date`
+  tm_a=`date +%s`
+  nr_round=0
+  nr_done=0
+  nr_fail=0
+
+  cd $sdkdir
+  mkdir -p $slog  $rlog $hlog
+  rm -rf $slog/*  
+  echo Server $(uname -a), user $(whoami) >>$slog/state.config
+  echo PATH=$PATH >>$slog/state.config
+  echo CVSROOT=$CVSROOT >>$slog/state.config
+  echo pwd=$(pwd) >>$slog/state.config
+  echo runbgret=$runbgret >>$slog/state.config
+  echo CVS_TAG        =$CVS_TAG         >>$slog/state.config
+  echo CHECKOUT_OPTION=$CHECKOUT_OPTION >>$slog/state.config
+
+  update_time
+  while [ $tm_h -lt $MAX_TIMEOUTHOUR -a $nr_done -lt $nr_all ]; do
+    [ $nr_round -ne 0 ] && sleep $MAX_SLEEP
+    nr_round=$(($nr_round+1))
+    update_time
+    echo Start at $tm_start, total $nr_all tasks running. CVS_TAG=$CVS_TAG>$slog/state.round
+    echo Round at `date`,round=$nr_round / $nr_biground. >>$slog/state.round
+    echo last round, done: $nr_done, all: $nr_all, fail: $nr_fail  >>$slog/state.round
+    echo $(uname -n):$(whoami): $tm_c seconds / $tm_h:$tm_m:$tm_s consumed. >>$slog/state.round
+
+    wordwrite $slog/state.w1 start  $tm_start
+    wordwrite $slog/state.w1 nrlist  $nr_all
+    wordwrite $slog/state.w1 cvstag $CVS_TAG
+    wordwrite $slog/state.w1 date `date`
+    wordwrite $slog/state.w1 round $nr_round
+    wordwrite $slog/state.w1 biground  $nr_biground
+    wordwrite $slog/state.w1 donenr  $nr_done
+    wordwrite $slog/state.w1 failnr  $nr_fail 
+    wordwrite $slog/state.w1 machine $(uname -n)
+    wordwrite $slog/state.w1 user $(whoami)
+    wordwrite $slog/state.w1 consumed  $tm_c seconds / $tm_h:$tm_m:$tm_s
+
+    nr_fail=0
+    for taskdesc in $task_list ; do
+      ttype=`echo $taskdesc | sed 's/\(.*\):\(.*\)/\1/g'`
+      taski=`echo $taskdesc | sed 's/\(.*\):\(.*\)/\2/g'`
+      do_checkout=0
+      do_build=0
+      do_buildpvr=0
+      do_debug=0
+      case $ttype in
+          checkout) do_checkout=1;;
+          build)     do_build=1;;
+          buildpvr)  do_buildpvr=1;;
+          *)         do_debug=1;; #jump all ops
+      esac
+      if [ "$debug" = "1" ]; then
+          MAX_SLEEP=0
+          do_checkout=0
+          do_build=0
+          do_buildpvr=0
+          do_debug=1
+      fi
+
+      f=`path_totoken $taski`
+      echo -en Project $taski ---- >>$slog/state.round
+      wordwrite $slog/state.w1 $taski checking  "<--------------------------------------------------"
+      task_name=safecheck
+      if [ -f $slog/stop ]; then
+          wordwrite $slog/state.w1 $taski $task_name
+          echo "    " $task_name >>$slog/state.round
+          kill_task  $taski
+          add_done_module $taski
+          continue;
+      fi
+      if [ -f $slog/pause ]; then
+          wordwrite $slog/state.w1 $taski $task_name paused
+          echo "    " $task_name paused >>$slog/state.round
+          sleep 1
+          continue;
+      fi
+      #------------------------------------------
+      if [ "$do_checkout" = "1" ]; then
+        task_name=checkout
+        if [ ! -f $slog/$f.$task_name.start ]; then
+            wordwrite $slog/state.w1 $taski $task_name.start
+            echo "    " $task_name.start >>$slog/state.round
+            thread_start $task_name $taski "cvs -q co -A" $CHECKOUT_OPTION "$taski";
+            continue;
+            fi
+        if [ ! -f $slog/$f.$task_name.done ]; then
+            wordwrite $slog/state.w1 $taski $task_name.poll
+            echo "    " $task_name.poll >>$slog/state.round
+            thread_poll $task_name $taski;
+            continue;
+            fi
+        if [ -f $slog/$f.$task_name.fail ]; then
+            wordwrite $slog/state.w1 $taski $task_name.fail
+            echo "    " $task_name.fail >>$slog/state.round
+            #[ -f $slog/$f.$task_name.fail.email ] || thread_fail_email $task_name $taski
+            rm $slog/$f.$task_name.done
+            rm $slog/$f.$task_name.fail
+            rm $slog/$f.$task_name.start
+            file_increase $slog/$f.$task_name.nr
+            #remove .start will be rescheduled in next loop
+            #add_done_module $taski
+            continue;
+            fi
+      fi
+      #------------------------------------------
+      if [ "$do_build" = "1" ]; then
+        task_name=build
+        if [ ! -f $slog/$f.$task_name.start ]; then
+            wordwrite $slog/state.w1 $taski $task_name.start
+            echo "    " $task_name.start >>$slog/state.round
+            thread_start $task_name $taski "make -f Makefile " "$taski";
+            continue;
+            fi
+        if [ ! -f $slog/$f.$task_name.done ]; then
+            wordwrite $slog/state.w1 $taski $task_name.poll
+            echo "    " $task_name.poll >>$slog/state.round
+            thread_poll $task_name $taski;
+            continue;
+            fi
+        if [ -f $slog/$f.$task_name.fail ]; then
+            wordwrite $slog/state.w1 $taski $task_name.fail
+            echo "    " $task_name.fail >>$slog/state.round
+            [ -f $slog/$f.$task_name.fail.email ] || thread_fail_email $task_name $taski
+            add_done_module $taski
+            nr_fail=$(($nr_fail+1))
+            continue;
+            fi
+      fi
+      #------------------------------------------
+      if [ "$do_buildpvr" = "1" ]; then
+        task_name=buildpvr
+        if [ ! -f $slog/$f.$task_name.start ]; then
+            wordwrite $slog/state.w1 $taski $task_name.start
+            echo "    " $task_name.start >>$slog/state.round
+            thread_start $task_name $taski  "make -f Makefile.pvr " "$taski";
+            continue;
+            fi
+        if [ ! -f $slog/$f.$task_name.done ]; then
+            wordwrite $slog/state.w1 $taski $task_name.poll
+            echo "    " $task_name.poll >>$slog/state.round
+            thread_poll $task_name $taski;
+            continue;
+            fi
+        if [ -f $slog/$f.$task_name.fail ]; then
+            wordwrite $slog/state.w1 $taski $task_name.fail
+            echo "    " $task_name.fail >>$slog/state.round
+            [ -f $slog/$f.$task_name.fail.email ] || thread_fail_email $task_name $taski
+            add_done_module $taski
+            nr_fail=$(($nr_fail+1))
+            continue;
+            fi
+      fi
+      #------------------------------------------
+      if [ "$do_debug" = "1" ]; then
+        task_name=$ttype 
+        if [ ! -f $slog/$f.$task_name.start ]; then
+            wordwrite $slog/state.w1 $taski $task_name.start
+            echo "    " $task_name.start >>$slog/state.round
+            thread_start $task_name $taski "sleep 1";
+            continue;
+            fi
+        if [ ! -f $slog/$f.$task_name.done ]; then
+            wordwrite $slog/state.w1 $taski $task_name.poll
+            echo "    " $task_name.poll >>$slog/state.round
+            thread_poll $task_name $taski;
+            continue;
+            fi
+        if [ -f $slog/$f.$task_name.fail ]; then
+            wordwrite $slog/state.w1 $taski $task_name.fail
+            echo "    " $task_name.fail >>$slog/state.round
+            [ -f $slog/$f.$task_name.fail.email ] || thread_fail_email $task_name $taski
+            add_done_module $taski
+            nr_fail=$(($nr_fail+1))
+            continue;
+            fi
+      fi
+      #------------------------------------------
+      task_name=alldone
+      if [ ! -f $slog/$f.task.alldone ]; then
+          wordwrite $slog/state.w1 $taski $task_name
+          echo "    " $task_name >>$slog/state.round
+          add_done_module $taski
+          continue;
+          fi
+      echo "    " mission alldone >>$slog/state.round
+      wordwrite $slog/state.w1 $taski mission all done
+    done
+  done
+  echo mission: $timeid alldone, done: $nr_done, all: $nr_all, fail: $nr_fail  >>$slog/state.alldone
+  echo mission: $timeid alldone, done: $nr_done, all: $nr_all, fail: $nr_fail  >>$slog/state.round
+  echo mission: $timeid alldone, done: $nr_done, all: $nr_all, fail: $nr_fail  
+      wordwrite $slog/state.w1 statnr $nr_all
+      wordwrite $slog/state.w1 statdone $nr_done
+      wordwrite $slog/state.w1 statfail $nr_fail
+  
+  cp $slog/state.round $hlog/state.round.$timeid.$nr_biground
+  cp $slog/state.round $rlog/state.round -f
+  
+
+  if [ -z "$runforever" ] ; then break; fi
+  if [ -f $slog/stop ]; then  break; fi
+done

@@ -1,0 +1,101 @@
+#!/bin/sh
+
+TOP=`pwd`
+if [ $# -eq 0 ] ; then
+    echo "usage $0 [-top target-folder ] [ -test ]"
+    echo example $0 -top \`pwd\`
+    echo nothing done
+    exit 0
+fi
+while [ $# -gt 0 ];do
+    case $1 in
+    -top)
+        TOP=$2
+        shift 2;;
+    -test)
+        TOP=SDK-Release-Link
+        shift ;;
+    *)
+        echo unknown command $1
+	exit 0
+        ;;
+    esac
+done
+
+softlink()
+{
+    if [ -h $2 ] ; then 
+        rm $2 ; 
+    fi
+    ln -s $1 $2
+}
+
+mkdir -p $TOP
+cd $TOP
+[ -d c2-jazz2-sdk-0.10-3L ] && done=1
+[ -d C2Box-0.10-3L ] && done=1
+if [ "$done" = 1 ]; then
+    echo link already done. remove it manually for relink them.
+    exit 0
+fi
+mkdir -p c2-jazz2-sdk-0.10-3L/Advance/plugins
+mkdir -p c2-jazz2-sdk-0.10-3L/Basic
+mkdir -p c2-jazz2-sdk-0.10-3L/Premium
+mkdir -p        C2Box-0.10-3L/Basic
+mkdir -p        C2Box-0.10-3L/Premium
+
+flist=`find  /sdk/jazz2/rel/candidate/c2-jazz2-sdk-0.10-3L/0.10-3L-8/ -type f `
+for i in $flist ; do
+    pname=`echo $i | sed 's:.*/\(.*\):\1:'`
+    rname=`echo $pname | sed 's,0\.10-3L-8,0\.10-3L,'`    
+    #echo $i
+    case $i in
+    *\/plugins\/*)
+        softlink $i c2-jazz2-sdk-0.10-3L/Advance/plugins/$rname
+	;;
+
+    *\/c2box\/*)
+        case $rname  in
+        *c2box-src.tar.gz | *c2box-bin.tar.gz)
+            softlink $i C2Box-0.10-3L/Basic/$rname  ;;
+        *)  softlink $i C2Box-0.10-3L/Premium/$rname;;
+        esac
+	;;
+
+    *)
+        case $rname  in
+        *sw_media-bin.tar.gz)
+            softlink $i c2-jazz2-sdk-0.10-3L/Basic/$rname
+            softlink $i c2-jazz2-sdk-0.10-3L/Premium/$rname
+	    ;;
+        *sw_media-src.tar.gz  | *sw_media-doc.tar.gz)
+            softlink $i c2-jazz2-sdk-0.10-3L/Premium/$rname
+	    ;;
+        *sw_media-src-all.tar.gz)
+            echo does not link $i to any folder
+	    ;;
+        *-gfx_2d-bin.tar.gz)
+            softlink $i c2-jazz2-sdk-0.10-3L/Advance/$rname
+            softlink $i c2-jazz2-sdk-0.10-3L/Basic/$rname
+            softlink $i c2-jazz2-sdk-0.10-3L/Premium/$rname
+            ;;
+        *-dv-docs.tar.gz | *-encoder-docs.tar.gz | *-gfx_2d-src.tar.gz | *-hdmi-src.tar.gz | *-Karaoke-Widget-docs.tar.gz)
+            softlink $i c2-jazz2-sdk-0.10-3L/Advance/$rname
+            ;;
+        *)
+            softlink $i c2-jazz2-sdk-0.10-3L/Basic/$rname
+            softlink $i c2-jazz2-sdk-0.10-3L/Premium/$rname
+            ;;
+        esac
+	;;
+    esac
+done
+
+ftool=`ls /sdk/jazz2/rel/candidate/c2-jazz2-sdk-0.10-3L/c2-jazz2-sdk-0.10-3L-3*`
+for i in $ftool ; do
+    pname=`echo $i | sed 's:.*/\(.*\):\1:'`
+    rname=`echo $pname | sed 's,0\.10-3L-3,0\.10-3L,'`    
+    softlink $i c2-jazz2-sdk-0.10-3L/Basic/$rname
+    softlink $i c2-jazz2-sdk-0.10-3L/Premium/$rname
+done
+

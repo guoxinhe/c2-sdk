@@ -1,0 +1,75 @@
+#!/bin/sh
+
+#[ "${0##*/}" == "jazz2"  ] && export SDK_TARGET_ARCH=${0##*/}
+
+##  Get command line args, override all the configured settings.
+#----------------------------------------------------------------------
+DAYS=3
+cvsmodule=projects/sw/sdk/Makefile
+all=
+
+this_help()
+{
+    cat <<-EOF >&2
+    list the last a few days changeset of a cvs module.
+    syntax ${0##*/} [ --help ] [ -a | -all ] cvs-module [ days ] 
+    -a | -all : display all the search result.
+    days  list the last 'days' days history.
+
+    the module can be a folder path that contains CVS work directory, or 
+    a file in a CVS work directory, or
+    an abs module path from cvs repository
+
+	EOF
+}
+[ $# -eq 0 ] && exit 0
+while [ $# -gt 0 ] ; do
+    case $1 in
+    --help)  this_help; exit 0; shift  ;;
+    -a|-all)  all=1; shift;;
+    *) 	   break ;;
+    esac
+done
+
+if [ $# -gt 0 ]; then
+    cvsmodule=$1
+    shift
+fi
+
+if [ $# -gt 0 ]; then
+    DAYS=$1
+    shift
+fi
+
+if [ -f $cvsmodule/CVS/Repository ]; then
+    cvsmodule=$(cat $cvsmodule/CVS/Repository)
+elif [ "$cvsmodule" == "./" -a -f $(pwd)/CVS/Repository ]; then
+    cvsmodule=$(cat CVS/Repository)
+elif [ -f ${cvsmodule%/*}/CVS/Repository ]; then
+    cvsmodule=$(cat ${cvsmodule%/*}/CVS/Repository)/${cvsmodule##*/}
+elif [ -f $(pwd)/$cvsmodule -a -f $(pwd)/CVS/Repository ]; then
+    cvsmodule=$(cat CVS/Repository)/${cvsmodule}
+fi
+
+NOWSEC=`date +%s`
+THENSEC=$(($NOWSEC - $DAYS * 86400))
+
+NOW=`date +"%Y-%m-%d %H:%M:%S"`
+THEN=`date -d "$DAYS day ago"  +"%Y-%m-%d %H:%M:%S"`
+
+echo ${0##*/} $@ >>/tmp/cvslast$$
+echo pwd=`pwd`  >>/tmp/cvslast$$
+echo "cvs -q rlog -N -d \"$THEN<$NOW\" $cvsmodule" >>/tmp/cvslast$$
+cvs -q rlog -N -d"$THEN<$NOW"  $cvsmodule >>/tmp/cvslast$$
+ret=$?
+if [ $ret -ne 0 ]; then
+    this_help
+    exit $ret
+fi
+echo "module $cvsmodule"
+echo "listed $DAYS days changes from $THEN to $NOW"
+if [ $all ]; then
+    cat /tmp/cvslast$$
+else
+    grep "date: " /tmp/cvslast$$ | sort
+fi

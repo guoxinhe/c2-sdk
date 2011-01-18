@@ -1,0 +1,71 @@
+#!/bin/bash
+
+[ -z "$MISSION" ] && export MISSION=run
+[ -z "$rlog" ] && export rlog=$HOME/rlog/rlog.$MISSION
+recho()
+{
+    #progress echo, for debug during run as the crontab task.
+    if [ ! -z "$rlog" ] ; then
+    echo -en `date +"%Y-%m-%d %H:%M:%S"` " " >>$rlog.log.txt
+    echo "$@" >>$rlog.log.txt
+    fi
+    echo "$@"
+}
+echo_time_used()
+{
+    tm_start=$1
+    tm_stop=$2
+    shift 2
+    tm_c=$(($tm_stop-$tm_start))
+    tm_h=$(($tm_c/3600))
+    tm_m=$(($tm_c/60))
+    tm_m=$(($tm_m%60))
+    tm_s=$(($tm_c%60))
+    echo "$@" "$tm_c seconds / $tm_h:$tm_m:$tm_s consumed."
+}
+tm_a=`date +%s`
+recho_time_consumed()
+{
+    tm_b=`date +%s`
+    tm_c=$(($tm_b-$tm_a))
+    tm_h=$(($tm_c/3600))
+    tm_m=$(($tm_c/60))
+    tm_m=$(($tm_m%60))
+    tm_s=$(($tm_c%60))
+    recho "$@" "$tm_c seconds / $tm_h:$tm_m:$tm_s consumed."
+}
+addto_cc()
+{
+    while [ $# -gt 0 ] ; do
+        if [ "$CCTO" = "" ]; then 
+            CCTO=$1 ; 
+        else
+          r=`echo $CCTO | grep $1`
+          if [ "$r" = "" ]; then 
+            CCTO=$CCTO,$1 ; 
+          fi
+        fi
+        shift
+    done
+    export CCTO
+}
+
+mkdir -p $HOME/rlog
+touch $rlog.log.txt
+
+examplecode(){
+    MISSION=dummy
+    recho Start build script
+    if [ $# -lt "1" ]
+    then
+        recho "Usage: "
+        recho "  brach_build.sh <product> <product> ..."
+        recho "  Supported product: pvr, nmp"
+        recho_time_consumed
+        exit 1
+    fi
+mkdir -p $HOME/public_html
+[ ! -h $HOME/public_html/rlog ] && ln -s ../rlog $HOME/public_html/rlog
+
+}
+

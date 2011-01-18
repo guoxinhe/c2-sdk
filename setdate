@@ -1,0 +1,29 @@
+#!/bin/bash
+
+add_cc()
+{
+    if [ "$CCTO" = "" ]; then 
+        export CCTO=$1 ; 
+        echo add $1 to cc list
+    else
+      r=`echo $CCTO | grep $1`
+      if [ "$r" = "" ]; then 
+        export CCTO=$CCTO,$1 ; 
+        echo add $1 to cc list
+      fi
+    fi
+}
+add_cc hguo@c2micro.com
+add_cc hguo@c2micro.com
+add_cc swine@c2micro.com
+add_cc qa1@c2micro.com
+add_cc qa2@c2micro.com
+add_cc qa3@c2micro.com
+add_cc hguo@c2micro.com
+add_cc qa3@c2micro.com
+add_cc qa4@c2micro.com
+add_cc qa4@c2micro.com
+add_cc qa1@c2micro.com
+add_cc qa5@c2micro.com
+
+echo CCTO: $CCTO

@@ -1,0 +1,101 @@
+#!/bin/sh
+
+function usage()
+{
+  echo usage: autobuild \<staging_dir\> \<source_dir\>
+  echo "      " \<staging_dir\>: directory where c2 tools are put
+  echo "      " \<source_dir\> : path to tarballs\/ directory
+  exit
+}
+
+if [ $# != 2 ]; then
+  usage
+fi
+
+STAGING_DIR=$1
+SOURCE_DIR=$2
+STORAGE_DIR=.
+SDK_TARGET="-march=jazzb -g -O2"
+
+DL_PATH=$SOURCE_DIR
+
+DATE=`date +%y%m%d`
+LOG=makelog.$DATE
+LTMP=$STAGING_DIR/tmp/tmp$$
+LOCKF=.autobuild_building
+
+if [ ! -d $DL_PATH ]; then
+  usage
+fi
+
+if [ -f $LOCKF ]; then
+	echo Already building. Remove $LOCKF if you are sure nobody is building.
+	exit 1
+fi
+echo Build output logged to $PWD/$LOG
+
+echo $$ > $LOCKF
+
+exec >& $LOG
+
+mkdir -p $LTMP
+
+# Check dl directory, should link to DL_PATH
+if [ ! -e dl ]; then
+	echo Create link dl -\> $DL_PATH
+	ln -s $DL_PATH dl
+fi
+
+# Create links in tmp
+mkdir -p ${LTMP}_b/toolchain_build_c2
+ln -sf ${LTMP}_b/toolchain_build_c2 toolchain_build_c2
+
+# Handle config, disable java for sdk
+cp -f ../../autobuild_config autobuild_config 
+sed '{s,^BR2_STAGING_DIR=.*,BR2_STAGING_DIR=\"'$STAGING_DIR'\",g;s,BR2_INSTALL_LIBGCJ=y,BR2_INSTALL_LIBGCJ=n,g;s,BR2_JLEVEL=4,BR2_JLEVEL=1,g}' autobuild_config > .config
+make oldconfig
+
+# Set the TARGET_CFLAGS to include SDK_TARGET
+#JIM temp disable using the march=jazzb switch
+#JIM sed -i "{s,^TARGET_CFLAGS=,TARGET_CFLAGS=$SDK_TARGET ,g}" package/Makefile.in
+
+# Disable parallel make
+echo ".NOTPARALLEL: all world  " >> Makefile
+# Building
+#make -j1 -l 2.0
+#Roger remove load average restriction
+make -j1
+
+RVAL=$?
+if [ $RVAL != 0 ]; then
+	echo Error $RVAL. Stop.
+	rm $LOCKF
+	exit $SVAL
+fi
+
+cp -Rdp build_c2/root $STAGING_DIR
+
+#if [ ${SDK_TARGET_ARCH} != jazzb ]
+#then
+#(cd $STAGING_DIR/${SDK_TARGET_ARCH}/lib; find . -type f -print -o -type l -print) |
+#  while read f; do
+#    if ! test -e $STAGING_DIR/lib/$f; then
+#      ln -s ../${SDK_TARGET_ARCH}/lib/$f $STAGING_DIR/lib/$f
+#    fi
+#  done
+#fi
+
+# Move all
+echo Moving build files...
+rm -rf $STORAGE_DIR/$DATE
+mkdir -p $STORAGE_DIR/$DATE
+if [ $STORAGE_DIR != "." ]; then
+	rm -rf $DATE
+	ln -s $STORAGE_DIR/$DATE $DATE
+fi
+mv build_*  ${LTMP}_b/toolchain_build_c2 root_fs_c2.ext2 $STORAGE_DIR/$DATE
+#    rmdir ${LTMP}_b
+
+rm $LOCKF
+echo Done.
+exit 0

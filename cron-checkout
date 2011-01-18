@@ -1,0 +1,134 @@
+#!/bin/sh
+
+[ -z "$MISSION" ] && export MISSION=run
+[ -z "$rlog" ] && export rlog=$HOME/rlog/rlog.$MISSION
+mkdir -p $HOME/rlog
+recho()
+{
+    #progress echo, for debug during run as the crontab task.
+    if [ ! -z "$rlog" ] ; then
+    echo -en `date +"%Y-%m-%d %H:%M:%S"` " " >>$rlog.log.txt
+    echo "$@" >>$rlog.log.txt
+    fi
+    echo "$@"
+}
+this_help()
+{
+    cat <<-EOF >&2
+
+  man page
+    usage: ./${0##*/} [ -CVSROOT arg ] [ -CVSSTAT arg ] [ -CVS_TAG arg ] [ -SOURCE_DIR arg ] [ -MODLIST arg ]
+    copyright, 2010. guo.xinhe. c2 microsystems.
+
+  options
+    -CVSROOT arg
+    -CVSSTAT arg
+    -CVS_TAG arg
+    -SOURCE_DIR arg
+    -MODLIST arg
+
+  output
+    run log file, for debug, at $HOME/rlog/rlog.${0##*/}.log.txt
+    cvsstat, result file
+    source, checkout target 
+
+  action
+    1. clear and init cvsstat file
+    2. check out module by module
+    3. mark check success if done
+
+    example: ./${0##*/} 
+	EOF
+}
+
+path_totoken()
+{
+    #convert all the /.- to _ for $1
+    local tkn=`echo $1 | sed -e 's:/:_:g' -e 's:-:_:g'  -e 's:\.:_:g'`
+    echo $tkn
+    return 0
+}
+
+while [ $# -gt 0 ]; do
+    case $1 in
+    -CVSROOT)
+        CVSROOT=$2
+        shift 2;;
+    -CVSSTAT)
+        CVSSTAT=$2
+        shift 2;;
+    -CVS_TAG)
+        CVS_TAG=$2
+        shift 2;;
+    -SOURCE_DIR)
+        SOURCE_DIR=$2
+        shift 2;;
+    -MODLIST)
+        [ -f $2 ] && MODLIST="`cat $2`"
+        shift 2;;
+    *)
+	shift
+        ;;
+    esac
+done
+
+
+if [ -z "$MODLIST" ]; then
+xMODLIST="
+projects/sw/sdk/Makefile
+projects/sw/sdk/vertical
+projects/sw/sdk
+"
+fi
+
+[ -z "$MODLIST" ] && err=1
+[ -z "$CVSROOT" ] && err=1
+[ -z "$CVSSTAT" ] && CVSSTAT=`pwd`/cvsstat
+[ -z "$SOURCE_DIR" ] && SOURCE_DIR=`pwd`/source
+if [ "$err" != "" ]; then
+    this_help
+    exit 0
+fi
+if [ -z "$CVS_TAG" ]; then
+    CHECKOUT_OPTION=
+else
+    CHECKOUT_OPTION="-r $CVS_TAG"
+fi
+
+
+recho "MODLIST=  \\"
+for i in $MODLIST ; do
+     recho "    $i  \\"
+done
+recho ""
+recho CVSROOT=$CVSROOT
+recho CVSSTAT=$CVSSTAT
+recho SOURCE_DIR=$SOURCE_DIR
+recho CVS_TAG=$CVS_TAG
+recho CHECKOUT_OPTION=$CHECKOUT_OPTION
+
+
+mkdir -p $SOURCE_DIR
+pushd $SOURCE_DIR
+>$CVSSTAT
+for i in $MODLIST ; do
+     tkn=`path_totoken $i`
+     echo "$tkn:-" >>$CVSSTAT
+done
+for i in $MODLIST ; do
+     tkn=`path_totoken $i`
+     nr_try=0
+     while [ $nr_try -lt 10 ]; do
+         cvs -q co -AP $CHECKOUT_OPTION $i
+         ret=$?
+         [ $ret -eq 0 ] && break
+         nr_try=$(($nr_try+1))
+     done
+     if [ $ret -eq 0 ] ; then
+         sed -i "s,$tkn:.*,$tkn:0,g" $CVSSTAT
+     else
+         sed -i "s,$tkn:.*,$tkn:x,g" $CVSSTAT
+     fi
+done
+popd
+

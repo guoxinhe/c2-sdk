@@ -1,0 +1,27 @@
+#!/bin/sh
+
+grep -sq '^processor.*2' /proc/cpuinfo || exit 0
+
+irq() {
+ let irq=$1 cpu=$2
+ shift 2; # rest of args are name
+ echo $((1<<cpu)) >/proc/irq/$irq/smp_affinity
+ echo cpu$cpu handles IRQ$irq "$@"
+}
+
+irq  2 2 GPIO
+irq  6 2 c2sd
+irq  7 2 jazz2_ehci:usb1
+irq  8 2 jazz2_udc
+irq  9 2 serial
+irq 15 2 i2c_designware
+irq 17 2 ir
+irq 26 2 ahci-c2
+irq 27 2 eth0
+irq 29 2 dw_dmac
+irq 45 2 jazz2_udc
+irq 48 2 jazz2_udc
+irq 49 2 jazz2_udc
+irq 50 2 i2c_designware
+irq 51 2 i2c_designware
+irq 53 2 IO DMA

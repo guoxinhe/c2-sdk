@@ -1,0 +1,90 @@
+#!/bin/sh
+
+TOPDIR=`pwd`
+BLDDIR=`pwd`/btmp
+mkdir -p $BLDDIR
+if [ -f $BLDDIR/.lock ]; then
+    echo Another build script is running. remove  $BLDDIR/.lock if make sure not running.
+    exit 1
+fi
+nr_error=0
+
+steplog()
+{
+    echo `date +%Y/%m/%d\ %T` $@ >>$BLDDIR/.lock
+    echo `date +%Y/%m/%d\ %T` $@ 
+}
+check_file()
+{
+    if [ ! -f $1 ]; then
+        nr_error=$(($nr_error+1))
+        echo can not find file $1
+    fi
+}
+test_exit()
+{
+    rm -rf $BLDDIR/steps.log
+    mv $BLDDIR/.lock $BLDDIR/steps.log
+    exit $1
+}
+check_file  $TOPDIR/gcc-core-4.3.5.tar.bz2
+check_file  $TOPDIR/gcc-g++-4.3.5.tar.bz2
+check_file  $TOPDIR/gcc-testsuite-4.3.5.tar.bz2
+check_file  $TOPDIR/build.sh
+check_file  $TOPDIR/gcc-dep.tar.bz2
+[ $nr_error -ne 0 ] && exit 1
+steplog "All files ready for build, output to $BLDDIR/"
+
+mkdir -p $BLDDIR/build-gcc
+cp -f  $TOPDIR/build.sh  $BLDDIR/build-gcc/
+sed -i -e "s:--prefix=.*[^\\]:--prefix=/c2/pclocal/c2/100722 :"  $BLDDIR/build-gcc/build.sh
+sed -i -e "s:--with-gcc-version-trigger=.*[^\\]:--with-gcc-version-trigger=$BLDDIR/gcc-4.3.5/gcc/version.c :"  $BLDDIR/build-gcc/build.sh
+sed -i -e "s:--with-gmp=.*[^\\]:--with-gmp=$BLDDIR/install-gmp :"  $BLDDIR/build-gcc/build.sh
+sed -i -e "s:--with-mpfr=.*[^\\]:--with-mpfr=$BLDDIR/install-mpfr :"  $BLDDIR/build-gcc/build.sh
+sed -i -e "s:--with-mpc=.*[^\\]:--with-mpc=$BLDDIR/install-mpc :"  $BLDDIR/build-gcc/build.sh
+steplog "build script copied"
+
+mkdir -p $BLDDIR
+tar xjf $TOPDIR/gcc-core-4.3.5.tar.bz2      -C $BLDDIR
+tar xjf $TOPDIR/gcc-g++-4.3.5.tar.bz2       -C $BLDDIR
+tar xjf $TOPDIR/gcc-testsuite-4.3.5.tar.bz2 -C $BLDDIR
+cd $BLDDIR/gcc-4.3.5
+patch -p1 <$TOPDIR/up.patch  >>$BLDDIR/gccpatch.log 2>&1
+cd $TOPDIR
+steplog "Patch gcc ok"
+
+tar jxf $TOPDIR/gcc-dep.tar.bz2 -C $BLDDIR/
+ cd $BLDDIR/
+ mkdir -p build-gmp  install-gmp
+ mkdir -p build-mpfr install-mpfr
+ mkdir -p build-mpc  install-mpc
+steplog "Extrace gcc depend lib tarballs ok"
+
+cd $BLDDIR/build-gmp
+ ../gmp-4.3.2/configure --prefix=$BLDDIR/install-gmp >>$BLDDIR/gmp.log 2>&1 
+ make all install >>$BLDDIR/gmp.log 2>&1
+steplog "Build gmp ok"
+
+cd $BLDDIR/build-mpfr
+ ../mpfr-2.4.2/configure --with-gmp=$BLDDIR/install-gmp \
+	--prefix=$BLDDIR/install-mpfr  >>$BLDDIR/mpfr.log 2>&1
+ make all install  >>$BLDDIR/mpfr.log 2>&1
+steplog "Build mpfr ok"
+
+cd $BLDDIR/build-mpc
+ ../mpc-0.8.1/configure --with-gmp=$BLDDIR/install-gmp \
+	--with-mpfr=$BLDDIR/install-mpfr \
+	--prefix=$BLDDIR/install-mpc  >>$BLDDIR/gmp.log 2>&1
+ make all install >>$BLDDIR/gmp.log 2>&1
+steplog "Build mpc ok"
+
+
+export LD_LIBRARY_PATH=$BLDDIR/install-gmp/lib:$BLDDIR/install-mpfr/lib:$BLDDIR/install-mpc/lib:$LD_LIBRARY_PATH
+steplog "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+
+cd $BLDDIR/build-gcc
+ ./build.sh  >>$BLDDIR/gcc-config.log 2>&1
+ make all install >>$BLDDIR/gcc-make.log 2>&1
+
+steplog "all done"
+test_exit 0

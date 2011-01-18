@@ -1,0 +1,8 @@
+remote command execute system
+
+this software will copy scripts and configure files to remote machine via ssh/scp
+and execute it in the copied machine, then fetch the result.
+
+cvs create branch/cvs tag is high efficient with this small utilities.
+execute in machine in LAN of server is faster than execute in machine in WAN of server.
+

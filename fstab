@@ -1,0 +1,22 @@
+
+#
+# /etc/fstab
+# Created by anaconda on Mon Dec 21 13:20:57 2009
+#
+# Accessible filesystems, by reference, are maintained under '/dev/disk'
+# See man pages fstab(5), findfs(8), mount(8) and/or vol_id(8) for more info
+#
+UUID=4b5b6131-a629-4db2-b234-9f089a704fd9 /                       ext3    defaults        1 1
+UUID=dc934c62-e152-48aa-8177-7f016a75e0ae /home                   ext3    defaults        1 2
+tmpfs                   /dev/shm                tmpfs   defaults        0 0
+devpts                  /dev/pts                devpts  gid=5,mode=620  0 0
+sysfs                   /sys                    sysfs   defaults        0 0
+proc                    /proc                   proc    defaults        0 0
+UUID=55ee29ce-06c9-457a-8698-d64d50d08a21 swap                    swap    defaults        0 0
+
+#we have a 1TB SATA Hard Disk to contain the customer's stream
+/dev/sda1 		/video 		ext4 	rw 		0 0
+#mount server200 frequence used folders
+10.16.13.200:/sdk   /mnts200/sdk   nfs rw,nolock,addr=10.16.13.200 0 0
+10.16.13.200:/video /mnts200/video nfs rw,nolock,addr=10.16.13.200 0 0
+

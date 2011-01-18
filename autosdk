@@ -1,0 +1,278 @@
+#!/bin/sh
+
+. /home/hguo/sdk/autofunc
+MISSION=$THISCMD
+. /home/hguo/sdk/autorlog
+
+# PATH is defined in the head file
+
+func_help_this(){
+    echo usage of $THISCMD:
+    echo "    auto compile the packages of the c2 sdk source package"
+    echo "    source package search path: current folder, 200's build,subs, version folder"
+    echo "    [ -build_qt ]        : force build qt"
+    echo "    [ -build_toolchain ] : force build toolchain"
+    echo "    not support build sw_media, binary package used."
+}
+nr_done=0
+func_increasedone(){
+    nr_done=$(($nr_done+1))
+}
+
+tm_a=`date +%s`
+
+#while [ "$1" != "" ]; do
+while [ $# -gt 0 ];do
+    case $1 in
+    --help|-h)
+        func_help_this
+        exit
+        ;;
+    -l)
+        func_listthis 
+        echo Last version is: $cfg_lastversion
+        echo Last build is: $cfg_lastbuild
+        echo Last build path is: $cfg_lastbuildpath
+        shift
+        exit 0
+        ;;
+    -ls)
+	echo ls $cfg_lastbuildpath
+	ls $cfg_lastbuildpath  $@ --color
+        shift
+        exit 0
+        ;;
+    -build_toolchain)
+        cfg_build_toolchain=yes
+        shift
+        ;;
+    -build_qt)
+        cfg_build_qt=yes
+        shift
+        ;;
+    -build-all)
+        cfg_build_toolchain=yes
+        cfg_build_qt=yes
+        shift
+        ;;
+    exit)
+	exit 0
+	;;
+    *)
+        echo unknown command $1
+	exit 0
+        ;;
+    esac
+    shift
+done
+
+
+#give a host configuration report first
+func_listthis  >>$THISLOG
+
+if [ ! -d $THISC2/c2/daily/bin ]; then
+# global tools chain not found, update from current folder
+    if [ "$cfg_devtoolstgz" = "" ]; then
+        func_lastof "*devtools-bin.tar.gz"
+        cfg_devtoolstgz=$cfg_lastof
+    fi
+    if [ "$cfg_devtoolstgz" = "" ]; then
+        echo Can not find the devtools binary package. Exit.
+        exit
+    fi
+    tar xzvf $cfg_devtoolstgz -C $THISC2
+    echo tar xzvf $cfg_devtoolstgz -C $THISC2 >>$THISLOG
+    func_increasedone
+else
+    echo Tools chain select: $THISC2/c2/daily/bin >>$THISLOG
+    echo ----If new tools chain found, please remove this to update manually. >>$THISLOG
+fi
+if [ "$cfg_build_toolchain" = "yes" ]; then
+    cd $THISPATH
+    if [ ! -f devtools/buildtools.sh ]; then
+        if [ "$cfg_devtoolssrctgz" = "" ]; then
+            func_lastof "*devtools-src.tar.gz"
+            cfg_devtoolssrctgz=$cfg_lastof
+        fi
+        if [ "$cfg_devtoolssrctgz" = "" ]; then
+            echo Can not find the devtools binary package. Exit.
+            exit
+        fi
+        tar xzvf $cfg_devtoolssrctgz 
+        echo tar xzvf $cfg_devtoolssrctgz  >>$THISLOG
+        func_increasedone
+    fi
+    cd devtools
+    ./buildtools.sh
+    cd $THISPATH
+    echo build package $cfg_devtoolssrctgz >>$THISLOG
+    func_increasedone
+fi
+
+#now kernel 
+if [ ! -d sw/kernel ]; then  
+    if [ "$cfg_sw_kernelsrctgz" = "" ]; then
+        #func_lastof "*sw_c2apps-src.tar.gz"
+        func_lastof "*kernel-src.tar.gz"
+        cfg_sw_kernelsrctgz=$cfg_lastof
+    fi
+    if [ "$cfg_sw_kernelsrctgz" = "" ]; then
+        echo Can not find the *kernel-src.tar.gz source package. Exit.
+        exit
+    fi
+    tar xzvf $cfg_sw_kernelsrctgz
+    echo tar xzvf $cfg_sw_kernelsrctgz >>$THISLOG
+    func_increasedone
+fi
+if [ ! -f sw/kernel/linux-2.6/vmlinux.bin ]; then
+    cd $THISPATH
+    cd sw/kernel/linux-2.6
+    cp arch/c2/configs/c2_jazz2_defconfig ./.config
+    make oldconfig
+    #make menuconfig
+    cd ../
+    make initramfs_gen.txt
+    make linux-2.6/vmlinux.bin
+    cd $THISPATH
+    echo build package $cfg_sw_kernelsrctgz >>$THISLOG
+    func_increasedone
+fi
+
+#now u-boot
+if [ ! -d sw/prom ]; then  
+    if [ "$cfg_sw_ubootsrctgz" = "" ]; then
+        func_lastof "*u-boot-src.tar.gz"
+        cfg_sw_ubootsrctgz=$cfg_lastof
+    fi
+    if [ "$cfg_sw_ubootsrctgz" = "" ]; then
+        echo Can not find the *u-boot-src.tar.gz source package. Exit.
+        exit
+    fi
+    tar xzvf $cfg_sw_ubootsrctgz
+    echo tar xzvf $cfg_sw_ubootsrctgz >>$THISLOG
+    func_increasedone
+fi
+if [ ! -f sw/prom/u-boot-1.3.0/u-boot.rom ]; then  
+    cd $THISPATH
+    cd sw/prom/u-boot-1.3.0
+    make jazz2evb_config
+    make boot -j1  MPUCLK=355 MEMCLK=400 DDR_DEVICE=MT47H64M16-25E SINGLE_MC
+    cd $THISPATH
+    echo build package $cfg_sw_ubootsrctgz OK. >>$THISLOG
+    func_increasedone
+fi
+
+if [ ! -d $SDK/sw_media ]; then  
+    #extract a sw_media binary folder for using, do not need build a new one.
+    mkdir -p $SDK/sw_media
+
+    if [ "$cfg_sw_mediatgz" = "" ]; then
+        func_lastof "*sw_media-bin.tar.gz"
+        cfg_sw_mediatgz=$cfg_lastof
+    fi
+    if [ "$cfg_sw_mediatgz" = "" ]; then
+        echo Can not find the *sw_media-bin.tar.gz binary package. Exit.
+        exit
+    fi
+    tar xvzf $cfg_sw_mediatgz -C $SDK/sw_media 
+    echo tar xzvf $cfg_sw_mediatgz >>$THISLOG
+    func_increasedone
+fi
+if [ "$cfg_build_sw_media" = "yes" ]; then
+    echo Build sw_media: TBD. >>$THISLOG
+fi
+
+#now qt
+if [ ! -d $QTHOME ]; then
+    cfg_build_qt=yes
+fi
+
+if [ "$cfg_build_qt" = "yes" ]; then
+    # global QT not found, update from current folder
+    if [ ! -d sw/Qt ]; then
+        # find a src and extract it for building
+        if [ "$cfg_qtsrctgz" = "" ]; then
+            func_lastof "*qt*src.tar.gz"
+            cfg_qtsrctgz=$cfg_lastof
+        fi
+        if [ "$cfg_qtsrctgz" = "" ]; then
+            echo Can not find the qt src package. Exit.
+            exit
+        fi
+        tar xzvf $cfg_qtsrctgz
+        echo tar xzvf $cfg_qtsrctgz >>$THISLOG
+        func_increasedone
+    fi
+    cd $THISPATH
+    #build a local qt and install it.
+    cd sw/Qt/qt-embedded-linux-opensource-src-4.5.1
+    echo configuring qt... >>$THISLOG
+    ./configure -embedded c2 \
+          -little-endian \
+          -qt-kbd-usb \
+          -qt-libpng \
+          -release \
+          -opensource \
+          -prefix $QTHOME \
+          -depths 8,16,32 \
+          -confirm-license \
+          -plugin-gfx-directfb \
+          -dbus \
+          -I$SDK/sw/root/usr/include/dbus-1.0/ \
+          -L$SDK/sw/root/usr/lib/ \
+          -ldbus-1 \
+          -I$SDK/sw_media/TARGET_LINUX_C2_TANGO_RELEASE/include \
+          -L$SDK/sw_media/TARGET_LINUX_C2_TANGO_RELEASE/lib
+    make
+    make install
+
+    cd $THISPATH
+    echo qt make ... >>$THISLOG
+    echo qt make install... >>$THISLOG
+    func_increasedone
+else
+    echo QT select: $QTHOME >>$THISLOG
+    echo ----If new QT found, please remove this to update manually. >>$THISLOG
+fi
+#now all apps
+if [ ! -d sw_c2apps ]; then  
+    if [ "$cfg_sw_c2appsalltgz" = "" ]; then
+        #func_lastof "*sw_c2apps-src.tar.gz"
+        func_lastof "*c2box-src-all.tar.gz"
+        cfg_sw_c2appsalltgz=$cfg_lastof
+    fi
+    if [ "$cfg_sw_c2appsalltgz" = "" ]; then
+        echo Can not find the *sw_c2apps-src-all.tar.gz source package. Exit.
+        exit
+    fi
+    tar xzvf $cfg_sw_c2appsalltgz
+    echo tar xzvf $cfg_sw_c2appsalltgz >>$THISLOG
+    func_increasedone
+fi
+if [ ! -d sw_c2apps/work ]; then  
+    cd $THISPATH
+    # now goes here to build all the user level applications.
+    cd sw_c2apps
+    
+    #if "ENABLE_NEW_APP=TRUE" not defined, build an old pvr system.
+    export ENABLE_NEW_APP=TRUE 
+    BUILD_TARGET=TARGET_LINUX_C2 TARGET_ARCH=TANGO BUILD=RELEASE SW_MEDIA_PATH=$SDK/sw_media make install
+    cd $THISPATH
+    echo build and install sw_c2apps... >>$THISLOG
+    func_increasedone
+fi
+
+
+tm_b=`date +%s`
+tm_c=$(($tm_b-$tm_a))
+tm_h=$(($tm_c/3600))
+tm_m=$(($tm_c/60))
+tm_m=$(($tm_m%60))
+tm_s=$(($tm_c%60))
+echo all $nr_done task done, $tm_c seconds / $tm_h:$tm_m:$tm_s consumed. >>$THISLOG
+
+if [ $nr_done -eq 0 ]; then
+    rm -f $THISLOG
+else
+    echo log saved to $THISLOG
+fi

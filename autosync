@@ -1,0 +1,49 @@
+#!/bin/sh
+
+[ -f /home/hguo/sdk/autoenvs ] && . /home/hguo/sdk/autoenvs
+[ -z "$MISSION" ] && export MISSION=$THISCMD
+[ -f /home/hguo/sdk/autorlog ] && . /home/hguo/sdk/autorlog
+
+BJ=10.16.13.200  #storage
+SJ=10.0.5.129    #saturn
+PC=10.16.8.4     #Delllinux
+servers="$PC $BJ $SJ"
+
+case $THISIP in
+    10\.16\.8\.4)
+        servers="$BJ $SJ"
+        recho Sync to BJ/SJ Server ;;
+    10\.16\.13\.*)
+        servers="$PC $SJ"
+        recho Sync to PC/SJ Server ;;
+    10\.0\.*)
+        servers="$PC $BJ"
+        recho Sync to PC/BJ Server ;;
+    10\.16\.*)
+        servers="$BJ $SJ"
+        recho Sync to BJ/SJ Server ;;
+esac
+if [ $# -lt 1 ]; then
+    recho Sync folder $THISPATH, all files and folders
+else
+    recho Sync folder $THISPATH, file $@
+fi
+for i in $servers; do
+    if [ "$i" = "$THISIP" ]; then
+        #do not sync to itself
+        continue;
+    fi
+    $SETCOLOR_SUCCESS
+    recho -en Sync to $i 
+    $MOVE_TO_COL
+    recho "----------------    >>>>    ----------------"
+    $SETCOLOR_NORMAL
+    ssh $i mkdir -p $THISPATH
+    if [ $# -lt 1 ]; then
+        scp -r * $i:$THISPATH
+    else
+        scp -r $@ $i:$THISPATH
+    fi
+    recho 
+done
+recho_time_consumed

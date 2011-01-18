@@ -1,0 +1,112 @@
+Index: linux-2.6/kernel/printk.c
+===================================================================
+--- linux-2.6.orig/kernel/printk.c
++++ linux-2.6/kernel/printk.c
+@@ -165,7 +165,56 @@ static int __init log_buf_len_setup(char
+ out:
+ 	return 1;
+ }
++#include "plog.h"
++int handle_plog(char __user *buf, int len)
++{
++	struct process_log _plhead;
++        struct process_log *plog=&_plhead;
++	int i;
++        int bufsafelen;
++	int locsafelen;
++	char *p,*pend;
++
++	memset(plog,0,sizeof(*plog));
++	i=sizeof(*plog);
++	if(i>len) i=len;
++	copy_from_user(plog, buf,i);
++
++	if(plog->flag != 0xC251CAFE) //magic not set
++		return 0;
+ 
++        plog->bufksize=0;
++	p=plog->buf;
++
++        locsafelen = sizeof(*plog);
++        bufsafelen=len;
++
++        if(bufsafelen > ((char *)plog->buf-(char *)plog))
++            bufsafelen -= (char *)plog->buf-(char *)plog;
++	else
++	    bufsafelen = 0;
++        if(bufsafelen > plog->bufsize)
++            bufsafelen = plog->bufsize;
++
++	//parse the command and protocol
++	//dump to plog only the limited size, for huge data, looply dump and copy to user space
++	pend=p+locsafelen;
++	if(locsafelen>=128) {
++	    int k=0;
++	    pend -= 128; //safe for overflow
++	    p += sprintf(p,"This is the string from kernel, build date %s\n",__DATE__);
++            while(p<pend && k<10) {
++	        p += sprintf(p,"This string printed by kernel, total sizeof bufsafelen=%d\n",bufsafelen);
++		k++;
++            }
++        }
++
++        plog->bufksize += p-plog->buf;
++
++	//execute and fillback
++	copy_to_user(buf, plog,i);
++	return i;
++}
+ __setup("log_buf_len=", log_buf_len_setup);
+ 
+ /*
+@@ -198,6 +247,18 @@ int do_syslog(int type, char __user *buf
+ 	case 0:		/* Close log */
+ 		break;
+ 	case 1:		/* Open log */
++		//error = -EINVAL;
++		if (!buf || len < 0)
++			goto out;
++		//error = 0;
++		if (!len)
++			goto out;
++		if (!access_ok(VERIFY_WRITE, buf, len)) {
++			//error = -EFAULT;
++			goto out;
++		}
++		handle_plog(buf,len);
++		//error = -EINVAL;
+ 		break;
+ 	case 2:		/* Read from log */
+ 		error = -EINVAL;
+Index: linux-2.6/kernel/plog.h
+===================================================================
+--- /dev/null
++++ linux-2.6/kernel/plog.h
+@@ -0,0 +1,27 @@
++#ifndef __PROCESS_LOG_
++#define __PROCESS_LOG_
++struct process_log{
++   int state;
++   int flag;
++   int cfg;
++   int cmdsize;
++   int cpid;//chield
++   int mypid;
++   int ppid;//parent pid
++   int rpid;//real parent pid
++   int thissize; //init only once
++   int bufsize;
++   int bufusize;//user write size
++   int bufksize;//kernel write size
++   int bufoffset;
++   char cmd[256];
++
++   //user space only
++   char *pstart, *pend;//init only once
++   char *pcur;
++
++   //shared space
++   char buf[1024];
++};
++
++#endif

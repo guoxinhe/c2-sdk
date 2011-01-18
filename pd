@@ -1,0 +1,70 @@
+#!/bin/sh
+src1=/home/hguo/kernel/linux-2.6.32
+src2=/home/hguo/kernel/linux-2.6
+this_help()
+{
+    cat <<-EOF >&2
+
+  man page
+    usage: ./${0##*/} [ -x ] [ -v | -m ] [ path1 path2 path3 ]
+    -x swap path1 path2 order
+    -v use vimdiff
+    -m use meld
+    path1: default to $src1
+    path2: default to $src2
+    path3: append to path1, path2
+
+    example: ./${0##*/} -x -v Makefile
+
+    copyright, 2010. guo.xinhe. c2 microsystems.
+	EOF
+}
+
+while [ $# -gt 0 ]; do
+    case $1 in
+    -x) XORDER=1; shift;;
+    -v) cust=vimdiff;shift;;
+    -m) cust=meld;shift;;
+    -h | --help ) this_help; exit 0; shift;;
+    *)
+        if [ -z $src1 ]; then src1=$1;  
+        else 
+            if [ -z $src2 ]; then src2=$1; 
+            else [ -z $src3 ] && src3=$1;
+            fi
+        fi
+	shift
+        ;;
+    esac
+done
+
+if [ -z $src1 ] || [ -z $src2 ]; then
+    this_help
+    exit 0
+fi
+
+if [ $src3 ]; then
+    src1=$src1/$src3
+    src2=$src2/$src3
+fi
+if [ $XORDER ]; then
+    srcx=$src2
+    src2=$src1
+    src1=$srcx
+fi
+
+if [ $cust ]; then
+    $cust $src1 $src2 
+else
+    diff -rup  -b -B --ignore-all-space --ignore-blank-lines --ignore-space-change \
+	--exclude=*.order --exclude=*.cmd --exclude=*.ko  --exclude=*.o --exclude=*.d \
+	--exclude=*.lds --exclude=vmlinux*  \
+	--exclude=*.tgz --exclude=*.gz --exclude=*.bz2 --exclude=*.cpio  \
+	--exclude=Kconfig* --exclude=Makefile* --exclude=config* \
+	--exclude=CVS \
+	$src1 $src2 >/tmp/pdiff$$
+    vim /tmp/pdiff$$
+    rm /tmp/pdiff$$
+fi
+
+

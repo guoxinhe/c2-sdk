@@ -1,0 +1,120 @@
+#!/bin/sh
+
+THISCAL=$0
+THISCMD=`echo $0 | sed 's:.*/\(.*\):\1:'`
+THISPATH=`pwd`
+THISDIR=`pwd | sed 's:.*/\(.*\):\1:'`
+THISTID=`date +%Y%m%d%H%M%S`
+THISMAC=`ifconfig eth0 | grep 'HWaddr' | sed 's/.*HWaddr \(.*\)/\1/'`
+THISIP=`ifconfig eth0 | grep 'inet addr' | sed 's/.*addr:\(.*\)\(  Bcast.*\)/\1/'`
+THISUSR=`whoami`
+THISHOST=`uname -n`
+THISKV=`uname -v`
+THISARGC=$#
+THISARGV=$@
+
+func_nfs(){
+
+    mdone=`cat /etc/mtab |  grep "$1 "`
+    if [ "$mdone" != "" ]; then
+        echo Already mounted $1 #: $mdone
+        return 0
+    fi
+
+    mkdir -p $2
+    mount -o nolock -t nfs $1 $2
+    echo mount nfs $1 --\> $2
+}
+func_nfs_all(){
+    func_nfs 10.16.13.196:/nfs                /buildnfs
+    func_nfs 10.16.8.4:/local                 /local
+    func_nfs 10.16.0.1:/group/shared          /shome
+    func_nfs 10.16.0.1:/group/shared/tools_bj /c2
+    func_nfs 10.16.0.1:/group/shared/shared   /shared 
+    func_nfs 10.16.13.96:/video               /v-s96
+    func_nfs 10.16.13.200:/video              /v-200
+    func_nfs 10.16.13.200:/sdk                /sdk
+    mkdir -p /c2-media
+    [ -h /c2-media/v-s96 ] || ln -s /v-s96  /c2-media/v-s96
+    [ -h /c2-media/v-200 ] || ln -s /v-200  /c2-media/v-200
+    [ -h /c2-media/shome ] || ln -s /shome  /c2-media/shome
+}
+func_help_this(){
+    echo $THISCMD [--help] [--install] 
+}
+while [ $# -gt 0 ];do
+    case $1 in
+    --help|-h)
+        func_help_this
+        exit 0
+        ;;
+    --nfs) 
+        func_nfs_all
+        exit 0
+        ;;
+    --installrc)
+	mount -o remount,rw /sdroot
+	cp -f $THISCAL /sdroot/etc/init.d/
+	sync
+	mount -o remount,ro /sdroot
+	echo install $THISCAL to /sdroot/etc/init.d/
+	exit 0
+        ;;
+    --install) 
+	mount -o remount,rw /sdroot
+	cp -f $THISCAL /sdroot/usr/bin/
+	sync
+	mount -o remount,ro /sdroot
+	echo install $THISCAL to /usr/bin
+	exit 0
+        ;;
+    nfs)
+	mkdir -p /local
+	mount -t nfs -o nolock 10.16.8.4:/local /local
+	export PATH=$PATH:/local/c2
+	mkdir -p /.ssh
+	cp -f /local/c2/authorized_keys  /.ssh/
+	pl -SHL ks
+	rc.demo --nfs
+	;;
+    exit)
+	exit 0
+	;;
+    *)
+        echo unknown command $1
+	exit 0
+        ;;
+    esac
+    shift
+done
+
+#auto update
+if [ "$THISIS" != "" ]; then
+        func_nfs_all
+fi
+
+if [ ! -d /.ssh ];then
+  if [ -d /home/.ssh ];then
+      mkdir -p /.ssh     
+      cp -rf /home/.ssh/* /.ssh/
+  fi
+fi
+
+
+flgauto=/boot/c2auto.ini
+if [ -f $flgauto ] ; then
+    if [ -f /home/work/run.sh ]; then 
+	cd /home/work; ./run.sh & 
+    fi
+#    if [ -f /sdroot/bin/autonfs ]; then 
+#        /sdroot/bin/autonfs &
+#    fi
+fi
+
+#haspath=`echo $PATH | grep "/local/c2"`
+#if [ "$haspath" = "" ]; then
+#    export PATH=/local/c2:$PATH
+#fi
+
+func_nfs_all
+ls /local

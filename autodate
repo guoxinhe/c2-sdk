@@ -1,0 +1,9 @@
+#!/bin/sh
+
+[ -f /home/hguo/sdk/autoenvs ] && . /home/hguo/sdk/autoenvs
+[ -z "$MISSION" ] && export MISSION=$THISCMD
+[ -f /home/hguo/sdk/autorlog ] && . /home/hguo/sdk/autorlog
+
+echo "#!/bin/sh" >/local/c2/setdate
+echo "date -s \"`date +%m%d%H%M%Y.%S`\"" >>/local/c2/setdate
+chmod 755 /local/c2/setdate

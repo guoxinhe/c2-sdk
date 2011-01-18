@@ -1,0 +1,1263 @@
+
+# Copyright (C) 2007 C2 Microsystems
+#
+# File: Makefile
+#
+#
+# Top-level makefile for building the C2 SDK package release.
+#
+# $Id: Makefile,v 1.259 2010/12/28 07:22:29 hguo Exp $ 
+
+SDK_KERNEL_VERSION	?= 2.6.23
+SDK_TARGET_ARCH		?= jazz2
+SDK_TARGET_GCC_ARCH	?= TANGO
+
+MAJOR                   := 101226
+VERSION			:= $(MAJOR).$(MINOR)
+BRANCH			:= 
+CANDIDATE		:= $(BRANCH)-
+CVS_TAG			?= $(SDK_TARGET_ARCH)-SDK-$(MAJOR)_$(MINOR)-$(CANDIDATE)
+BUILDTIMES              := 1
+
+TOP_DIR			:= $(shell /bin/pwd)
+TEST_ROOT_DIR		:= $(TOP_DIR)/test_root
+SOURCE_DIR		:= $(TOP_DIR)/source
+TEMP_DIR		:= $(TOP_DIR)/temp
+TODAY                   := $(shell date +%y%m%d)
+GNU_TARBALL_PATH                 := /home/saladwang/gnu
+
+
+ifneq ($(SDK_KERNEL_VERSION),2.6.23)
+LINUXDIR		:= linux-2.6.14
+else
+LINUXDIR                := linux-2.6
+endif
+
+ifeq ($(SDK_TARGET_ARCH),jazzb)
+    ifeq ($(SDK_KERNEL_VERSION),2.6.14)
+        DEVTOOLS_AUTOBUILD_CONFIG := autobuild_config_jazzb
+    else
+        DEVTOOLS_AUTOBUILD_CONFIG := autobuild_config_jazzb_new_kernel
+    endif
+else
+    DEVTOOLS_AUTOBUILD_CONFIG := autobuild_config_$(SDK_TARGET_ARCH)
+endif
+
+SDK_VERSION_ALL		:= $(SDK_TARGET_ARCH)-sdk-$(VERSION)-$(CANDIDATE)
+
+PKG_DIR			:= $(TOP_DIR)/$(SDK_VERSION_ALL)
+TOOLCHAIN_PATH		?= $(TEST_ROOT_DIR)/c2/daily/bin
+QT_INSTALL_DIR		?= $(TEST_ROOT_DIR)/QtopiaCore-4.6.1-generic
+QT_INSTALL_DIR470	?= $(TEST_ROOT_DIR)/QtopiaCore-4.7.0-generic
+INSTALL_DIR		?= /usr/local/c2/releases/sdk/$(SDK_VERSION_ALL)
+PUBLISH_DIR		?= /home/roger/public_html/sdk-releases/$(SDK_VERSION_ALL)
+
+# Allow the checkout option to be changed via an environment variable
+# using make -e, needed for automation, default is the CVS_TAG revision
+# Also allow an alternative option to be specified.
+# If CVS_TAG="", it will checkout the lastest files from top tree.
+ifneq ($(CVS_TAG),)
+CHECKOUT_OPTION         := -r $(CVS_TAG)
+endif
+CHECKOUT                := cvs -q co -AP $(CHECKOUT_OPTION)
+UPDATE                  := cvs -q update -CAPd $(CHECKOUT_OPTION)
+
+# DEVTOOLS package
+CVS_SRC_BUILDROOT       := projects/sw/devtools/buildroot
+CVS_SRC_3RDPARTY        := projects/sw/devtools/3rdParty
+CVS_SRC_BINUTILS        := projects/sw/devtools/binutils/binutils
+CVS_SRC_GCC             := projects/sw/devtools/gcc/gcc
+CVS_SRC_GCC_4_3_5       := projects/sw/devtools/gcc-4.3.5
+CVS_SRC_KERNEL_HEADERS  := projects/sw/kernel/$(LINUXDIR)
+CVS_SRC_UCLIBC          := projects/sw/devtools/uClibc
+CVS_SRC_DIRECTFB        := projects/sw/directfb/DirectFB-1.4.5
+STANDALONE_BUILD        := projects/sw/sdk/sdk_tools
+BUILDROOT_FILE          := $(TEMP_DIR)/devtools/tarballs/buildroot-c2.snapshot.tar.bz2
+BUSYBOX_1_5_1_FILE      := $(TEMP_DIR)/devtools/tarballs/busybox-1.5.1.tar.bz2
+BUSYBOX_1_13_3_FILE     := $(TEMP_DIR)/devtools/tarballs/busybox-1.13.3.tar.bz2
+I2CTOOLS_FILE           := $(TEMP_DIR)/devtools/tarballs/i2c-tools-3.0.1.tar.bz2
+OPROFILE_FILE           := $(TEMP_DIR)/devtools/tarballs/oprofile-0.9.1.tar.bz2
+BINUTILS_FILE           := $(TEMP_DIR)/devtools/tarballs/binutils-c2.snapshot.tar.bz2
+GCC_FILE                := $(TEMP_DIR)/devtools/tarballs/gcc-c2.snapshot.tar.bz2
+KERNEL_FILE      := $(TEMP_DIR)/devtools/tarballs/linux-libc-headers-$(SDK_KERNEL_VERSION).0.tar.bz2
+UCLIBC_FILE             := $(TEMP_DIR)/devtools/tarballs/uClibc-0.9.27.tar.bz2
+DIRECTFB_FILE           := $(TEMP_DIR)/devtools/tarballs/DirectFB-1.4.5.tar.bz2
+PKG_NAME_SRC_DEVTOOLS   := $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-devtools-src.tar.gz
+PKG_NAME_BIN_DEVTOOLS	:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-devtools-bin.tar.gz
+
+DEVTOOLS_DIR		:= $(TOP_DIR)/c2/daily
+SW_MEDIA_DIR		:= /usr/local/c2/sw_media/known_good/TARGET_LINUX_C2_$(SDK_TARGET_GCC_ARCH)_RELEASE
+
+# SPI package
+CVS_SRC_SPI		:= sw/prom/spirom
+PKG_NAME_SRC_SPI_B1	:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-spi_rom-cc1100-250-src.tar.gz
+PKG_NAME_SRC_SPI_B2	:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-spi_rom-cc1100-350-src.tar.gz
+PKG_NAME_BIN_SPI_B1	:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-spi_rom-cc1100-250-bin.tar.gz
+PKG_NAME_BIN_SPI_B2	:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-spi_rom-cc1100-350-bin.tar.gz
+CVS_SRC_JTAG            := sw/jtag
+PKG_NAME_SRC_JTAG       := $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-jtag-src.tar.gz
+PKG_NAME_BIN_JTAG       := $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-jtag-bin.tar.gz
+
+#diag package
+CVS_SRC_DIAG            := sw/prom/diag
+PKG_NAME_SRC_DIAG       := $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-diag_rom-src.tar.gz
+PKG_NAME_BIN_DIAG       := $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-diag_rom-bin.tar.gz
+
+# U-BOOT package
+ifeq ($(SDK_TARGET_ARCH),jazz2)
+    UBOOT_BOARDTYPE         := jazz2evb_config
+    UBOOT_MAKECONFIG        := MPUCLK=400 MEMCLK=400 DDR_DEVICE=MT47H64M16-25E
+else
+    UBOOT_BOARDTYPE         := jazz1evb_config
+    UBOOT_MAKECONFIG        := MPUCLK=275 MEMCLK=333 DDR_DEVICE=K4T51163QC-ZCE6
+endif
+ifeq ($(SDK_TARGET_ARCH),jazz2l)
+    UBOOT_BOARDTYPE         := jazz2evb_config
+    UBOOT_MAKECONFIG        := MPUCLK=400 MEMCLK=400 DDR_DEVICE=MT47H64M16-25E
+endif
+CVS_SRC_UBOOT		:= sw/prom/u-boot-1.3.0
+PKG_NAME_SRC_UBOOT	:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-u-boot-src.tar.gz
+PKG_NAME_BIN_UBOOT	:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-u-boot-bin.tar.gz
+
+CVS_SRC_KERNEL		:= sw/kernel
+CVS_SRC_SW_MEDIA	:= sw_media
+
+# QT package
+CVS_SRC_QT		:= sw/Qt/qt-everywhere-opensource-src-4.6.1
+PKG_NAME_SRC_QT		:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-qt-4.6.1-src.tar.gz
+PKG_NAME_BIN_QT		:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-qt-4.6.1-bin.tar.gz
+ifeq ($(SDK_TARGET_ARCH),jazz2)
+QT_EXTRA_CONFIG		:= -plugin-gfx-directfb
+endif
+ifeq ($(SDK_TARGET_ARCH),jazz2l)
+QT_EXTRA_CONFIG		:= -plugin-gfx-directfb
+endif
+
+# QT 4.7 package
+CVS_SRC_QT470			:= sw/Qt/qt-everywhere-opensource-src-4.7.0
+PKG_NAME_SRC_QT470		:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-qt-4.7.0-src.tar.gz
+PKG_NAME_BIN_QT470		:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-qt-4.7.0-bin.tar.gz
+ifeq ($(SDK_TARGET_ARCH),jazz2)
+QT_EXTRA_CONFIG470		:= -plugin-gfx-directfb
+endif
+ifeq ($(SDK_TARGET_ARCH),jazz2l)
+QT_EXTRA_CONFIG470		:= -plugin-gfx-directfb
+endif
+# C2 Goodies package
+CVS_SRC_BUSYBOX_1.5.1   := sw/cmd/busybox-1.5.1
+CVS_SRC_BUSYBOX_1.13.3  := sw/cmd/busybox-1.13.3
+CVS_SRC_I2CTOOLS        := sw/cmd/i2c-tools
+CVS_SRC_OPROFILE        := projects/sw/oprofile
+FUSEPOD_SCRIPT          := $(CVS_SRC_3RDPARTY)/scripts/build-fusepod.sh 
+DJMOUNT_PKG             := $(CVS_SRC_3RDPARTY)/djmount-0.71.tar.gz
+FUSEPOD_PKG             := $(CVS_SRC_3RDPARTY)/fusepod-0.5.1.tar
+LIBGPOD_PKG             := $(CVS_SRC_3RDPARTY)/libgpod-0.5.2.tar.gz
+FUSE_PKG                := $(CVS_SRC_3RDPARTY)/fuse-2.6.3.tar.gz 
+GLIB_PKG                := $(CVS_SRC_3RDPARTY)/glib-2.12.9-c2.tar
+TAGLIB_PKG              := $(CVS_SRC_3RDPARTY)/taglib-1.4.tar
+PERL_SCRIPT             := $(CVS_SRC_3RDPARTY)/scripts/build-microperl.sh 
+PERL_PKG                := $(CVS_SRC_3RDPARTY)/perl-5.8.8.tar.gz
+CVS_SRC_SNOOPY          := projects/sw/cmd/snoopy
+CVS_SRC_STRACE          := projects/sw/strace
+POPT_PKG                := $(CVS_SRC_3RDPARTY)/popt-1.7.tar.gz
+
+ETHERTOOL_PKG           := $(CVS_SRC_3RDPARTY)/ethtool-6.tar.gz
+
+BENCHMARK_SCRIPT        := $(CVS_SRC_3RDPARTY)/scripts/build-benchmark.sh
+BONNIE_PKG              := $(CVS_SRC_3RDPARTY)/bonnie++-1.03d.tgz
+IOZONE_PKG              := $(CVS_SRC_3RDPARTY)/iozone3_308-c2.tgz
+LMBENCH_PKG		:= $(CVS_SRC_3RDPARTY)/lmbench3-c2.tgz
+UNIXBENCH_PKG           := $(CVS_SRC_3RDPARTY)/unixbench-4.1.0-c2.tgz
+IPERF_PKG               := $(CVS_SRC_3RDPARTY)/iperf-2.0.2.c2.tar.gz
+NETPERF_PKG             := $(CVS_SRC_3RDPARTY)/netperf-2.4.4.c2.tar.gz
+
+CVS_SRC_APP_3RDPARTY	:= projects/sw/c2apps/3rdParty/dist
+HDD_SCRIPT              := projects/sw/c2apps/3rdParty/sdk-build-hdd.sh
+SAMBA_PKG               := $(CVS_SRC_APP_3RDPARTY)/samba-3.0.28a-c2.tar.bz2
+NTFS_PKG                := $(CVS_SRC_APP_3RDPARTY)/ntfs-3g-1.2531-c2.tgz
+NTFSPROGS_PKG           := $(CVS_SRC_APP_3RDPARTY)/ntfsprogs-2.0.0-c2.tar.gz
+LIBUSB_PKG              := $(CVS_SRC_APP_3RDPARTY)/libusb-0.1.12.tar.bz2
+LIBPTP_PKG              := $(CVS_SRC_APP_3RDPARTY)/libptp2-1.1.10.tar.gz
+
+PKG_NAME_SRC_GOODIES	:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-c2_goodies-src.tar.gz
+PKG_NAME_BIN_GOODIES	:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-c2_goodies-bin.tar.gz
+
+devtools-tarballs-remove +=    \
+	cups-1.1.23-source.tar.bz2 	\
+	djmount-0.71.tar.gz        	\
+	fusepod-0.5.1.tar          	\
+	fuse-2.6.3.tar.gz          	\
+	fuse-2.7.1-c2.tar.gz       	\
+	glib-2.12.9-c2.tar         	\
+	libgpod-0.4.2-c2.tar       	\
+	libgpod-0.5.2.tar.gz       	\
+	libptp2-1.1.0-c2.tar.bz2   	\
+	libptp2-1.1.10.tar.gz      	\
+	libusb-0.1.12.tar.bz2      	\
+	ntfs-3g-1.1120-c2.tgz      	\
+	ntfs-3g-1.710-c2.tgz       	\
+	oprofile-0.9.2.tar.gz      	\
+	perl-5.8.8.tar.gz          	\
+	samba-3.0.28a-c2.tar.bz2   	\
+	samba-2.2.12-c2.tar.bz2    	\
+	taglib-1.4.tar             	\
+	gcc-core-4.3.5.tar.bz2  gcc-g++-4.3.5.tar.bz2  gcc-testsuite-4.3.5.tar.bz2 \
+	gmp-4.3.2.tar.bz2  mpc-0.8.1.tar.gz  mpfr-2.4.2.tar.bz2                    \
+	linux-2.6.32.tar.bz2		\
+
+.PHONY: all version devtools-src devtools-src-test devtools-bin
+.PHONY: spi-src spi-bin u-boot-src u-boot-bin c2_goodies-src c2_goodies-bin
+.PHONY: sw_media-bin qt-src qt-bin c2-pvr
+.PHONY: install publish clean
+
+ALL_TARGETS = devtools-src devtools-src-test devtools-bin 
+ALL_TARGETS += diag-src diag-bin u-boot-src u-boot-bin c2_goodies-src c2_goodies-bin
+ALL_TARGETS += sw_media-bin qt-src qt-bin c2-pvr
+
+
+#------------------------------------------------------------------------------
+all: $(ALL_TARGETS)
+	@ls -lt $(PKG_DIR)
+	@echo "DONE!"
+
+#------------------------------------------------------------------------------
+version:
+	# Print out the compiler version used
+	c2-linux-gcc -v
+
+#------------------------------------------------------------------------------
+devtools-src: override PATH := /usr/local/bin:/usr/bin:/bin
+devtools-src:
+	@echo "BUILD TARGET: devtools-src"
+	@cd $(TOP_DIR)
+	
+	@mkdir -p $(SOURCE_DIR)
+	@mkdir -p $(TEMP_DIR)
+	
+	@# Need buildroot and the 3rd party tarballs (alternate checkout)
+	@echo Checkout $(CVS_SRC_BUILDROOT)
+	@cd $(SOURCE_DIR) && $(CHECKOUT) $(CVS_SRC_BUILDROOT)
+	
+	@echo Checkout $(CVS_SRC_3RDPARTY)
+	@cd $(SOURCE_DIR) && $(CHECKOUT) $(CVS_SRC_3RDPARTY)
+	
+	@rm -rf $(TEMP_DIR)/devtools
+	@mkdir -p $(TEMP_DIR)/devtools
+	@cp -rf $(SOURCE_DIR)/projects/sw/devtools/3rdParty $(TEMP_DIR)/devtools
+	@cp -rf $(SOURCE_DIR)/projects/sw/devtools/buildroot $(TEMP_DIR)/devtools
+	@cd $(TEMP_DIR)/devtools ; \
+	    mv 3rdParty tarballs
+	
+	@echo Checkout $(CVS_SRC_GCC_4_3_5)
+	@cd $(SOURCE_DIR) && $(CHECKOUT) $(CVS_SRC_GCC_4_3_5)
+	@cp -rf $(SOURCE_DIR)/$(CVS_SRC_GCC_4_3_5) $(TEMP_DIR)/devtools/
+	@cd $(TEMP_DIR)/devtools/gcc-4.3.5 && find . -name "CVS*" | xargs rm -rf
+	@cd $(TEMP_DIR)/devtools/gcc-4.3.5 && find . -name "directfb" | xargs rm -rf
+	@cp -rf $(TEMP_DIR)/devtools/gcc-4.3.5/buildroot-patches-for-4.3.5/* $(TEMP_DIR)/devtools/buildroot/
+	@rm -rf $(TEMP_DIR)/devtools/buildroot/toolchain/gcc/c2.snapshot/*
+	@cp -rf $(TEMP_DIR)/devtools/gcc-4.3.5/patches/*.patch $(TEMP_DIR)/devtools/buildroot/toolchain/gcc/c2.snapshot/
+	@# package up buildroot
+	cd $(TEMP_DIR)/devtools/buildroot && rm autobuild_config_*
+	cd $(TEMP_DIR)/devtools; \
+	    tar jcf $(BUILDROOT_FILE) \
+		--exclude=CVS     \
+		--exclude=CVSROOT \
+		buildroot
+	
+	@# checkout busybox-1.5.1 
+	@echo Checkout $(CVS_SRC_BUSYBOX_1.5.1)
+	@cd $(SOURCE_DIR) && $(CHECKOUT) $(CVS_SRC_BUSYBOX_1.5.1)
+	@cd $(SOURCE_DIR)/sw/cmd; \
+	    tar jcf $(BUSYBOX_1_5_1_FILE) \
+		--exclude=CVS     \
+		--exclude=CVSROOT \
+		busybox-1.5.1
+	
+	@# checkout busybox-1.13.3 
+	@echo Checkout $(CVS_SRC_BUSYBOX_1.13.3)
+	@cd $(SOURCE_DIR) && $(CHECKOUT) $(CVS_SRC_BUSYBOX_1.13.3)
+	@cd $(SOURCE_DIR)/sw/cmd; \
+	    tar jcf $(BUSYBOX_1_13_3_FILE) \
+		--exclude=CVS     \
+		--exclude=CVSROOT \
+		busybox-1.13.3
+	
+	@#checkout i2c-tools
+	@echo Checkout $(CVS_SRC_I2CTOOLS) 
+	@cd $(SOURCE_DIR) && $(CHECKOUT) $(CVS_SRC_I2CTOOLS) 
+	@cp -arf $(SOURCE_DIR)/$(CVS_SRC_I2CTOOLS) $(TEMP_DIR)/i2c-tools-3.0.1; \
+	    cd $(TEMP_DIR) && tar jcf $(I2CTOOLS_FILE) \
+	        --exclude=CVS     \
+	        --exclude=CVSROOT \
+	        i2c-tools-3.0.1; \
+	    rm -rf i2c-tools-3.0.1
+	
+	@#checkout oprofile
+	@echo Checkout $(CVS_SRC_OPROFILE)
+	@cd $(SOURCE_DIR) && $(CHECKOUT)  $(CVS_SRC_OPROFILE)
+	@cp -arf $(SOURCE_DIR)/$(CVS_SRC_OPROFILE) $(TEMP_DIR)/oprofile-0.9.1; \
+	    cd $(TEMP_DIR) && tar jcf $(OPROFILE_FILE) \
+	        --exclude=CVS     \
+	        --exclude=CVSROOT \
+	        oprofile-0.9.1; \
+	    rm -rf oprofile-0.9.1
+	
+	@#checkout directfb
+	@echo Checkout $(CVS_SRC_DIRECTFB)
+	@cd $(SOURCE_DIR) && $(CHECKOUT)  $(CVS_SRC_DIRECTFB)
+	@cd $(SOURCE_DIR)/projects/sw/directfb; \
+	    tar jcf $(DIRECTFB_FILE) \
+	        --exclude=CVS      \
+	        --exclude=CVSROOT  \
+	        DirectFB-1.4.5
+	
+	@# checkout binutils
+	@echo Checkout $(CVS_SRC_BINUTILS)
+	@cd $(SOURCE_DIR) && $(CHECKOUT) $(CVS_SRC_BINUTILS)	
+	@cd $(SOURCE_DIR)/projects/sw/devtools/binutils; \
+	    cp -rf binutils binutils-c2.snapshot
+	@cd $(SOURCE_DIR)/projects/sw/devtools/binutils; \
+	    tar jcf $(BINUTILS_FILE) \
+		--exclude=CVS \
+		--exclude=CVSROOT \
+		binutils-c2.snapshot; \
+	    rm -rf binutils-c2.snapshot
+	
+	#@# checkout gcc
+	#@echo Checkout $(CVS_SRC_GCC)
+	#@cd $(SOURCE_DIR) && $(CHECKOUT) $(CVS_SRC_GCC)
+	#@cd $(SOURCE_DIR)/projects/sw/devtools/gcc; \
+	#    cp -rf gcc gcc-c2.snapshot
+	#@cd $(SOURCE_DIR)/projects/sw/devtools/gcc; \
+	#    tar jcf $(GCC_FILE) \
+	#	--exclude=CVS     \
+	#	--exclude=CVSROOT \
+	#	gcc-c2.snapshot ; \
+	#    rm -rf gcc-c2.snapshot
+
+	@rm -rf $(TEMP_DIR)/gcc435_extract
+	@mkdir -p $(TEMP_DIR)/gcc435_extract
+	@cd $(TEMP_DIR)/gcc435_extract ; \
+		tar jxf $(GNU_TARBALL_PATH)/gcc-core-4.3.5.tar.bz2 ;\
+		tar jxf $(GNU_TARBALL_PATH)/gcc-g++-4.3.5.tar.bz2  ;\
+		tar jxf $(GNU_TARBALL_PATH)/gcc-testsuite-4.3.5.tar.bz2
+	@cd $(TEMP_DIR)/gcc435_extract/gcc-4.3.5 ; \
+		tar jxf $(GNU_TARBALL_PATH)/gmp-4.3.2.tar.bz2   ;\
+		tar jxf $(GNU_TARBALL_PATH)/mpfr-2.4.2.tar.bz2  ;\
+		tar zxf $(GNU_TARBALL_PATH)/mpc-0.8.1.tar.gz
+	@cd $(TEMP_DIR)/gcc435_extract ; \
+		rm -rf gcc-c2.snapshot ; \
+		mv gcc-4.3.5 gcc-c2.snapshot ; \
+		tar jcf $(GCC_FILE) --exclude=CVS --exclude=CVSROOT gcc-c2.snapshot
+	
+	@# Get the standalone build scripts (alternate/checkout) 
+	@echo Checkout $(STANDALONE_BUILD)
+	@cd $(SOURCE_DIR) && $(CHECKOUT) $(STANDALONE_BUILD)
+	cd $(SOURCE_DIR)/$(STANDALONE_BUILD); \
+	    cp -f buildtools.sh $(TEMP_DIR)/devtools; \
+	    cp -f autobuild $(TEMP_DIR)/devtools; \
+	    cp -f uclibc.mk $(TEMP_DIR)/devtools; \
+	    cp -f e2fsprogs.mk $(TEMP_DIR)/devtools; \
+	    cp -f binutils.mk $(TEMP_DIR)/devtools; \
+	    cp -f libpng.mk $(TEMP_DIR)/devtools; \
+	    cp -f Config.in $(TEMP_DIR)/devtools; \
+	    cp -f gcc-uclibc-3.x.mk.64 $(TEMP_DIR)/devtools; \
+	    cp -f gcc-uclibc-3.x.mk $(TEMP_DIR)/devtools; \
+	    cp -f binutils.mk.64 $(TEMP_DIR)/devtools
+	
+	@# checkout kernel headers
+	@echo Checkout $(CVS_SRC_KERNEL)
+	@cd $(SOURCE_DIR) && $(CHECKOUT) $(CVS_SRC_KERNEL)
+	@cd $(SOURCE_DIR)/$(CVS_SRC_KERNEL); rm -rf linux-libc-headers-$(SDK_KERNEL_VERSION).0 ; \
+	    cp -rf $(LINUXDIR) linux-libc-headers-$(SDK_KERNEL_VERSION).0; \
+	    cp -f $(SOURCE_DIR)/$(STANDALONE_BUILD)/version.h  \
+                   linux-libc-headers-$(SDK_KERNEL_VERSION).0/include/linux ; 
+	@cd $(SOURCE_DIR)/$(CVS_SRC_KERNEL); \
+	    tar jcf $(KERNEL_FILE) \
+		--exclude=CVS     \
+		--exclude=CVSROOT \
+		linux-libc-headers-$(SDK_KERNEL_VERSION).0 ; \
+	    rm -rf linux-libc-headers-$(SDK_KERNEL_VERSION).0
+	
+	@# checkout uClibc
+	@echo Checkout $(CVS_SRC_UCLIBC)
+	@cd $(SOURCE_DIR) && $(CHECKOUT) $(CVS_SRC_UCLIBC)
+	@cd $(SOURCE_DIR)/projects/sw/devtools/; \
+	    cp -rf uClibc uClibc-0.9.27
+	@cd $(SOURCE_DIR)/projects/sw/devtools/; \
+	    tar jcf $(UCLIBC_FILE) \
+		--exclude=CVS     \
+		--exclude=CVSROOT \
+		uClibc-0.9.27 ; \
+	    rm -rf uClibc-0.9.27
+	
+	@# mxtool needs to be built and installed in tarballs/bin
+	@echo Checkout sw_media components for mxtool
+	@if test -d "$(SOURCE_DIR)/$(CVS_SRC_SW_MEDIA)" ; then \
+	     cd $(SOURCE_DIR)/$(CVS_SRC_SW_MEDIA); $(UPDATE); \
+	 else \
+	     cd $(SOURCE_DIR); $(CHECKOUT) $(CVS_SRC_SW_MEDIA); \
+	 fi
+	
+	@echo $(PATH)
+	@rm -rf $(TEMP_DIR)/mxtool_tmp/
+	@mkdir -p $(TEMP_DIR)/mxtool_tmp
+	@cd $(SOURCE_DIR)/$(CVS_SRC_SW_MEDIA); \
+	    cp -r build arch csim intrinsics $(TEMP_DIR)/mxtool_tmp
+	
+	@# test subdir needs ene tools, so skip building it 
+	@cd $(TEMP_DIR)/mxtool_tmp/csim/device/test; mv Makefile Makefile.real
+	@cd $(TEMP_DIR)/mxtool_tmp/csim/device/test; echo "all:" > Makefile
+	
+	@cd $(TEMP_DIR)/mxtool_tmp/build/build; \
+	    make BUILD_TARGET=TARGET_LINUX_X86 BOARD_TARGET=C2_CC289 \
+		TARGET_ARCH=$(SDK_TARGET_GCC_ARCH)
+	@cd $(TEMP_DIR)/mxtool_tmp/arch; \
+            make BUILD_TARGET=TARGET_LINUX_X86 BOARD_TARGET=C2_CC289 \
+            TARGET_ARCH=$(SDK_TARGET_GCC_ARCH)
+	@cd $(TEMP_DIR)/mxtool_tmp/csim; \
+            make BUILD_TARGET=TARGET_LINUX_X86 BOARD_TARGET=C2_CC289 \
+            TARGET_ARCH=$(SDK_TARGET_GCC_ARCH)
+	@cd $(TEMP_DIR)/mxtool_tmp/intrinsics/mpu; \
+            make BUILD_TARGET=TARGET_LINUX_X86 BOARD_TARGET=C2_CC289 \
+            TARGET_ARCH=$(SDK_TARGET_GCC_ARCH)
+	@mkdir -p $(TEMP_DIR)/devtools/tarballs/bin
+	@cd $(TEMP_DIR)/mxtool_tmp/intrinsics/mpu/mxtool; \
+            make BUILD_TARGET=TARGET_LINUX_X86 BOARD_TARGET=C2_CC289 \
+            TARGET_ARCH=$(SDK_TARGET_GCC_ARCH) \
+            MXTOOL_INSTALL_DIR=$(TEMP_DIR)/devtools/tarballs \
+            install
+	
+	@# Also remove tar files that are part of c2_goodies-src package
+	@cd $(TEMP_DIR)/devtools/tarballs; rm -rf $(devtools-tarballs-remove)
+	
+	@# Create the final package
+	@echo Creating $(PKG_NAME_SRC_DEVTOOLS)
+	@cd $(TOP_DIR)
+	@mkdir -p $(PKG_DIR)
+	@cd $(TEMP_DIR) ; tar cvfz $(PKG_NAME_SRC_DEVTOOLS) \
+		--exclude=CVS     \
+		--exclude=CVSROOT \
+		./devtools/tarballs ./devtools/buildtools.sh ./devtools/autobuild \
+		./devtools/uclibc.mk ./devtools/e2fsprogs.mk ./devtools/binutils.mk \
+		./devtools/libpng.mk ./devtools/Config.in ./devtools/binutils.mk.64 \
+		./devtools/gcc-uclibc-3.x.mk ./devtools/gcc-uclibc-3.x.mk.64
+	
+	@rm -rf $(TEMP_DIR)/mxtool_tmp/
+	@rm -rf $(TEMP_DIR)/devtools
+	@echo Devtools done ----------------------
+
+devtools-src-test: override PATH := /usr/local/bin:/usr/bin:/bin
+devtools-src-test:
+	@echo "BUILD TARGET: devtools-src-test"
+	@echo "Unpacking devtools source archive"
+	@rm -rf $(TOP_DIR)/test
+	@cd $(TOP_DIR) ; mkdir -p test
+	@cd test ; tar xzf $(PKG_NAME_SRC_DEVTOOLS) 
+	@echo Building devtools source. Go get some coffee.
+	@cd test/devtools ; mv * ../
+	@cd test ; ./buildtools.sh
+	@echo Devtools-src-test done ----------------------
+
+devtools-bin: override PATH := /usr/local/bin:/usr/bin:/bin
+devtools-bin:
+	@echo "BUILD TARGET: devtools-bin"
+	@echo "Creating devtools bin archive using devtool-src-test build"
+	@cd $(TOP_DIR) ;
+	@mkdir -p $(PKG_DIR)
+	
+	# judge if the devtools is compiled successfully
+	@if test $(shell grep 'Moving build files...' test/tools-build/buildroot/makelog.$(TODAY) |wc -l) = 1; then \
+	   echo "Devtools compile successfully"; \
+	else \
+	   echo "Devtools compile failed"; \
+	   exit 1; \
+	fi 
+	
+	@cd test/c2; \
+	    ln -s $(TODAY) daily; \
+	    ln -s daily sw; \
+	    cd ..; \
+	    rm -f $(PKG_NAME_BIN_DEVTOOLS); \
+	    tar cfz $(PKG_NAME_BIN_DEVTOOLS) \
+		--exclude=c2/$(TODAY)/tmp/*     \
+		c2
+	
+	@# Untar in our staging area
+	@mkdir -p $(TEST_ROOT_DIR)
+	@rm -rf $(TEST_ROOT_DIR)/c2
+	@cd $(TEST_ROOT_DIR); \
+	    tar xvfz $(PKG_NAME_BIN_DEVTOOLS)
+	cd $(TOP_DIR)
+
+#------------------------------------------------------------------------------
+spi-src: override PATH :=  $(TOOLCHAIN_PATH):/usr/local/bin:/usr/bin:/bin
+spi-src:
+	@echo "BUILD TARGET: spi-src"
+	@cd $(TOP_DIR)
+	@mkdir -p $(TEMP_DIR)
+	@date
+	
+	# Check out the tagged cvs sources, extract what's included in the SDK
+	# and build a package (tar file)
+	@cd $(SOURCE_DIR) && $(CHECKOUT) $(CVS_SRC_SPI)
+	@cd $(SOURCE_DIR) && $(CHECKOUT) $(CVS_SRC_JTAG)
+	
+	@rm -f $(PKG_NAME_SRC_SPI_B1)
+	@rm -f $(PKG_NAME_SRC_SPI_B2)
+	@rm -f $(PKG_NAME_BIN_SPI_B1)
+	@rm -f $(PKG_NAME_BIN_SPI_B2)
+	@rm -rf $(TEMP_DIR)/$(CVS_SRC_SPI)
+	@rm -rf $(TEMP_DIR)/$(CVS_SRC_JTAG)
+	
+	# build cc1100 B1 source packages
+	@cd $(TEMP_DIR); \
+	    mkdir -p $(CVS_SRC_SPI); \
+	    mkdir -p $(CVS_SRC_JTAG); \
+	    cd $(CVS_SRC_SPI); \
+	    cp -rf $(SOURCE_DIR)/$(CVS_SRC_SPI) ../; \
+	    cd $(TEMP_DIR)/$(CVS_SRC_JTAG); \
+	    cp -rf $(SOURCE_DIR)/$(CVS_SRC_JTAG) ../
+	
+	# some source codes will not release to custom
+	@cd $(TEMP_DIR)/$(CVS_SRC_SPI); \
+	    make BOARD=NMP2 MPUCLK=200 MEMCLK=333 DDR_DEVICE=K4T51163QC-ZCE6 CORE_VOLTAGE=CORE_VOLTAGE_1420mv; \
+	    make clean; \
+	    make BOARD=NMP2 MPUCLK=233 MEMCLK=333 DDR_DEVICE=K4T51163QC-ZCE6 CORE_VOLTAGE=CORE_VOLTAGE_1420mv; \
+	    make clean; \
+	    make BOARD=NMP2 MPUCLK=250 MEMCLK=333 DDR_DEVICE=K4T51163QC-ZCE6 CORE_VOLTAGE=CORE_VOLTAGE_1420mv; \
+	    make clean; \
+	    make BOARD=NMP2 MPUCLK=266 MEMCLK=333 DDR_DEVICE=K4T51163QC-ZCE6 CORE_VOLTAGE=CORE_VOLTAGE_1420mv; \
+	    make clean; \
+	    make BOARD=NMP2 MPUCLK=275 MEMCLK=333 DDR_DEVICE=K4T51163QC-ZCE6 CORE_VOLTAGE=CORE_VOLTAGE_1420mv; \
+	    make clean
+	@cd $(TEMP_DIR)/$(CVS_SRC_SPI); \
+	    rm -rf loader/spll.c; \
+	    mv loader/Makefile.customer loader/Makefile; \
+	    mv loader/jump4chip.S.customer loader/jump4chip.S; \
+	    mv loader/i2c.c.customer loader/i2c.c; \
+	    mv loader/README.bootloader.customer loader/README.bootloader
+	
+	# only need the client and loader
+	@cd $(TEMP_DIR)/$(CVS_SRC_JTAG); rm -rf Makefile jtag-server jtag-pty
+	@mkdir -p $(PKG_DIR)
+	
+	@cd $(TEMP_DIR); \
+	    tar cvfz $(PKG_NAME_SRC_SPI_B1) \
+    		--exclude=CVS \
+    		--exclude=CVSROOT \
+    		$(CVS_SRC_SPI) \
+    		$(CVS_SRC_JTAG) 
+	
+	# build cc1100 B2 source packages
+	@cd $(TEMP_DIR); \
+	    rm -rf $(CVS_SRC_SPI); \
+	    rm -rf $(CVS_SRC_JTAG); \
+	    mkdir -p $(CVS_SRC_SPI); \
+	    mkdir -p $(CVS_SRC_JTAG); \
+	    cd $(CVS_SRC_SPI); \
+	    cp -rf $(SOURCE_DIR)/$(CVS_SRC_SPI) ../; \
+	    cd $(TEMP_DIR)/$(CVS_SRC_JTAG); \
+	    cp -rf $(SOURCE_DIR)/$(CVS_SRC_JTAG) ../
+	
+	# some source codes will not release to custom
+	@cd $(TEMP_DIR)/$(CVS_SRC_SPI); \
+	    make BOARD=NMP2 MPUCLK=275 MEMCLK=333 DDR_DEVICE=K4T51163QC-ZCE6 CORE_VOLTAGE=CORE_VOLTAGE_1420mv; \
+	    make clean; \
+	    make BOARD=NMP2 MPUCLK=300 MEMCLK=333 DDR_DEVICE=K4T51163QC-ZCE6 CORE_VOLTAGE=CORE_VOLTAGE_1420mv; \
+	    make clean; \
+	    make BOARD=NMP2 MPUCLK=325 MEMCLK=333 DDR_DEVICE=K4T51163QC-ZCE6 CORE_VOLTAGE=CORE_VOLTAGE_1420mv; \
+	    make clean
+	@cd $(TEMP_DIR)/$(CVS_SRC_SPI); \
+	    rm -rf loader/spll.c; \
+	    mv loader/Makefile.customer loader/Makefile; \
+	    mv loader/jump4chip.S.customer loader/jump4chip.S; \
+	    mv loader/i2c.c.customer loader/i2c.c; \
+	    mv loader/README.bootloader.customer loader/README.bootloader
+	
+	# only need the client and loader
+	@cd $(TEMP_DIR)/$(CVS_SRC_JTAG); rm -rf Makefile jtag-server jtag-pty
+	@mkdir -p $(PKG_DIR)
+	
+	@cd $(TEMP_DIR); \
+	    tar cvfz $(PKG_NAME_SRC_SPI_B2) \
+    		--exclude=CVS \
+    		--exclude=CVSROOT \
+    		$(CVS_SRC_SPI) \
+    		$(CVS_SRC_JTAG) 
+	@rm -rf $(TEMP_DIR)/$(CVS_SRC_SPI)
+	@rm -rf $(TEMP_DIR)/$(CVS_SRC_JTAG)
+
+spi-bin: override PATH :=  $(TOOLCHAIN_PATH):/usr/local/bin:/usr/bin:/bin
+spi-bin:
+	@echo "BUILD TARGET: spi-bin"
+	# Now build SPI ROM images
+	
+	@mkdir -p $(TEST_ROOT_DIR)
+	# build cc1100 B1 binary packages
+	@rm -rf $(TEST_ROOT_DIR)/$(CVS_SRC_SPI)
+	
+	@cd $(TEST_ROOT_DIR); mkdir -p sw/prom
+	@cd $(TEST_ROOT_DIR)/sw/prom; \
+	   cp -rf $(SOURCE_DIR)/$(CVS_SRC_SPI) .
+	@make -C $(TEST_ROOT_DIR)/$(CVS_SRC_SPI) BOARD=NMP2 MPUCLK=275 MEMCLK=333 DDR_DEVICE=K4T51163QC-ZCE6
+	
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_SPI)/loader; \
+            time ./generate_customer_sku.pl; 
+	
+	# build jtag and copy the jtag_loader scripts to install location
+	@cd $(TEST_ROOT_DIR)/sw; cp -rf $(SOURCE_DIR)/$(CVS_SRC_JTAG) .; \
+	    cd $(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/jtag-client; \
+            ./configure --prefix=/usr/local openwince_includes_path="$(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/include"; \
+            make; \
+	    make install prefix=$(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/usr/local;
+	@cp -Rd $(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/jtag_loader \
+            $(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/usr/local/share
+	
+	# grab the jtag install dir then package it up
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_SPI)/loader; \
+            cp -Rd $(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/usr .
+	
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_SPI)/loader; \
+            tar cvzf $(PKG_NAME_BIN_SPI_B1) \
+     		spi_rom_images_cc1100_B1 \
+     		README* \
+                usr
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_SPI)/loader; \
+            tar cvzf $(PKG_NAME_BIN_SPI_B2) \
+     		spi_rom_images_cc1100_B2 \
+     		README* \
+                usr
+	
+	cd $(TOP_DIR)
+	
+	# Unpack the binary package in test root directory
+	@cd $(TEST_ROOT_DIR); \
+	    tar xvfz $(PKG_NAME_BIN_SPI_B1); \
+	    tar xvfz $(PKG_NAME_BIN_SPI_B2)
+	pwd
+	date
+
+
+spi-bin-bak: override PATH :=  $(TOOLCHAIN_PATH):/usr/local/bin:/usr/bin:/bin
+spi-bin-bak:
+	@echo "BUILD TARGET: spi-bin"
+	# Now build SPI ROM images
+	
+	@mkdir -p $(TEST_ROOT_DIR)
+	# build cc1100 B1 binary packages
+	@rm -rf $(TEST_ROOT_DIR)/$(CVS_SRC_SPI)
+	
+	@cd $(TEST_ROOT_DIR); \
+	   tar xvfz $(PKG_NAME_SRC_SPI_B1)
+	@make -C $(TEST_ROOT_DIR)/$(CVS_SRC_SPI) BOARD=cc302b1 MPUCLK=275 MEMCLK=333 DDR_DEVICE=K4T51163QC-ZCE6
+	
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_SPI)/loader; \
+            time ./generate_customer_sku.pl; 
+	
+	# build jtag and copy the jtag_loader scripts to install location
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/jtag-client; \
+            ./configure --prefix=$(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/usr/local openwince_includes_path="$(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/include"; \
+            make; make install;
+	@cp -Rd $(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/jtag_loader \
+            $(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/usr/local/share
+	
+	# grab the jtag install dir then package it up
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_SPI)/loader; \
+            cp -Rd $(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/usr .
+	
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_SPI)/loader; \
+            tar cvzf $(PKG_NAME_BIN_SPI_B1) \
+     		spi_rom_images_cc1100_B1 \
+     		README* \
+                usr
+	
+	# build cc1100 B2 binary packages
+	@rm -rf $(TEST_ROOT_DIR)/$(CVS_SRC_SPI)
+	
+	@cd $(TEST_ROOT_DIR); \
+	   tar xvfz $(PKG_NAME_SRC_SPI_B2)
+	@make -C $(TEST_ROOT_DIR)/$(CVS_SRC_SPI) BOARD=cc302b1 MPUCLK=275 MEMCLK=333 DDR_DEVICE=K4T51163QC-ZCE6
+	UILD_TARGET=
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_SPI)/loader; \
+            time ./generate_customer_sku.pl; 
+	
+	# build jtag and copy the jtag_loader scripts to install location
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/jtag-client; \
+            ./configure --prefix=$(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/usr/local \
+		openwince_includes_path=$(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/include; \
+            make; make install;
+	@cp -Rd $(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/jtag_loader \
+            $(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/usr/local/share
+	
+	# grab the jtag install dir then package it up
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_SPI)/loader; \
+            cp -Rd $(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/usr .; \
+	    mv -f spi_rom_images_cc1100_B1 spi_rom_images_cc1100_B2
+	
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_SPI)/loader; \
+            tar cvzf $(PKG_NAME_BIN_SPI_B2) \
+     		spi_rom_images_cc1100_B2 \
+     		README* \
+                usr
+	
+	cd $(TOP_DIR)
+	
+	# Unpack the binary package in test root directory
+	@cd $(TEST_ROOT_DIR); \
+	    tar xvfz $(PKG_NAME_BIN_SPI_B1); \
+	    tar xvfz $(PKG_NAME_BIN_SPI_B2)
+	pwd
+	date
+#-----------------------------------------------------------------------------
+diag-src:
+	@echo "BUILD TARGET: diag-src"
+	@cd $(SOURCE_DIR); $(CHECKOUT) $(CVS_SRC_DIAG)
+	@cd $(SOURCE_DIR) && $(CHECKOUT) $(CVS_SRC_JTAG)
+	
+	@rm -f $(PKG_NAME_SRC_DIAG)
+	@rm -f $(PKG_NAME_BIN_DIAG)
+	@mkdir -p $(PKG_DIR)
+	
+	@cd $(TEMP_DIR); \
+	    mkdir -p $(CVS_SRC_DIAG); \
+	    mkdir -p $(CVS_SRC_JTAG); \
+	    cd $(CVS_SRC_DIAG); \
+	    cp -rf $(SOURCE_DIR)/$(CVS_SRC_DIAG) ../; \
+	    cd $(TEMP_DIR)/$(CVS_SRC_JTAG); \
+	    cp -rf $(SOURCE_DIR)/$(CVS_SRC_JTAG) ../
+	
+	@echo "Creating package $(PKG_NAME_SRC_DIAG)"
+	@cd $(TEMP_DIR); \
+	    tar cfz $(PKG_NAME_SRC_DIAG) \
+	        --exclude=CVS \
+	        --exclude=CVSROOT \
+		$(CVS_SRC_DIAG)/example \
+		$(CVS_SRC_DIAG)/include \
+		$(CVS_SRC_DIAG)/jtag_scripts \
+		$(CVS_SRC_DIAG)/lib \
+		$(CVS_SRC_DIAG)/loader \
+		$(CVS_SRC_DIAG)/Makefile \
+		$(CVS_SRC_DIAG)/moduledefs \
+		$(CVS_SRC_DIAG)/modulerules \
+		$(CVS_SRC_DIAG)/test \
+	        $(CVS_SRC_JTAG)
+
+diag-bin:override PATH := $(TOOLCHAIN_PATH):/usr/local/bin:/usr/bin:/bin
+diag-bin:
+	@echo "BUILD TARGET: diag-bin"
+	@rm -rf $(TEST_ROOT_DIR)/$(CVS_SRC_DIAG)
+	@mkdir -p $(TEST_ROOT_DIR); cd $(TEST_ROOT_DIR); tar zxf $(PKG_NAME_SRC_DIAG)
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_DIAG); \
+	    make BOARD=cc427 MPUCLK=400 MEMCLK=400 clean; \
+	    make BOARD=cc427 MPUCLK=400 MEMCLK=400
+	
+	# build jtag and copy the jtag_loader scripts to install location
+	@cd $(TEST_ROOT_DIR)/sw; cp -rf $(SOURCE_DIR)/$(CVS_SRC_JTAG) .; \
+	    cd $(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/jtag-client; \
+	    ./configure --prefix=/usr/local --enable-bus=C2 openwince_includes_path="$(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/include"; \
+	    make; \
+	    make install prefix=$(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/usr/local;
+	@cp -Rd $(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/jtag_loader \
+	    $(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/usr/local/share
+	
+	# grab the jtag install dir then package it up
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_DIAG)/loader; \
+	    cp -Rd $(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/usr .
+	
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_DIAG)/loader; \
+	    tar cvzf $(PKG_NAME_BIN_DIAG) \
+	        spiromjazz2.rom \
+	        README*         \
+	        usr
+	
+#-----------------------------------------------------------------------------
+jtag-src:
+	@echo "BUILD TARGET: jtag-src"
+	@cd $(SOURCE_DIR) && $(CHECKOUT) $(CVS_SRC_JTAG)
+	
+	@rm -f $(PKG_NAME_SRC_JTAG)
+	@rm -f $(PKG_NAME_BIN_JTAG)
+	@mkdir -p $(PKG_DIR)
+	
+	@cd $(TEMP_DIR); \
+	    mkdir -p $(CVS_SRC_JTAG); \
+	    cd $(TEMP_DIR)/$(CVS_SRC_JTAG); \
+	    cp -rf $(SOURCE_DIR)/$(CVS_SRC_JTAG) ../
+	
+	@echo "Creating package $(PKG_NAME_SRC_JTAG)"
+	@cd $(TEMP_DIR); \
+	    tar cfz $(PKG_NAME_SRC_JTAG) \
+	        --exclude=CVS \
+	        --exclude=CVSROOT \
+	        $(CVS_SRC_JTAG)
+
+jtag-bin:override PATH := $(TOOLCHAIN_PATH):/usr/local/bin:/usr/bin:/bin
+jtag-bin:
+	@echo "BUILD TARGET: diag-bin"
+	@rm -rf $(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)
+	
+	# build jtag and copy the jtag_loader scripts to install location
+	@cd $(TEST_ROOT_DIR)/sw; cp -rf $(SOURCE_DIR)/$(CVS_SRC_JTAG) .; \
+	    cd $(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/jtag-client; \
+	    ./configure --prefix=/usr/local --enable-bus=C2 openwince_includes_path="$(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/include"; \
+	    make; \
+	    make install prefix=$(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/usr/local;
+	@cp -Rd $(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/jtag_loader \
+	    $(TEST_ROOT_DIR)/$(CVS_SRC_JTAG)/usr/local/share
+	
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_JTAG); \
+	    tar cvzf $(PKG_NAME_BIN_JTAG) \
+	        usr
+	
+
+#------------------------------------------------------------------------------
+u-boot-src:
+	@echo "BUILD TARGET: u-boot-src"
+	@cd $(SOURCE_DIR); $(CHECKOUT) $(CVS_SRC_UBOOT)
+	
+	@rm -f $(PKG_NAME_SRC_UBOOT)
+	@rm -f $(PKG_NAME_BIN_UBOOT)
+	@mkdir -p $(PKG_DIR)
+	
+	@echo "Creating package $(PKG_NAME_SRC_UBOOT)"
+	@cd $(SOURCE_DIR); \
+	    tar cfz $(PKG_NAME_SRC_UBOOT) \
+	        --exclude=CVS \
+	        --exclude=CVSROOT \
+	        $(CVS_SRC_UBOOT)
+
+
+u-boot-bin: override PATH := $(TOOLCHAIN_PATH):/usr/local/bin:/usr/bin:/bin
+u-boot-bin:
+	@echo "BUILD TARGET: u-boot-bin"
+	@rm -rf $(TEST_ROOT_DIR)/$(CVS_SRC_UBOOT)
+	@mkdir -p $(TEST_ROOT_DIR); cd $(TEST_ROOT_DIR) ; tar zxf $(PKG_NAME_SRC_UBOOT) 
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_UBOOT); \
+	    make $(UBOOT_BOARDTYPE); \
+	    make boot -j1 $(UBOOT_MAKECONFIG) MC_MODE=1; \
+	    mv u-boot.rom u-boot-1mc.rom; \
+	    make clean; \
+	    make $(UBOOT_BOARDTYPE); \
+	    make boot -j1 $(UBOOT_MAKECONFIG) MC_MODE=2; \
+	    mv u-boot.rom u-boot-2mc.rom; \
+	    make clean; \
+	    make $(UBOOT_BOARDTYPE); \
+	    make boot -j1 $(UBOOT_MAKECONFIG) MC_MODE=0; \
+	    mv u-boot.rom u-boot-autodetect.rom; \
+	    make clean; \
+	    make jazz2levb_config; \
+	    make boot -j1 $(UBOOT_MAKECONFIG) MC_MODE=0; \
+	    mv u-boot.rom u-boot-jazz2l.rom; \
+	    make clean; \
+	    cp -f include/configs/jazz2evb.h include/configs/jazz2evb.h.bak; \
+	    cp -f include/configs/jazz2factory.h include/configs/jazz2evb.h; \
+	    make $(UBOOT_BOARDTYPE); \
+	    make boot -j1 $(UBOOT_MAKECONFIG); \
+	    mv u-boot.rom u-boot-factory.rom; \
+	    mv -f include/configs/jazz2evb.h.bak include/configs/jazz2evb.h; 
+	
+	@echo "Creating package $(PKG_NAME_BIN_UBOOT)"
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_UBOOT); \
+	    tar cfz $(PKG_NAME_BIN_UBOOT) u-boot-2mc.rom u-boot-1mc.rom u-boot-autodetect.rom \
+	        u-boot-factory.rom README.C2 tools/mkimage u-boot-jazz2l.rom
+
+
+#------------------------------------------------------------------------------
+c2_goodies-src:
+	@echo "BUILD TARGET: c2_goodies-src"
+	@#rm -rf $(TOP_DIR)/c2_goodies
+	@date
+	@mkdir -p $(SOURCE_DIR)/c2_goodies
+	
+	@echo "Checkout fusepod sources"
+	@cd $(SOURCE_DIR)/c2_goodies && $(CHECKOUT) -d fusepod $(FUSEPOD_SCRIPT); 
+	@cd $(SOURCE_DIR)/c2_goodies/fusepod && $(CHECKOUT) -d dist $(DJMOUNT_PKG); 
+	@cd $(SOURCE_DIR)/c2_goodies/fusepod && $(CHECKOUT) -d dist $(FUSEPOD_PKG); 
+	@cd $(SOURCE_DIR)/c2_goodies/fusepod && $(CHECKOUT) -d dist $(LIBGPOD_PKG); 
+	@cd $(SOURCE_DIR)/c2_goodies/fusepod && $(CHECKOUT) -d dist $(FUSE_PKG); 
+	@cd $(SOURCE_DIR)/c2_goodies/fusepod && $(CHECKOUT) -d dist $(GLIB_PKG); 
+	@cd $(SOURCE_DIR)/c2_goodies/fusepod && $(CHECKOUT) -d dist $(TAGLIB_PKG);
+	
+	@echo "Checkout perl sources"
+	@cd $(SOURCE_DIR)/c2_goodies && $(CHECKOUT) -d perl $(PERL_SCRIPT); 
+	@cd $(SOURCE_DIR)/c2_goodies/perl && $(CHECKOUT) -d dist $(PERL_PKG); 
+	
+	@echo "Checkout snoopy sources"
+	@cd $(SOURCE_DIR)/c2_goodies && $(CHECKOUT) -d snoopy $(CVS_SRC_SNOOPY); 
+	
+	@echo "Checkout hdd library sources"
+	@cd $(SOURCE_DIR)/c2_goodies && $(CHECKOUT) -d hdd $(HDD_SCRIPT); 
+	@cd $(SOURCE_DIR)/c2_goodies/hdd && $(CHECKOUT) -d dist $(SAMBA_PKG); 
+	@cd $(SOURCE_DIR)/c2_goodies/hdd && $(CHECKOUT) -d dist $(LIBUSB_PKG); 
+	@cd $(SOURCE_DIR)/c2_goodies/hdd && $(CHECKOUT) -d dist $(LIBPTP_PKG); 
+	@cd $(SOURCE_DIR)/c2_goodies/hdd && $(CHECKOUT) -d dist $(NTFS_PKG); 
+	@cd $(SOURCE_DIR)/c2_goodies/hdd && $(CHECKOUT) -d dist $(NTFSPROGS_PKG); 
+	
+	@echo "Checkout benchmark sources"
+	@cd $(SOURCE_DIR)/c2_goodies && $(CHECKOUT) -d benchmark $(BENCHMARK_SCRIPT);
+	@cd $(SOURCE_DIR)/c2_goodies/benchmark && $(CHECKOUT) -d dist $(BONNIE_PKG);
+	@cd $(SOURCE_DIR)/c2_goodies/benchmark && $(CHECKOUT) -d dist $(IOZONE_PKG);
+	@cd $(SOURCE_DIR)/c2_goodies/benchmark && $(CHECKOUT) -d dist $(LMBENCH_PKG);
+	@cd $(SOURCE_DIR)/c2_goodies/benchmark && $(CHECKOUT) -d dist $(UNIXBENCH_PKG);
+	@cd $(SOURCE_DIR)/c2_goodies/benchmark && $(CHECKOUT) -d dist $(IPERF_PKG);
+	@cd $(SOURCE_DIR)/c2_goodies/benchmark && $(CHECKOUT) -d dist $(NETPERF_PKG);
+	
+	@echo "Checkout ethertools source"
+	@cd $(SOURCE_DIR)/c2_goodies && $(CHECKOUT) -d ethertool $(ETHERTOOL_PKG);
+	
+	@rm -f $(PKG_NAME_SRC_GOODIES)
+	@mkdir -p $(PKG_DIR)
+	
+	@echo "Creating package $(PKG_NAME_SRC_GOODIES)"
+	@cd $(SOURCE_DIR); \
+	tar cfz $(PKG_NAME_SRC_GOODIES) \
+    		--exclude=CVS \
+    		--exclude=CVSROOT \
+    		./c2_goodies
+
+#------------------------------------------------------------------------------
+c2_goodies-bin: override PATH := $(TOOLCHAIN_PATH):/usr/local/bin:/usr/bin:/bin
+c2_goodies-bin:
+	@mkdir -p $(TEST_ROOT_DIR)
+	@cd $(TEST_ROOT_DIR); \
+	tar xvfz $(PKG_NAME_SRC_GOODIES); 
+	
+	@# fusepod
+	@cd $(TEST_ROOT_DIR)/c2_goodies/fusepod; \
+             ./build-fusepod.sh
+	
+	@# perl
+	@cd $(TEST_ROOT_DIR)/c2_goodies/perl; \
+             ./build-microperl.sh
+	
+	@# snoopy
+	@cd $(TEST_ROOT_DIR)/c2_goodies/snoopy; \
+             make TARGET_ARCH=$(SDK_TARGET_GCC_ARCH)
+	
+	@# hdd
+	@cd $(TEST_ROOT_DIR)/c2_goodies/hdd; \
+	     ./sdk-build-hdd.sh
+	
+	@cd $(TEST_ROOT_DIR)/c2_goodies/benchmark; \
+	     ./build-benchmark.sh
+	
+	@cd $(TEST_ROOT_DIR)/c2_goodies/ethertool; \
+	     mkdir install; tar -xzf ethtool-6.tar.gz; cd ethtool-6; \
+	     ./configure --host=c2-linux \
+	       --prefix=$(TEST_ROOT_DIR)/c2_goodies/ethertool/install; \
+	     make; make install
+	
+	@echo "Creating package $(PKG_NAME_BIN_GOODIES)"
+	@cd $(TEST_ROOT_DIR)/; \
+	   tar cfz $(PKG_NAME_BIN_GOODIES) \
+    		./c2_goodies/fusepod/install \
+		./c2_goodies/perl/perl-5.8.8 \
+		./c2_goodies/snoopy/snoopy \
+		./c2_goodies/hdd/install \
+	        ./c2_goodies/benchmark/install \
+		./c2_goodies/ethertool/install
+
+#------------------------------------------------------------------------------
+sw_media-bin: override PATH := $(TOOLCHAIN_PATH):/usr/local/bin:/usr/bin:/bin
+sw_media-bin:
+	@echo "BUILD TARGET: sw_media-src"
+	@mkdir -p $(SOURCE_DIR)
+	@if test -d "$(SOURCE_DIR)/$(CVS_SRC_SW_MEDIA)" ; then \
+	     cd $(SOURCE_DIR)/$(CVS_SRC_SW_MEDIA); $(UPDATE); \
+	 else \
+	     cd $(SOURCE_DIR); $(CHECKOUT) $(CVS_SRC_SW_MEDIA); \
+	 fi
+	
+	@echo "BUILD TARGET: sw_media-bin"
+	@echo Using `which c2-linux-uclibc-g++`
+	@mkdir -p $(PKG_DIR)
+	
+	@mkdir -p $(TEMP_DIR)
+	@cd $(TEMP_DIR); \
+	    rm -rf $(CVS_SRC_SW_MEDIA)
+	    cp -rf $(SOURCE_DIR)/$(CVS_SRC_SW_MEDIA) $(TEMP_DIR)
+	
+	@cd $(TEMP_DIR)/$(CVS_SRC_SW_MEDIA); \
+	    TARGET_ARCH=$(SDK_TARGET_GCC_ARCH) DISP_ARCH=$(SDK_TARGET_GCC_ARCH) BUILD_TARGET=TARGET_LINUX_C2 BOARD_TARGET=C2_CC289 BUILD=RELEASE make -j5
+
+#------------------------------------------------------------------------------
+qt-src:
+	@echo "BUILD TARGET: qt-src"
+	@date
+	@echo "Checkout Qt sources"
+	
+	@mkdir -p $(SOURCE_DIR)
+	@cd $(SOURCE_DIR); $(CHECKOUT) $(CVS_SRC_QT)
+	
+	@rm -f $(PKG_NAME_SRC_QT)
+	@rm -f $(PKG_NAME_BIN_QT)
+	@mkdir -p $(PKG_DIR)
+	
+	@echo "Creating package $(PKG_NAME_SRC_QT)"
+	@cd $(SOURCE_DIR); \
+	    tar cfz $(PKG_NAME_SRC_QT) \
+    		--exclude=CVS \
+    		--exclude=CVSROOT \
+    		$(CVS_SRC_QT)
+	
+
+# QT installing path is a problem, the system directory should not
+# as installing path.Now, the problem can't be resolved. 
+# Only compile QT, but not install
+qt-bin: override PATH := $(TOOLCHAIN_PATH):/usr/local/bin:/usr/bin:/bin
+qt-bin:
+	@echo "BUILD TARGET: qt-bin"
+	@echo Using `which c2-linux-uclibc-g++`
+	@echo "Configuring Qt, install dir is $(QT_INSTALL_DIR)"
+	
+	@echo "Build dynamic qt library"
+	@rm -rf $(TEST_ROOT_DIR)/$(CVS_SRC_QT)
+	@mkdir -p $(TEST_ROOT_DIR)
+	@cd $(TEST_ROOT_DIR) ; tar zxf $(PKG_NAME_SRC_QT) 
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_QT) ; \
+	TARGET_ARCH=$(SDK_TARGET_GCC_ARCH) DISP_ARCH=$(SDK_TARGET_GCC_ARCH) BUILD_TARGET=TARGET_LINUX_C2 BOARD_TARGET=C2_CC289 BUILD=RELEASE \
+	C2_DEVTOOLS_PATH=$(TOOLCHAIN_PATH)/.. ./configure -embedded c2 \
+		-little-endian \
+		-qt-kbd-linuxinput \
+		-qt-libpng \
+		-qt-gif \
+		-release \
+		-prefix $(QT_INSTALL_DIR) \
+		-confirm-license \
+		-opensource \
+		-qt-libjpeg \
+		-qt-libmng \
+		-qvfb \
+		-depths 8,16,32 \
+		-largefile \
+		-webkit \
+		-svg \
+		-xmlpatterns \
+		-exceptions \
+		-dbus \
+		-ldbus-1 \
+	        $(QT_EXTRA_CONFIG) \
+		-no-rpath \
+		-R/c2/local/Trolltech/QtopiaCore-4.6.1-generic/lib
+	#remove -j5 from make ... -j5, -j5 (multi-thread build)  will lead the depend error for qt.
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_QT) ; \
+	TARGET_ARCH=$(SDK_TARGET_GCC_ARCH) DISP_ARCH=$(SDK_TARGET_GCC_ARCH) BUILD_TARGET=TARGET_LINUX_C2 BOARD_TARGET=C2_CC289 BUILD=RELEASE \
+	make C2_DEVTOOLS_PATH=$(TOOLCHAIN_PATH)/..
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_QT) ; \
+	TARGET_ARCH=$(SDK_TARGET_GCC_ARCH) DISP_ARCH=$(SDK_TARGET_GCC_ARCH) BUILD_TARGET=TARGET_LINUX_C2 BOARD_TARGET=C2_CC289 BUILD=RELEASE \
+	make C2_DEVTOOLS_PATH=$(TOOLCHAIN_PATH)/.. install
+	
+	@#echo "Creating package $(PKG_NAME_BIN_QT)"
+	@#tar cfz $(PKG_NAME_BIN_QT) $(QT_INSTALL_DIR)
+
+#------------------------------------------------------------------------------
+c2-pvr:
+	make -f vertical/Makefile.pvr QT_INSTALL_DIR=$(QT_INSTALL_DIR) \
+	    TOOLCHAIN_PATH=$(TOOLCHAIN_PATH) CVS_TAG=$(CVS_TAG) CANDIDATE=$(CANDIDATE)
+
+
+
+#------------------------------------------------------------------------------
+qt-src470:
+	@echo "BUILD TARGET: qt-src470"
+	@date
+	@echo "Checkout Qt sources"
+	
+	@mkdir -p $(SOURCE_DIR)
+	@cd $(SOURCE_DIR); $(CHECKOUT) $(CVS_SRC_QT470)
+	
+	@rm -f $(PKG_NAME_SRC_QT470)
+	@rm -f $(PKG_NAME_BIN_QT470)
+	@mkdir -p $(PKG_DIR)
+	
+	@echo "Creating package $(PKG_NAME_SRC_QT470)"
+	@cd $(SOURCE_DIR); \
+	    tar cfz $(PKG_NAME_SRC_QT470) \
+    		--exclude=CVS \
+    		--exclude=CVSROOT \
+    		$(CVS_SRC_QT470)
+	
+
+# QT installing path is a problem, the system directory should not
+# as installing path.Now, the problem can't be resolved. 
+# Only compile QT, but not install
+qt-bin470: override PATH := $(TOOLCHAIN_PATH):/usr/local/bin:/usr/bin:/bin
+qt-bin470:
+	@echo "BUILD TARGET: qt-bin470"
+	@echo Using `which c2-linux-uclibc-g++`
+	@echo "Configuring Qt, install dir is $(QT_INSTALL_DIR470)"
+	
+	@echo "Build dynamic qt library"
+	@rm -rf $(TEST_ROOT_DIR)/$(CVS_SRC_QT470)
+	@mkdir -p $(TEST_ROOT_DIR)
+	@cd $(TEST_ROOT_DIR) ; tar zxf $(PKG_NAME_SRC_QT470) 
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_QT470) ; \
+	C2_DEVTOOLS_PATH=$(TOOLCHAIN_PATH)/.. ./configure -embedded c2 \
+		-little-endian \
+		-qt-kbd-linuxinput \
+		-system-libpng \
+		-qt-gif \
+		-release \
+		-prefix $(QT_INSTALL_DIR470) \
+		-confirm-license \
+		-opensource \
+		-qt-libjpeg \
+		-qt-libmng \
+		-qvfb \
+		-depths 8,16,32 \
+		-largefile \
+		-webkit \
+		-svg \
+		-xmlpatterns \
+		-exceptions \
+		-dbus \
+		-ldbus-1 \
+	        $(QT_EXTRA_CONFIG470) \
+		-no-rpath \
+		-R/c2/local/Trolltech/QtopiaCore-4.7.0-generic/lib
+	#remove -j5 from make ... -j5, -j5 (multi-thread build)  will lead the depend error for qt.
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_QT470) ; make C2_DEVTOOLS_PATH=$(TOOLCHAIN_PATH)/..
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_QT470) ; make C2_DEVTOOLS_PATH=$(TOOLCHAIN_PATH)/.. install
+	
+	@#echo "Creating package $(PKG_NAME_BIN_QT470)"
+	@#tar cfz $(PKG_NAME_BIN_QT470) $(QT_INSTALL_DIR470)
+
+#------------------------------------------------------------------------------
+install:
+	echo "Installing SDK into $(INSTALL_DIR)"
+	mkdir -p $(INSTALL_DIR)
+	cp $(PKG_NAME_SRC_DEVTOOLS) $(INSTALL_DIR)
+	cp $(PKG_NAME_SRC_SPI_B1) $(INSTALL_DIR)
+	cp $(PKG_NAME_SRC_SPI_B2) $(INSTALL_DIR)
+	cp $(PKG_NAME_SRC_UBOOT) $(INSTALL_DIR)
+	cp $(PKG_NAME_SRC_QT) $(INSTALL_DIR)
+	cp $(PKG_NAME_SRC_GOODIES) $(INSTALL_DIR)
+	cp $(PKG_NAME_SRC_DIAG) $(INSTALL_DIR)
+	cp $(PKG_NAME_BIN_DEVTOOLS) $(INSTALL_DIR)
+	cp $(PKG_NAME_BIN_SPI_B1) $(INSTALL_DIR)
+	cp $(PKG_NAME_BIN_SPI_B2) $(INSTALL_DIR)
+	cp $(PKG_NAME_BIN_UBOOT) $(INSTALL_DIR)
+	cp $(PKG_NAME_BIN_GOODIES) $(INSTALL_DIR)
+	cp $(PKG_NAME_BIN_DIAG) $(INSTALL_DIR)
+
+#------------------------------------------------------------------------------
+publish:
+	# Put SDK files on place accessable by the web
+	echo "Publishing SDK to $(PUBLISH_DIR)"
+	mkdir -p $(PUBLISH_DIR)
+	cp $(PKG_NAME_SRC_DEVTOOLS) $(PUBLISH_DIR)
+	cp $(PKG_NAME_SRC_SPI_B1) $(PUBLISH_DIR)
+	cp $(PKG_NAME_SRC_SPI_B2) $(PUBLISH_DIR)
+	cp $(PKG_NAME_SRC_UBOOT) $(PUBLISH_DIR)
+	cp $(PKG_NAME_SRC_QT) $(PUBLISH_DIR)
+	cp $(PKG_NAME_SRC_GOODIES) $(PUBLISH_DIR)
+	cp $(PKG_NAME_SRC_DIAG) $(PUBLISH_DIR)
+	cp $(PKG_NAME_BIN_DEVTOOLS) $(PUBLISH_DIR)
+	cp $(PKG_NAME_BIN_SPI_B1) $(PUBLISH_DIR)
+	cp $(PKG_NAME_BIN_SPI_B2) $(PUBLISH_DIR)
+	cp $(PKG_NAME_BIN_UBOOT) $(PUBLISH_DIR)
+	cp $(PKG_NAME_BIN_GOODIES) $(PUBLISH_DIR)
+	cp $(PKG_NAME_BIN_DIAG) $(PUBLISH_DIR)
+
+#------------------------------------------------------------------------------
+clean:
+	@echo "BUILD_TARGET: clean"
+	rm -rf $(PKG_DIR)
+	rm -rf $(TEST_ROOT_DIR)
+	rm -rf $(TOP_DIR)/test 
+	rm -rf $(TEMP_DIR) 
+
+PKG_NAME_C2BOX_DEMO	:= $(PKG_DIR)/c2box/c2-$(SDK_VERSION_ALL)-c2box-bin.tar.gz
+PKG_NAME_BIN_KERNEL_NAND:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-kernel-nand-bin.tar.gz
+PKG_NAME_BIN_HDMIKO     := $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-hdmi-bin.tar.gz
+PKG_NAME_BIN_GFX_2D     := $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-gfx_2d-bin.tar.gz
+PKG_NAME_BIN_FACEN_UDISK:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-factory-udisk-en.tar.gz
+PKG_NAME_BIN_FACCN_UDISK:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-factory-udisk-cn.tar.gz
+PKG_NAME_BIN_USER_UDISK := $(PKG_DIR)/c2_update.tar
+BIN_MKIMAGE  :=$(TEST_ROOT_DIR)/tools/mkimage
+BIN_MKYAFFS2 :=$(TEST_ROOT_DIR)/sw/kernel/configs/jazz2-pvr-nand/mkyaffs/mkyaffs2
+BIN_MKJFFS2  :=$(TOOLCHAIN_PATH)/mkfs.jffs2
+BCHTOOLS     :=$(TEST_ROOT_DIR)/sw/kernel/configs/jazz2-pvr-nand/bch_generate
+factory-udisk:
+	#rm -rf $(TEST_ROOT_DIR)
+	mkdir -p $(PKG_DIR)
+	mkdir -p $(TEST_ROOT_DIR)
+	rm -rf $(TEST_ROOT_DIR)/home $(TEST_ROOT_DIR)/work
+	cd $(TEST_ROOT_DIR) ; tar xzf $(PKG_NAME_BIN_UBOOT) 
+	cd $(TEST_ROOT_DIR) ; tar xzf $(PKG_NAME_BIN_KERNEL_NAND)
+	cd $(TEST_ROOT_DIR) ; tar xzf $(PKG_NAME_C2BOX_DEMO) 
+	cd $(TEST_ROOT_DIR) ; tar xzf $(PKG_NAME_BIN_HDMIKO) 
+	cd $(TEST_ROOT_DIR) ; tar xzf $(PKG_NAME_BIN_GFX_2D) 
+	cd $(TEST_ROOT_DIR) ; mkdir -p home; mv work home/
+	cd $(TEST_ROOT_DIR) ; cp -f jazz2hdmi/jazz2hdmi_drv/hdmi_jazz2.ko home/work/lib/
+	cd $(TEST_ROOT_DIR) ; cp -f build/sdk/drivers/libGAL.so           home/work/lib/
+	cd $(TEST_ROOT_DIR) ; cp -f build/sdk/drivers/galcore.ko          home/work/lib/
+	cd $(TEST_ROOT_DIR) ; cp -f build/sdk/drivers/libdirectfb_gal.so  home/work/lib/
+	cd $(TEST_ROOT_DIR) ; cp -f home/work/updat*.bmp . ; cp -f home/work/logo.bmp .
+	cd $(TEST_ROOT_DIR) ; cp -f sw/kernel/linux-2.6/zvmlinux.bin .
+	cd $(TEST_ROOT_DIR) ; cp -f sw/kernel/rootfs.image .
+	cd $(TEST_ROOT_DIR) ; $(BIN_MKIMAGE) -A c2 -O linux -n kernel -d zvmlinux.bin kernel.img
+	cd $(TEST_ROOT_DIR) ; $(BIN_MKIMAGE) -A c2 -O linux -n rootfs -d rootfs.image rootfs.img
+	@if [ "$(SDK_TARGET_ARCH)" == "jazz2" ]; then \
+		cd $(TEST_ROOT_DIR) ; $(BIN_MKYAFFS2) home home.image \
+	elif [ "$(SDK_TARGET_ARCH)" == "jazz2l" ] || [ "$(SDK_TARGET_ARCH)" == "jazz2t" ]; then \
+		cd $(TEST_ROOT_DIR) ; $(BIN_MKJFFS2) -n -U -s2048 -e0x20000 -r home -o home.jffs2 -v -l -Xzlib \
+		cd $(TEST_ROOT_DIR) ; $(BCHTOOLS) -i home.jffs2 -o home.image -p2048 -r64 -m1 -d \
+		cd $(TEST_ROOT_DIR) ; rm home.jffs2  \
+	fi
+	cd $(TEST_ROOT_DIR) ; $(BIN_MKIMAGE) -A c2 -O linux -n home   -d home.image   home.img
+	cd $(TEST_ROOT_DIR) ; cp -f u-boot-1mc.rom  u-boot.rom
+	cd $(TEST_ROOT_DIR) ; cp -f updatingEN.bmp updating.bmp
+	cd $(TEST_ROOT_DIR) ; cp -f updateFailEN.bmp updatefail.bmp
+	cd $(TEST_ROOT_DIR) ; cp -f updateSuccEN.bmp updatesucc.bmp
+	cd $(TEST_ROOT_DIR) ; rm  -rf $(PKG_NAME_BIN_FACEN_UDISK)
+	cd $(TEST_ROOT_DIR) ; tar cfz $(PKG_NAME_BIN_FACEN_UDISK) \
+				updating.bmp\
+				updatefail.bmp\
+				updatesucc.bmp\
+				logo.bmp      \
+				kernel.img    \
+				rootfs.img    \
+				home.img      \
+				u-boot.rom u-boot-factory.rom
+	cd $(TEST_ROOT_DIR) ; cp -f updatingCH.bmp updating.bmp
+	cd $(TEST_ROOT_DIR) ; cp -f updateFailCH.bmp updatefail.bmp
+	cd $(TEST_ROOT_DIR) ; cp -f updateSuccCH.bmp updatesucc.bmp
+	cd $(TEST_ROOT_DIR) ; rm  -rf $(PKG_NAME_BIN_FACCN_UDISK)
+	cd $(TEST_ROOT_DIR) ; tar cfz $(PKG_NAME_BIN_FACCN_UDISK) \
+				updating.bmp\
+				updatefail.bmp\
+				updatesucc.bmp\
+				logo.bmp      \
+				kernel.img    \
+				rootfs.img    \
+				home.img      \
+				u-boot.rom u-boot-factory.rom
+	@if [ "$(SDK_TARGET_ARCH)" == "jazz2" ]; then \
+	elif [ "$(SDK_TARGET_ARCH)" == "jazz2l" ] || [ "$(SDK_TARGET_ARCH)" == "jazz2t" ]; then \
+	fi
+
+CVS_SRC_SW_C2APPS       := sw_c2apps
+user-udisk:
+	#rm -rf $(TEST_ROOT_DIR)
+	mkdir -p $(PKG_DIR)
+	mkdir -p $(TEST_ROOT_DIR)
+	cd $(TEST_ROOT_DIR) ; cp -rf $(SOURCE_DIR)/$(CVS_SRC_SW_C2APPS)/tools/updateFileGenerate/* .
+	cd $(TEST_ROOT_DIR) ; make 
+	cd $(TEST_ROOT_DIR) ; tar xzf $(PKG_NAME_BIN_KERNEL_NAND)
+	cd $(TEST_ROOT_DIR) ; tar xzf $(PKG_NAME_C2BOX_DEMO) 
+	cd $(TEST_ROOT_DIR) ; tar xzf $(PKG_NAME_BIN_UBOOT) 
+	cd $(TEST_ROOT_DIR) ; tar xzf $(PKG_NAME_BIN_HDMIKO) 
+	cd $(TEST_ROOT_DIR) ; tar xzf $(PKG_NAME_BIN_GFX_2D) 
+	cd $(TEST_ROOT_DIR) ; cp -f jazz2hdmi/jazz2hdmi_drv/hdmi_jazz2.ko work/lib/
+	cd $(TEST_ROOT_DIR) ; cp -f build/sdk/drivers/libGAL.so           work/lib/
+	cd $(TEST_ROOT_DIR) ; cp -f build/sdk/drivers/galcore.ko          work/lib/
+	cd $(TEST_ROOT_DIR) ; cp -f build/sdk/drivers/libdirectfb_gal.so  work/lib/
+	cd $(TEST_ROOT_DIR) ; cp -f sw/kernel/linux-2.6/zvmlinux.bin .
+	cd $(TEST_ROOT_DIR) ; cp -f sw/kernel/rootfs.image .
+	cd $(TEST_ROOT_DIR) ; $(BIN_MKIMAGE) -A c2 -O linux -n kernel -d zvmlinux.bin uImage.bin
+	cd $(TEST_ROOT_DIR) ; ./createArchive uImage.bin rootfs.image work -v "the version no."
+	cd $(TEST_ROOT_DIR) ; cp -f c2_update.tar $(PKG_NAME_BIN_USER_UDISK)
+#------------------------------------------------------------------------------
+.NOTPARALLEL:

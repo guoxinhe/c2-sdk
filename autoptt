@@ -1,0 +1,129 @@
+#!/bin/sh
+THISCAL=$0
+THISCMD=`echo $0 | sed 's:.*/\(.*\):\1:'`
+THISDIR=`pwd`
+THISUSR=`whoami`
+THISTID=`date +%Y%m%d%H%M%S`
+
+
+FDISK=/sbin/fdisk
+DD=dd
+MKFS=/sbin/mkfs
+UMOUNT=umount
+MOUNT=mount
+timestamp="date +%Y%m%d%H%M%S"
+
+SDSIZE=2GB
+SD=/dev/sdc
+SD1=808M
+SD5=108M
+SD6=608M
+fdiskcmd=
+bat_fdiskcmd(){
+    echo "n     "  >$fdiskcmd # new a partition
+    echo "p     " >>$fdiskcmd # the type to be newed is primary
+    echo "1     " >>$fdiskcmd # Partition number (1-4): 1
+    echo "1     " >>$fdiskcmd # First cylinder (1-1021, default 1): 1
+    echo "+$SD1 " >>$fdiskcmd # Last cylinder, +cylinders or +size{K,M,G} (1-1021, default 1021): +800M
+    echo "t     " >>$fdiskcmd # Change a partition's system ID, Selected partition 1
+    echo "b     " >>$fdiskcmd # 6 FAT16, b FAT32, 7 NTFS
+    echo "n     " >>$fdiskcmd # new a partition
+    echo "e     " >>$fdiskcmd # extention partition
+    echo "2     " >>$fdiskcmd # partition number 2
+    echo "      " >>$fdiskcmd # First cylinder (435-1021, default 435):
+    echo "      " >>$fdiskcmd # Last cylinder, +cylinders or +size{K,M,G} (435-1021, default 1021):
+    echo "n     " >>$fdiskcmd # new a partition
+    echo "l     " >>$fdiskcmd # logical partition
+    echo "      " >>$fdiskcmd # First cylinder (435-1021, default 435):
+    echo "+$SD5 " >>$fdiskcmd # Last cylinder, +cylinders or +size{K,M,G} (435-1021, default 1021): 
+    echo "n     " >>$fdiskcmd # new a partition
+    echo "l     " >>$fdiskcmd # logical partition
+    echo "      " >>$fdiskcmd # First cylinder, default
+    echo "+$SD6 " >>$fdiskcmd # Size
+    echo "n     " >>$fdiskcmd # new a partition
+    echo "l     " >>$fdiskcmd # logical partition
+    echo "      " >>$fdiskcmd # First cylinder, default
+    echo "      " >>$fdiskcmd # Size default(last partition)
+    echo "p     " >>$fdiskcmd # Print the partition table for user check
+    echo "w     " >>$fdiskcmd # Write and exit.
+    echo "      " >>$fdiskcmd # Out   
+}
+#sdpart_1gb:
+bat_mount(){
+
+        mkdir -p  /mnt/sd1
+        mkdir -p  /mnt/sd5
+        mkdir -p  /mnt/sd6
+        mkdir -p  /mnt/sd7
+
+        $MOUNT -t vfat "$SD"1 /mnt/sd1
+        $MOUNT -t ext2 "$SD"5 /mnt/sd5
+        $MOUNT -t ext3 "$SD"6 /mnt/sd6
+        $MOUNT -t ext2 "$SD"7 /mnt/sd7
+}
+bat_partition(){
+	for x in `mount | grep usbdisk | awk '{print $3;}'`; do $UMOUNT $x; done
+	for x in `mount | grep ^$SD | awk '{ print $3 }'`; do $UMOUNT $x; done
+        #this destory all the partition table
+	$DD if=/dev/zero of=$SD bs=512 count=1
+	cat $fdiskcmd | $FDISK $SD
+	sleep 5
+	for x in `mount | grep usbdisk | awk '{print $3;}'`; do $UMOUNT $x; done
+	for x in `mount | grep ^$SD | awk '{ print $3 }'`; do $UMOUNT $x; done
+	$MKFS.vfat -n sdboot "$SD"1
+	$MKFS.ext2 -L sdroot "$SD"5
+	$MKFS.ext3 -L sdhome "$SD"6
+	$MKFS.ext2 -L sdtmp  "$SD"7
+
+}
+func_help(){
+    echo $THISCMD : "Partition a SD card to [DOS], [[ext2], [ext3], [ext2]]"
+    echo $THISCMD "[/dev/sdd] [ 1GB | 2GB | 4GB | 8GB ]"
+    echo Version 0.1.2
+    echo Copyright 2010, C2, all rights reservered.
+    exit 0
+}
+
+while [ "$1" != "" ]; do
+    case $1 in
+    help|-help|--help|h|-h|--h)
+        func_help        
+        exit 0
+        ;;
+    /dev/sda*)
+        echo Warning: try to access system device is disabled.
+        exit 0
+        ;;
+    /dev/*)
+        SD=$1
+        ;;
+
+    1GB)    SDSIZE=$1; SD1=200M;    SD5=100M; SD6=400M;;
+    2GB)    SDSIZE=$1; SD1=808M;    SD5=128M; SD6=600M;;
+    4GB)    SDSIZE=$1; SD1=1000M;   SD5=200M; SD6=800M;;
+    8GB)    SDSIZE=$1; SD1=1000M;   SD5=200M; SD6=800M;;
+    16GB)   SDSIZE=$1; SD1=10800M;  SD5=200M; SD6=800M;;
+    32GB)   SDSIZE=$1; SD1=25600M;  SD5=200M; SD6=800M;;
+    64GB)   SDSIZE=$1; SD1=51200M;  SD5=200M; SD6=800M;;
+    128GB)  SDSIZE=$1; SD1=102400M; SD5=200M; SD6=800M;;
+    256GB)  SDSIZE=$1; SD1=204800M; SD5=200M; SD6=800M;;
+    512GB)  SDSIZE=$1; SD1=409600M; SD5=200M; SD6=800M;;
+    *)
+        ;;
+    esac
+    shift
+done
+
+if [ "$SDSIZE" != "2GB" ]; then
+    echo size solution to $SDSIZE  [ $SD1 ] [ [ $SD5 ] [ $SD6 ] [ left size ]]
+fi
+
+if [ "$SD" != "/dev/sdc" ]; then
+    echo device set to $SD
+fi
+
+fdiskcmd=_tmp`$timestamp`
+bat_fdiskcmd
+bat_partition
+rm -f $fdiskcmd
+

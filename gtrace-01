@@ -1,0 +1,795 @@
+Index: linux-2.6/arch/c2/Kconfig.debug
+===================================================================
+--- linux-2.6.orig/arch/c2/Kconfig.debug
++++ linux-2.6/arch/c2/Kconfig.debug
+@@ -63,6 +63,14 @@ config RUNTIME_DEBUG
+ 	  include/asm-mips/debug.h for debuging macros.
+ 	  If unsure, say N.
+ 
++config GUOXINHE_DEBUG
++	bool "Enable guoxinhe's debugging"
++	depends on DEBUG_KERNEL
++	help
++	  If you say Y here, Guo Xinhe's debug code works.
++	  If you say N here, no this code works
++	  If unsure, say N.
++
+ config FPGA_JTAG_DEBUG_CHANNEL
+ 	bool "JTAG based debug channel"
+ 	depends on C2_HW
+Index: linux-2.6/arch/c2/kernel/Makefile
+===================================================================
+--- linux-2.6.orig/arch/c2/kernel/Makefile
++++ linux-2.6/arch/c2/kernel/Makefile
+@@ -22,6 +22,7 @@ obj-$(CONFIG_I8259)		+= i8259.o
+ 
+ obj-$(CONFIG_KGDB)		+= gdb-low.o gdb-stub.o
+ obj-$(CONFIG_PROC_FS)		+= proc.o
++obj-$(CONFIG_GUOXINHE_DEBUG)	+= gtrace.o
+ 
+ obj-$(CONFIG_GEN_RTC)		+= genrtc.o
+ 
+Index: linux-2.6/arch/c2/kernel/gtrace.c
+===================================================================
+--- /dev/null
++++ linux-2.6/arch/c2/kernel/gtrace.c
+@@ -0,0 +1,219 @@
++/*
++ * Copyright 2010, Guo Xinhe, C2 Microsystems.
++ *
++ * Licensed under the GPL-2 or later.
++ */
++
++#include <linux/module.h>
++#include <linux/kernel.h>
++#include <linux/init.h>
++#include <linux/proc_fs.h>
++
++#include <asm/current.h>
++#include <asm/uaccess.h>
++#include <asm/system.h>
++
++extern  int gtrace_st(char *fmt, int a, int b, int c);
++extern  int gtrace_prints(char *fmt);;
++extern  int gtrace_printf(char *fmt, ...);
++
++struct gtrace_t{
++#define NR_GTSTS 160
++#define NR_GTCFG 16
++   int state;
++   int flag;
++   int st[NR_GTSTS];
++   int cfg[NR_GTCFG];
++   int szcmd;
++   char cmd[256];
++
++   int szbuf,szwrite,lpwrite;
++   char *pstart, *pend, *p;
++   char buf[1];
++};
++struct gtrace_t *gtrace=NULL;
++
++int gtrace_loopcopy(char *ptr, int sz)
++{
++    struct gtrace_t *g=gtrace;
++    int done=0,once;
++    if(!g) return -1;
++    while(sz && done<g->szbuf) {
++        if(g->p>=g->pend) {
++            g->lpwrite++;
++            g->p=g->pstart;
++        }
++        once=g->pend-g->p;
++        if(once>sz) once=sz;
++        memcpy(g->p,ptr,once);
++        g->p+=once;
++        ptr+=once;
++        g->szwrite+=once;
++        done+=once;
++        sz-=once;
++    }
++    return done;
++}
++
++int gtrace_st(char *fmt, int a, int b, int c)
++{
++    struct gtrace_t *g=gtrace;
++    int ch,sy;
++    if(!g) return -1;
++
++    #define _cti(a,b,c,d) ((((a)<<24)&0xFF000000) | (((b)<<16)&0x00FF0000) | (((c)<<8)&0x0000FF00) | (((d))&0x000000FF) )
++    //TODO: parse syntax in fmt, and using parameters in a b c
++    while(*fmt) {
++        ch=*fmt++;
++        sy=*fmt++;
++        if(sy==0) break;
++        switch((ch<<8) | sy){
++        case _cti(0,0,'a','+') : g->st[a]+=b; break;
++        case _cti(0,0,'a','%') : g->st[a]=b; break;
++        default: 
++            return -1;
++        }
++    }
++    return 0;
++}
++EXPORT_SYMBOL(gtrace_st);
++int gtrace_prints(char *fmt)
++{
++    struct gtrace_t *g=gtrace;
++    if(!g) return -1;
++
++    while(*fmt) {
++        int c=*fmt++;
++        if(c<NR_GTSTS) g->st[c]++;
++    }
++    return 0;
++}
++EXPORT_SYMBOL(gtrace_prints);
++int gtrace_printf(char *fmt, ...)
++{
++    va_list args;
++    char buf[1024];
++    int len;
++
++    va_start(args, fmt);
++    len=vsprintf(buf, fmt, args);
++    va_end(args);
++
++    if(len>sizeof(buf)) len=sizeof(buf);
++    len=gtrace_loopcopy(buf, len);
++
++    return len;
++}
++EXPORT_SYMBOL(gtrace_printf);
++
++
++static int gtrace_read_proc(char *page, char **start, off_t off,
++				 int count, int *eof, void *data)
++{
++    struct gtrace_t *g=gtrace;
++	int len=0,i,once;
++    if(!g) return -1;
++
++	len += sprintf(page+len,"Banner, page=0x08%X,start=0x08%X,off=0x08%X,count=0x08%X,eof=0x08%X,data=0x08%X\n",
++               (int)page,(int)start,(int)off,(int)count,(int)eof,(int)data);
++	//print user command
++	if(g->szcmd)
++	    len += sprintf(page+len,"last command: %s",g->cmd);
++
++	//print config
++	len += sprintf(page+len,"configs[%d]:\n",NR_GTCFG);
++	for(i=0;i<NR_GTCFG;i++) {
++	    len += sprintf(page+len,"%8X ",g->cfg[i]);
++	    if((i&15)==15) len += sprintf(page+len,"\n");
++	}
++	
++	//print statistics
++	len += sprintf(page+len,"stats[%d] in decimal:\n",NR_GTSTS);
++        g->st[128]=g->lpwrite;
++        g->st[129]=g->szwrite;
++	for(i=0;i<NR_GTSTS;i++) {
++	    len += sprintf(page+len,"%8d ",g->st[i]);
++	    if((i&15)==15) len += sprintf(page+len,"\n");
++	}
++	//print loopbuffers
++	once=g->szwrite;
++	if(once>g->szbuf) once=g->szbuf;
++	len += sprintf(page+len,"loopbuffer[%d]:\n",once);
++	memcpy(page+len,g->pstart,once);
++        len+=once;
++
++	if (len <= off+count)
++		*eof = 1;
++	*start = page + off;
++	len -= off;
++	if (len > count) {
++                gtrace_st("a+",0,1,0);
++		len = count;
++        }
++	if (len < 0) {
++                gtrace_st("a+",1,1,0);
++		len = 0;
++        }
++	return len;
++}
++
++static int gtrace_write_proc(struct file *file, const char *buffer,
++				 unsigned long count, void *data)
++{
++    struct gtrace_t *g=gtrace;
++    int sz;
++    char *s;
++    if(!g) return -1;
++	if (count >= 256)
++		g->szcmd = 255;
++	else
++		g->szcmd = count;
++
++	memcpy(g->cmd, buffer, count);
++	g->cmd[g->szcmd] = 0;
++        sz=g->szcmd;
++
++	if(0==strncmp(g->cmd,s="clear",strlen(s))) { 
++	    g->p=g->pstart;g->szwrite=0;g->lpwrite=0;*g->p='\0';g->szcmd=0;g->cmd[0]='\0';
++	    {int i;for(i=0;i<NR_GTSTS;i++) {g->st[i]=0;}}
++	}
++
++
++	//TODO: add parse code here
++	return sz;
++}
++
++static int __init gtrace_init(void)
++{
++	struct proc_dir_entry *entry;
++        struct gtrace_t* g;
++
++	entry = create_proc_entry("gtrace", 0, NULL);
++	if (entry == NULL)
++		return -ENOMEM;
++#define SZ_GTNODE (PAGE_SIZE<<3)  //if big, app can not read all
++	entry->read_proc = gtrace_read_proc;
++	entry->write_proc = gtrace_write_proc;
++	entry->data = NULL;
++
++        g=(struct gtrace_t*)kmalloc(SZ_GTNODE, GFP_KERNEL);
++        if(g) {
++            memset(g, 0, SZ_GTNODE);
++            entry->data = g;
++            gtrace=g;
++            g->szbuf=SZ_GTNODE - sizeof(*g) + 1;
++            g->pstart=g->p=&g->buf[0];
++            g->pend=g->pstart+g->szbuf;
++        }
++
++	return 0;
++}
++
++static void __exit gtrace_exit(void)
++{
++	remove_proc_entry("gtrace", NULL);
++}
++
++module_init(gtrace_init);
++module_exit(gtrace_exit);
++MODULE_LICENSE("GPL");
+Index: linux-2.6/drivers/net/wireless/rt3070sta/common/cmm_asic.c
+===================================================================
+--- linux-2.6.orig/drivers/net/wireless/rt3070sta/common/cmm_asic.c
++++ linux-2.6/drivers/net/wireless/rt3070sta/common/cmm_asic.c
+@@ -1482,6 +1482,11 @@ VOID AsicSwitchChannel(
+ 		RTMPSetAGCInitValue(pAd, BW_20);
+ 	else
+ 		RTMPSetAGCInitValue(pAd, pAd->CommonCfg.BBPCurrentBW);
++#ifdef CONFIG_GUOXINHE_DEBUG
++	gtrace_st("a+",130,1000,0);
++        gtrace_printf("%x %d %4d Sleep 1000ms\n",jiffies,7,__LINE__);
++#endif
++
+ 
+ 	//
+ 	// On 11A, We should delay and wait RF/BBP to be stable
+Index: linux-2.6/drivers/net/wireless/rt3070sta/include/rt_linux.h
+===================================================================
+--- linux-2.6.orig/drivers/net/wireless/rt3070sta/include/rt_linux.h
++++ linux-2.6/drivers/net/wireless/rt3070sta/include/rt_linux.h
+@@ -572,6 +572,25 @@ do{                                   \
+ {									\
+ 	printk Fmt;					\
+ }
++
++#ifdef CONFIG_GUOXINHE_DEBUG
++#undef DBGPRINT
++#undef DBGPRINT_ERR
++#undef DBGPRINT_S
++#include <linux/jiffies.h>
++extern unsigned long jiffies_start;
++extern  int gtrace_st(char *fmt, int a, int b, int c);
++extern  int gtrace_prints(char *fmt);
++extern  int gtrace_printf(char *fmt, ...);
++#define __file__  ({char *f=__FILE__; f+=strlen(f)-12;f;})
++#define DBGPRINT(Level, Fmt)    do{             gtrace_printf("%8d %d %s %4d ",jiffies-jiffies_start,Level,__file__, __LINE__); \
++						gtrace_printf Fmt; gtrace_st("a+",144+Level,1,0); }while(0)
++#define DBGPRINT_ERR(Fmt)       do{int Level=9; gtrace_printf("%8d %d %s %4d ",jiffies-jiffies_start,Level,__file__, __LINE__); \
++						gtrace_printf Fmt; gtrace_st("a+",144+Level,1,0); }while(0)
++#define DBGPRINT_S(Status, Fmt) do{int Level=8; gtrace_printf("%8d %d %s %4d ",jiffies-jiffies_start,Level,__file__, __LINE__); \
++						gtrace_printf Fmt; gtrace_st("a+",144+Level,1,0); }while(0)
++#endif
++
+ #else
+ #define DBGPRINT(Level, Fmt)
+ #define DBGPRINT_RAW(Level, Fmt)
+Index: linux-2.6/drivers/net/wireless/rt3070sta/usb_main_dev.c
+===================================================================
+--- linux-2.6.orig/drivers/net/wireless/rt3070sta/usb_main_dev.c
++++ linux-2.6/drivers/net/wireless/rt3070sta/usb_main_dev.c
+@@ -25,7 +25,12 @@
+  *************************************************************************/
+ 
+ #include "include/rt_config.h"
+-
++#ifdef CONFIG_GUOXINHE_DEBUG
++#include <linux/jiffies.h>
++extern  int gtrace_st(char *fmt, int a, int b, int c);
++extern  int gtrace_prints(char *fmt);
++extern  int gtrace_printf(char *fmt, ...);
++#endif
+ 
+ // Following information will be show when you run 'modinfo'
+ // *** If you have a solution for the bug in current version of driver, please mail to me.
+@@ -123,6 +128,10 @@ static BOOLEAN USBDevConfigInit(
+ 	UINT32 i;
+ 
+ 
++#ifdef CONFIG_GUOXINHE_DEBUG
++        { unsigned long js,je;
++        js=jiffies;
++#endif
+ 	iface_desc = &intf->altsetting[0];
+ 
+ 	/* get # of enpoints */
+@@ -166,6 +175,13 @@ static BOOLEAN USBDevConfigInit(
+ 	pAd->config = dev->config;
+ 	RT28XXVendorSpecificCheck(dev, pAd);
+ 
++#ifdef CONFIG_GUOXINHE_DEBUG
++        je=jiffies;
++        
++	gtrace_st("a+", 2,1,0);
++	gtrace_st("a+",18,je-js,0);
++        }
++#endif
+ 	return TRUE;
+ 	
+ }
+@@ -229,6 +245,11 @@ static BOOLEAN USBDevConfigInit(
+ 	UINT32 i;
+ 
+ 
++
++#ifdef config_guoxinhe_debug
++        { unsigned long js,je;
++        js=jiffies;
++#endif
+ 	/* get the active interface descriptor */
+ 	iface_desc = intf->cur_altsetting;
+ 
+@@ -285,6 +306,13 @@ static BOOLEAN USBDevConfigInit(
+ 	usb_set_intfdata(intf, pAd);
+ 	RT28XXVendorSpecificCheck(dev, pAd);    
+ 	
++#ifdef config_guoxinhe_debug
++        je=jiffies;
++        
++	gtrace_st("a+", 3,1,0);
++	gtrace_st("a+",19,je-js,0);
++        }
++#endif
+ 	return TRUE;
+ 	
+ }
+@@ -298,6 +326,10 @@ static int rtusb_probe (struct usb_inter
+ 	struct usb_device *dev;
+ 	int rv;
+ 
++#ifdef config_guoxinhe_debug
++        { unsigned long js,je;
++        js=jiffies;
++#endif
+ 	dev = interface_to_usbdev(intf);
+ 	dev = usb_get_dev(dev);
+ 	
+@@ -305,6 +337,13 @@ static int rtusb_probe (struct usb_inter
+ 	if (rv != 0)
+ 		usb_put_dev(dev);
+ 	
++#ifdef config_guoxinhe_debug
++        je=jiffies;
++        
++	gtrace_st("a+", 4,1,0);
++	gtrace_st("a+",20,je-js,0);
++        }
++#endif
+ 	return rv;
+ }
+ 
+@@ -315,10 +354,21 @@ static void rtusb_disconnect(struct usb_
+ 	PRTMP_ADAPTER       pAd;
+ 
+ 
++#ifdef config_guoxinhe_debug
++        { unsigned long js,je;
++        js=jiffies;
++#endif
+ 	pAd = usb_get_intfdata(intf);
+ 	usb_set_intfdata(intf, NULL);	
+ 
+ 	rt2870_disconnect(dev, pAd);
++#ifdef config_guoxinhe_debug
++        je=jiffies;
++        
++	gtrace_st("a+", 5,1,0);
++	gtrace_st("a+",21,je-js,0);
++        }
++#endif
+ }
+ 
+ 
+@@ -436,6 +486,10 @@ INT MlmeThread(
+ 	int status;
+ 	status = 0;
+ 
++#ifdef config_guoxinhe_debug
++        { unsigned long js,je;
++        js=jiffies;
++#endif
+ 	pTask = (RTMP_OS_TASK *)Context;
+ 	pAd = (PRTMP_ADAPTER)pTask->priv;
+ 	
+@@ -482,6 +536,13 @@ INT MlmeThread(
+ 	pTask->taskPID = THREAD_PID_INIT_VALUE;
+ 	complete_and_exit (&pTask->taskComplete, 0);
+ #endif
++#ifdef config_guoxinhe_debug
++        je=jiffies;
++        
++	gtrace_st("a+", 6,1,0);
++	gtrace_st("a+",22,je-js,0);
++        }
++#endif
+ 	return 0;
+ 
+ }
+@@ -509,6 +570,10 @@ INT RTUSBCmdThread(
+ 	int status;
+ 	status = 0;
+ 
++#ifdef config_guoxinhe_debug
++        { unsigned long js,je;
++        js=jiffies;
++#endif
+ 	pTask = (RTMP_OS_TASK *)Context;
+ 	pAd = (PRTMP_ADAPTER)pTask->priv;
+ 	
+@@ -588,6 +653,13 @@ INT RTUSBCmdThread(
+ 	pTask->taskPID = THREAD_PID_INIT_VALUE;
+ 	complete_and_exit (&pTask->taskComplete, 0);
+ #endif
++#ifdef config_guoxinhe_debug
++        je=jiffies;
++        
++	gtrace_st("a+", 7,1,0);
++	gtrace_st("a+",23,je-js,0);
++        }
++#endif
+ 	return 0;
+ 
+ }
+@@ -638,7 +710,19 @@ static void rt2870_disconnect(struct usb
+ 	udelay(1);
+ #if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)	/* kernel 2.4 series */
+ #else
++
++#ifdef config_guoxinhe_debug
++        { unsigned long js,je;
++        js=jiffies;
++#endif
+ 	flush_scheduled_work();
++#ifdef config_guoxinhe_debug
++        je=jiffies;
++        
++	gtrace_st("a+", 0,1,0);
++	gtrace_st("a+",16,je-js,0);
++        }
++#endif
+ #endif // LINUX_VERSION_CODE //
+ 	udelay(1);
+ 
+@@ -679,6 +763,10 @@ static int rt2870_probe(
+ 	RTMP_OS_NETDEV_OP_HOOK	netDevHook;
+ 	
+ 
++#ifdef CONFIG_GUOXINHE_DEBUG
++        { unsigned long js,je;
++        js=jiffies;
++#endif
+ 	DBGPRINT(RT_DEBUG_TRACE, ("===>rt2870_probe()!\n"));
+ 	
+ 	// Check chipset vendor/product ID
+@@ -764,6 +852,13 @@ err_out_free_radev:
+ err_out:
+ 	*ppAd = NULL;
+ 
++#ifdef CONFIG_GUOXINHE_DEBUG
++        je=jiffies;
++        
++	gtrace_st("a+", 1,1,0);
++	gtrace_st("a+",17,je-js,0);
++        }
++#endif
+ 	return -1;
+ 	
+ }
+Index: linux-2.6/drivers/net/wireless/rt3070sta/common/rtmp_init.c
+===================================================================
+--- linux-2.6.orig/drivers/net/wireless/rt3070sta/common/rtmp_init.c
++++ linux-2.6/drivers/net/wireless/rt3070sta/common/rtmp_init.c
+@@ -3064,6 +3064,7 @@ NDIS_STATUS	NICInitializeAsic(
+ 		RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBPRegTable[Index].Register, BBPRegTable[Index].Value);
+ 	}
+ 
++	DBGPRINT(RT_DEBUG_TRACE, ("watch jiffies\n"));
+ 	if (pAd->chipOps.pBBPRegTable)
+ 	{
+ 		REG_PAIR *pbbpRegTb = pAd->chipOps.pBBPRegTable;
+@@ -3073,6 +3074,7 @@ NDIS_STATUS	NICInitializeAsic(
+ 			RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, pbbpRegTb[Index].Register, pbbpRegTb[Index].Value);
+ 			DBGPRINT(RT_DEBUG_TRACE, ("BBP_R%d=%d\n", pbbpRegTb[Index].Register, pbbpRegTb[Index].Value));
+ 		}
++	DBGPRINT(RT_DEBUG_TRACE, ("watch jiffies\n"));
+ 	}
+ 	
+ 
+@@ -3083,6 +3085,7 @@ NDIS_STATUS	NICInitializeAsic(
+ 		!(IS_RT30xx(pAd)|| IS_RT3572(pAd) || IS_RT3390(pAd) || IS_RT3593(pAd)))
+ 		RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R84, 0x19);
+ 
++	DBGPRINT(RT_DEBUG_TRACE, ("watch jiffies\n"));
+ #ifdef RT30xx
+ 	// RF power sequence setup
+ 	if (IS_RT30xx(pAd) || IS_RT3572(pAd) || IS_RT3390(pAd) || IS_RT3593(pAd))
+@@ -3090,6 +3093,7 @@ NDIS_STATUS	NICInitializeAsic(
+ 		RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R79, 0x13);		
+ 		RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R80, 0x05);	
+ 		RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R81, 0x33);	
++	DBGPRINT(RT_DEBUG_TRACE, ("watch jiffies\n"));       //   start<<<<<<<<<<<<<<<<<<<<<<<<
+ 	}
+ #endif // RT30xx //
+ 
+@@ -3097,6 +3101,7 @@ NDIS_STATUS	NICInitializeAsic(
+ 	{
+ 		RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R69, 0x16);
+ 		RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R73, 0x12);
++	DBGPRINT(RT_DEBUG_TRACE, ("watch jiffies\n"));
+ 	}
+ 	
+ 	if (pAd->MACVersion >= RALINK_2880E_VERSION && pAd->MACVersion < RALINK_3070_VERSION) // 3*3
+@@ -3109,6 +3114,7 @@ NDIS_STATUS	NICInitializeAsic(
+ 		csr |= 0x2000;
+ 		}
+ 		RTMP_IO_WRITE32(pAd, MAX_LEN_CFG, csr);
++	DBGPRINT(RT_DEBUG_TRACE, ("watch jiffies\n"));
+ 	}
+ 
+ #ifdef RTMP_MAC_USB
+@@ -3118,13 +3124,15 @@ NDIS_STATUS	NICInitializeAsic(
+ 	//Initialize WCID table
+ 	for(Index =0 ;Index < 254;Index++)
+ 	{
+-		RTUSBMultiWrite(pAd, (USHORT)(MAC_WCID_BASE + Index * 8), MAC_Value, 8);
++		RTUSBMultiWrite(pAd, (USHORT)(MAC_WCID_BASE + Index * 8), MAC_Value, 8);  //c2box: 16jiffies, idle:90jiffies
+ 	}
++	DBGPRINT(RT_DEBUG_TRACE, ("watch jiffies\n"));
+ }
+ #endif // RTMP_MAC_USB //
+ 
+ #ifdef CONFIG_STA_SUPPORT
+ 	// Add radio off control
++	// block start
+ 	IF_DEV_CONFIG_OPMODE_ON_STA(pAd)
+ 	{
+ 		if (pAd->StaCfg.bRadio == FALSE)
+@@ -3133,6 +3141,7 @@ NDIS_STATUS	NICInitializeAsic(
+ 			RTMP_SET_FLAG(pAd, fRTMP_ADAPTER_RADIO_OFF);
+ 			DBGPRINT(RT_DEBUG_TRACE, ("Set Radio Off\n"));
+ 		}
++	DBGPRINT(RT_DEBUG_TRACE, ("watch jiffies\n"));
+ 	}
+ #endif // CONFIG_STA_SUPPORT //	
+ 
+@@ -3153,12 +3162,14 @@ NDIS_STATUS	NICInitializeAsic(
+ 		{
+ 			RTMP_IO_WRITE32(pAd, SHARED_KEY_MODE_BASE + 4*KeyIdx, 0);
+ 		}
++	DBGPRINT(RT_DEBUG_TRACE, ("watch jiffies\n"));
+ 
+ 		// Clear all pairwise key table when initial
+ 		for (KeyIdx = 0; KeyIdx < 256; KeyIdx++)
+ 		{
+ 			RTMP_IO_WRITE32(pAd, MAC_WCID_ATTRIBUTE_BASE + (KeyIdx * HW_WCID_ATTRI_SIZE), 1);
+ 		}
++	DBGPRINT(RT_DEBUG_TRACE, ("watch jiffies\n"));
+ 	}
+ 	
+ 	// assert HOST ready bit
+@@ -3174,6 +3185,7 @@ NDIS_STATUS	NICInitializeAsic(
+ 			for (i = 0; i < HW_BEACON_OFFSET>>2; i+=4)
+ 				RTMP_IO_WRITE32(pAd, pAd->BeaconOffset[apidx] + i, 0x00); 
+ 		}
++	DBGPRINT(RT_DEBUG_TRACE, ("watch jiffies\n"));
+ 	}
+ 	
+ #ifdef RTMP_MAC_USB
+@@ -3200,7 +3212,7 @@ NDIS_STATUS	NICInitializeAsic(
+ 			RTMP_IO_WRITE32(pAd, TXOP_CTRL_CFG, 0x583f);
+ 	}
+ #endif // CONFIG_STA_SUPPORT //
+-
++	//block end
+ 	DBGPRINT(RT_DEBUG_TRACE, ("<-- NICInitializeAsic\n"));
+ 	return NDIS_STATUS_SUCCESS;
+ }
+Index: linux-2.6/drivers/net/wireless/rt3070sta/common/rtmp_mcu.c
+===================================================================
+--- linux-2.6.orig/drivers/net/wireless/rt3070sta/common/rtmp_mcu.c
++++ linux-2.6/drivers/net/wireless/rt3070sta/common/rtmp_mcu.c
+@@ -342,6 +342,7 @@ NDIS_STATUS RtmpAsicLoadFirmware(
+ 	pFirmwareImage = FirmwareImage;
+ 	FileLength = sizeof(FirmwareImage);
+ 
++	DBGPRINT(RT_DEBUG_TRACE, ("===> %s\n", __FUNCTION__));
+ 	// New 8k byte firmware size for RT3071/RT3072
+ 	//DBGPRINT(RT_DEBUG_TRACE, ("Usb Chip\n"));
+ 	if (FIRMWAREIMAGE_LENGTH == FIRMWAREIMAGE_MAX_LENGTH)
+@@ -369,7 +370,7 @@ NDIS_STATUS RtmpAsicLoadFirmware(
+ 		Status = NDIS_STATUS_FAILURE;
+ 	}
+ 
+-
++	//block 
+ 	RTMP_WRITE_FIRMWARE(pAd, pFirmwareImage, FileLength);
+ 
+ #endif
+Index: linux-2.6/drivers/net/wireless/rt3070sta/rt_main_dev.c
+===================================================================
+--- linux-2.6.orig/drivers/net/wireless/rt3070sta/rt_main_dev.c
++++ linux-2.6/drivers/net/wireless/rt3070sta/rt_main_dev.c
+@@ -37,7 +37,6 @@
+ 
+ #include "include/rt_config.h"
+ 
+-
+ #ifdef CONFIG_APSTA_MIXED_SUPPORT
+ UINT32 CW_MAX_IN_BITS;
+ #endif // CONFIG_APSTA_MIXED_SUPPORT //
+@@ -214,6 +213,9 @@ int MainVirtualIF_close(IN struct net_de
+ 
+ 	return 0; // close ok
+ }
++#ifdef CONFIG_GUOXINHE_DEBUG
++unsigned long jiffies_start=0;
++#endif
+ 
+ /*
+ ========================================================================
+@@ -239,6 +241,12 @@ int MainVirtualIF_open(IN struct net_dev
+ {
+     RTMP_ADAPTER *pAd = NULL;
+ 
++#ifdef CONFIG_GUOXINHE_DEBUG
++        { unsigned long js,je;
++        jiffies_start = jiffies;
++        js=jiffies;
++        DBGPRINT(4,("Wlan up. %s %d\n",__FILE__,__LINE__));
++#endif
+ 	GET_PAD_FROM_NET_DEV(pAd, net_dev);	
+ 
+ 	// Sanity check for pAd
+@@ -254,7 +262,13 @@ int MainVirtualIF_open(IN struct net_dev
+ 	netif_start_queue(net_dev);
+ 	netif_carrier_on(net_dev);
+ 	netif_wake_queue(net_dev);
+-
++#ifdef CONFIG_GUOXINHE_DEBUG
++        je=jiffies;
++        DBGPRINT(4,("Wlan up done. %s %s, using %d jiffies, %d usec\n",__FILE__,__LINE__, je-js,jiffies_to_usecs(je-js)));
++        gtrace_st("a+", 2,1,0);
++        gtrace_st("a+",18,je-js,0);
++        }
++#endif
+ 	return 0;
+ }
+ 
+Index: linux-2.6/arch/c2/kernel/time.c
+===================================================================
+--- linux-2.6.orig/arch/c2/kernel/time.c
++++ linux-2.6/arch/c2/kernel/time.c
+@@ -35,6 +35,13 @@
+ #include <asm/trace.h>
+ #include <asm/c2timer.h>
+ 
++#ifdef CONFIG_GUOXINHE_DEBUG
++#include <linux/jiffies.h>
++extern  int gtrace_st(char *fmt, int a, int b, int c);
++extern  int gtrace_prints(char *fmt);
++extern  int gtrace_printf(char *fmt, ...);
++#endif
++
+ DEFINE_SPINLOCK(rtc_lock);
+ extern long long __current_time__;
+ /*
+@@ -323,7 +330,7 @@ static unsigned long c2_gettimeoffset(vo
+ unsigned long (*do_gettimeoffset)(void) = c2_gettimeoffset;
+ 
+ static long last_rtc_update;
+-
++static unsigned long jiffies_start=0;
+ /*
+  * High-level timer interrupt service routines.  This function
+  * is set as irqaction->handler and is invoked through do_IRQ.
+@@ -332,6 +339,17 @@ irqreturn_t timer_interrupt(int irq, voi
+ {
+ 	write_seqlock(&xtime_lock);
+ 
++#ifdef CONFIG_GUOXINHE_DEBUG
++	{
++	int cpu;
++	if (jiffies_start == 0) jiffies_start = jiffies;
++	gtrace_st("a+", 0,1,0);
++	gtrace_st("a%",16, jiffies - jiffies_start,0);
++
++	cpu = smp_processor_id();
++	gtrace_st("a+", 2+cpu,1,0);
++	}
++#endif
+ 	//mips_timer_ack();
+ 
+ 	/*
+Index: linux-2.6/arch/c2/kernel/timer.c
+===================================================================
+--- linux-2.6.orig/arch/c2/kernel/timer.c
++++ linux-2.6/arch/c2/kernel/timer.c
+@@ -250,9 +250,9 @@ irqreturn_t c2timer_interrupt(int irq, v
+         if (timer < 0) {
+                 ONCE(printk(KERN_CRIT "c2timer_interrupt but no active timers\n"));
+         } else if (!(handler = c2timer_handler[timer])) {
+-                printk(KERN_CRIT 
+-			"c2timer_interrupt but no handler for timer 0x%x. disabling\n", 
+-			timer);
++                printk(KERN_CRIT
++                        "c2timer_interrupt but no handler for timer 0x%x. disabling\n",
++                        timer);
+                 c2_timer_irq_disable(timer);
+         } else {
+                 handler(irq, dev_id);
+Index: linux-2.6/drivers/net/wireless/rt3070sta/common/rtusb_io.c
+===================================================================
+--- linux-2.6.orig/drivers/net/wireless/rt3070sta/common/rtusb_io.c
++++ linux-2.6/drivers/net/wireless/rt3070sta/common/rtusb_io.c
+@@ -855,11 +855,24 @@ NTSTATUS    RTUSB_VendorRequest(
+ 				DBGPRINT(RT_DEBUG_OFF, ("#\n"));
+ 				RetryCount++;
+ 				RTMPusecDelay(5000); // wait for 5ms
++#ifdef CONFIG_GUOXINHE_DEBUG
++        			gtrace_st("a+", 4,1,0);
++        			gtrace_st("a+",20,1,0);
++#endif
+ 			}
++#ifdef CONFIG_GUOXINHE_DEBUG
++        			gtrace_st("a+", 5,1,0);
++        			gtrace_st("a+",21,1,0);
++#endif
+ 		} while((RET < 0) && (RetryCount < MAX_VENDOR_REQ_RETRY_COUNT));
+ 		
+-	  	if ( (!(RET < 0)) && (TransferBufferLength > 0) && (RequestType == DEVICE_VENDOR_REQUEST_IN))
++	  	if ( (!(RET < 0)) && (TransferBufferLength > 0) && (RequestType == DEVICE_VENDOR_REQUEST_IN)) {
+ 			NdisMoveMemory(TransferBuffer, pAd->UsbVendorReqBuf, TransferBufferLength);
++#ifdef CONFIG_GUOXINHE_DEBUG
++        			gtrace_st("a+", 6,1,0);
++        			gtrace_st("a+",22,1,0);
++#endif
++		}
+ 		
+ 	  	RTMP_SEM_EVENT_UP(&(pAd->UsbVendorReq_semaphore));
+ 
+@@ -879,6 +892,10 @@ NTSTATUS    RTUSB_VendorRequest(
+ 
+ 	}
+ 
++#ifdef CONFIG_GUOXINHE_DEBUG
++        			gtrace_st("a+", 7,1,0);
++        			gtrace_st("a+",23,1,0);
++#endif
+ 	if (RET < 0)
+ 		return NDIS_STATUS_FAILURE;
+ 	else

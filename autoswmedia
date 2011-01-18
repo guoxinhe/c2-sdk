@@ -1,0 +1,62 @@
+#!/bin/sh
+
+. /home/hguo/sdk/autoenvs
+MISSION=$THISCMD
+. /home/hguo/sdk/autorlog
+
+banner=media/framework/include/media/MediaThread.h
+
+if [ -f `pwd`/$banner ]; then
+    THISPROOT=`pwd`
+fi
+while [ ! -f `pwd`/$banner ]; do
+    cd ..
+    if [ "`pwd`" = "/" ]; then
+        break;
+    fi
+    if [ -f `pwd`/$banner ]; then
+        THISPROOT=`pwd`
+        break;
+    fi
+done
+if [ "`pwd`" != "$THISPATH" ]; then
+    cd $THISPATH
+fi
+[ -z "$THISPROOT" ] && THISPROOT=$THISPATH
+
+# PATH is defined in the head file
+
+func_help_this(){
+cat <<-EOF >&2
+
+copyright 2010, all rights reserved.
+usage: ${0##*/} [ -h ]
+    -h this help
+
+example: ${0##*/} -h
+EOF
+}
+
+if [ "`pwd`" != "$THISPROOT" ]; then
+    cd $THISPROOT
+    THISPATH=`pwd`
+    THISDIR=`pwd | sed 's:.*/\(.*\):\1:'`
+fi
+while [ $# -gt 0 ];do
+    case $1 in
+    --help|-h)
+        func_help_this
+        exit 0
+        ;;
+    *)
+        echo unknown command $1
+	exit 0
+	break;
+        ;;
+    esac
+    shift
+done
+TOOLCHAIN_PATH=$THISC2/c2/daily-jazz2/bin
+SDK_TARGET_GCC_ARCH=TANGO
+TARGET_ARCH=$SDK_TARGET_GCC_ARCH DISP_ARCH=$SDK_TARGET_GCC_ARCH BUILD_TARGET=TARGET_LINUX_C2 BOARD_TARGET=C2_CC289 BUILD=RELEASE make -j5
+echo all done

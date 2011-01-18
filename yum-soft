@@ -1,0 +1,7 @@
+
+
+yum install vnc-server
+
+remove the limit in the vncconfig
+
+

@@ -1,0 +1,94 @@
+#!/bin/sh
+
+. autofunc
+
+[ -f config.autoscp ] && . config.autoscp
+
+[ -z "$webhost" ] && webhost=access.c2micro.com
+[ -z "$webusr"  ] && webusr=hguo
+[ -z "$webdst"  ] && webdst=kdoc
+[ -z "$webdir"  ] && webdir=/home/$webusr/public_html/$webdst
+[ -z "$webtgz"  ] && webtgz=$THISTID.tgz
+
+save_config=0
+
+while [ "$1" != "" ]; do
+    case $1 in
+    -h)
+        func_help
+        echo [ -host host_name] [ -dst dest_folder] [ -usr user_name]
+        exit
+        ;;
+    -host)
+        shift
+        webhost=$1
+        webdir=/home/$webusr/public_html/$webdst
+        save_config=1
+        echo host changed to $1
+        ;;    
+    -dst)
+        shift
+        webdst=$1
+        webdir=/home/$webusr/public_html/$webdst
+        save_config=1
+        echo sub directory changed to $1
+        ;;    
+    -usr)
+        shift
+        webusr=$1
+        webdir=/home/$webusr/public_html/$webdst
+        save_config=1
+        echo user changed to $1
+        ;;
+    -l)
+        echo webhost=$webhost
+        echo webusr=$webusr  
+        echo webdst=$webdst  
+        echo webdir=$webdir  
+        echo webtgz=$webtgz  
+        shift
+        ;;
+    *)
+	break;
+        ;;
+    esac
+    shift
+done
+
+if [ $save_config -eq 1 ];then
+    echo webhost=$webhost  > config.autoscp
+    echo webusr=$webusr  >>config.autoscp
+    echo webdst=$webdst  >>config.autoscp
+    echo webdir=$webdir  >>config.autoscp
+    echo webtgz=$webtgz  >>config.autoscp
+fi
+
+nr_error=1
+if [ $# -lt 1 ];then
+    echo no input file found.
+    exit 0
+fi
+if [ -d $1 ];then
+    nr_error=0
+fi
+if [ -f $1 ];then
+    nr_error=0
+fi
+if [ $nr_error -ne 0 ];then
+    echo "$1" no file/folder found to cop to target system
+    exit 1
+fi
+echo ssh $webusr@$webhost
+echo tar czvf $webtgz $1
+echo scp $webtgz $webusr@$webhost:$webdir/
+
+tar czvf $webtgz $1
+scp $webtgz $webusr@$webhost:$webdir/
+
+if [ "$2" != "" ]; then
+    echo ssh $webusr@$webhost  "cd $webdir; $webdir/autounzip $webtgz $2"
+    ssh $webusr@$webhost  "cd $webdir; $webdir/autounzip $webtgz $2"
+else
+    echo ssh $webusr@$webhost  "cd $webdir; tar xzvf $webtgz"
+    ssh $webusr@$webhost  "cd $webdir; tar xzvf $webtgz"
+fi

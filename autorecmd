@@ -1,0 +1,119 @@
+#!/bin/bash
+
+export MISSION=`echo $0 | sed 's:.*/\(.*\):\1:'`
+export rlog=$HOME/rlog/rlog.$MISSION
+mkdir -p $HOME/rlog
+recho()
+{
+    #progress echo, for debug during run as the crontab task.
+    if [ ! -z "$rlog" ] ; then
+    echo -en `date +"%Y-%m-%d %H:%M:%S"` " " >>$rlog.log.txt
+    echo "$@" >>$rlog.log.txt
+    fi
+    echo "$@"
+}
+>$rlog.log.txt
+date
+recho "pid=$$ $0 $@" 
+tm_a=`date +%s`
+recho_time_consumed()
+{
+    tm_b=`date +%s`
+    tm_c=$(($tm_b-$tm_a))
+    tm_h=$(($tm_c/3600))
+    tm_m=$(($tm_c/60))
+    tm_m=$(($tm_m%60))
+    tm_s=$(($tm_c%60))
+    recho "$@" "$tm_c seconds / $tm_h:$tm_m:$tm_s consumed."
+}
+this_help()
+{
+    cat <<-EOF >&2
+
+  man page
+    usage: ./${0##*/} [ -cfg config file ] 
+    copyright, 2010. guo.xinhe. c2 microsystems.
+
+    example: ./${0##*/} -cfg /local/myconfig
+    $argc $argvs , $argva
+	EOF
+}
+
+rserver=atlas
+ruser=hguo
+rfolder=/home/$ruser/maintreetag
+recmd=recmd.sh
+ltar_list="autorecmd recmd-readme $recmd sdk_content recmd-update.sh recmd-branch.sh recmd-tag.sh recmd-rmcvslock.sh"
+ltar_name=$recmd.tar.gz
+ltmpfd=$$
+ltar=$ltmpfd/$ltar_name
+mkdir $ltmpfd
+
+upload_software(){
+    rm -f $ltar
+    recho "creating $ltar_name ..."
+    tar czvf $ltar $ltar_list
+    recho "scping $ltar_name $ruser@$rserver ..."
+    ssh $ruser@$rserver "mkdir -p $rfolder;cd $rfolder; rm -f $ltar_name"
+    scp $ltar $ruser@$rserver:/$rfolder
+    recho "ssh extracting $ltar_name ..."
+    ssh $ruser@$rserver "cd $rfolder; tar xzf $ltar_name; rm -f $ltar_name"
+    recho "ssh executeing $recmd $ruser@$rserver ..."
+}
+
+remote_execute(){
+    #or do not run via ssh, login server and crontab run it.
+    ssh $ruser@$rserver "killall $recmd; sleep 5" 
+    ssh $ruser@$rserver "cd $rfolder; ./$recmd" &
+    sleep 2
+}
+while [ $# -gt 0 ] ; do
+    case $1 in
+    -u) CONFIG_UPLOAD=1   ;  shift  ;;
+    -x) CONFIG_RECMD=1   ;  shift  ;;
+    -w) CONFIG_WAIT=1   ;  shift  ;;
+    *) 	recho "not support commandline option: $1";  exit 0;	shift;;
+    esac
+done
+
+if [ $CONFIG_UPLOAD  ]; then upload_software;  fi
+if [ $CONFIG_RECMD   ]; then remote_execute;   fi
+if [ -z $CONFIG_WAIT ]; then exit 0;           fi
+
+nr_wakeup=0
+old_tail=
+new_tail=
+tm_sametail=`date +%s`
+while true ; do
+    nr_wakeup=$(($nr_wakeup+1))
+    if [ $nr_wakeup -gt 60 ]; then
+        nr_wakeup=0
+    fi
+    if [ $nr_wakeup -eq 0 ]; then
+        ssh $ruser@$rserver "cd $rfolder;tail -4 recmd.all.log >recmd.all.tail"
+        scp $ruser@$rserver:$rfolder/recmd.all.tail $ltmpfd/ 
+        new_tail="`sed -n '$p' $ltmpfd/recmd.all.tail`"
+        if [ "done" == "$new_tail" ]; then
+          break
+        fi
+        if [ "$old_tail" != "$new_tail" ]; then
+           old_tail="$new_tail"
+           tm_sametail=`date +%s`
+        else
+           tm_b=`date +%s`
+           tm_c=$(($tm_b-$tm_sametail))
+           if [ $tm_c -gt 1800 ]; then
+               recho "CVS blocked tool long: $tm_c seconds used. On $new_tail"
+           else
+               recho "CVS blocked : $tm_c seconds used. On $new_tail"
+           fi
+        fi
+    fi
+    tm_b=`date +%s`
+    tm_c=$(($tm_b-$tm_a))
+    echo -en "\\033[10G" check at $tm_c  "  "
+    sleep 1
+done
+recho mission completely.
+recho_time_consumed
+

@@ -1,0 +1,68 @@
+#!/bin/sh
+THISCAL=$0
+THISCMD=`echo $0 | sed 's:.*/\(.*\):\1:'`
+THISCMDPATH=`echo $0 | sed 's:\(.*/\)\(.*\):\1:'`
+
+THISPATH=`pwd`
+THISDIR=`pwd | sed 's:.*/\(.*\):\1:'`
+THISUPPATH=`pwd | sed 's:\(.*/\)\(.*\):\1:'`
+
+THISTID=`date +%Y%m%d%H%M%S`
+THISMAC=`/sbin/ifconfig eth0 | grep 'HWaddr' | sed 's/.*HWaddr \(.*\)/\1/'`
+THISIP=`/sbin/ifconfig eth0 | grep 'inet addr' | sed 's/.*addr:\(.*\)\(  Bcast.*\)/\1/'`
+THISUSR=`whoami`
+THISHOST=`uname -n`
+THISKV=`uname -v`
+THISARGC=$#
+THISARGV=$@
+
+
+TAG=
+if [ $# -lt 2 ]; then
+
+    cat <<-EOF >&2
+
+    usage: ./${0##*/} [-t tag ] files/folders...
+
+    example: ./${0##*/} -t mytag file1 folder1
+
+	EOF
+    exit 1
+fi
+
+retag_file()
+{
+    if [ -f $2 ]; then
+        cvs update -CAP $2
+        cvs tag -F $1 $2
+        return 0
+    fi
+
+    if [ -d $2 ]; then
+        cvs update -CAPd $2
+        cvs tag -R -F $1 $2
+        return 0
+    fi
+
+    echo Error, can not find $2
+    return 1
+
+}
+
+while [ $# -gt 0 ]; do
+    case $1 in
+    -t)
+        TAG=$2
+        shift 2;;
+    *)
+        if [ "$TAG" = "" ]; then
+            echo Error, no tag to tag, use -t tag
+            exit 1
+        fi
+        retag_file $TAG $1
+	shift
+        ;;
+    esac
+done
+
+

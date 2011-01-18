@@ -1,0 +1,57 @@
+#!/bin/sh
+
+patchfile=latency.patch
+
+create_rindex()
+{
+    grep -n "^Index: linux" $patchfile >pindex 
+    #reverse the pindex  line by line
+    >rindex
+    lines=`sed -n '$=' pindex`
+    while [ "$lines"  != "" ]; do
+       sed -n '$p' pindex  >>rindex
+       sed -i '$d' pindex
+       #echo reverse line $lines
+       lines=`sed -n '$=' pindex`
+    done
+    sed -i 's/ //' rindex
+}
+
+create_rindex
+
+npline=`sed -n '$='  $patchfile`
+pindex=`cat rindex`
+for i in $pindex ; do
+    pline=`echo $i | sed 's/\([0-9]*\):.*/\1/'`
+    module=`echo $i | sed 's,.*linux-2.6.23.11-rt14/\(.*\),\1,'`
+
+    case $module in
+    arch/i386/* | \
+    arch/x86_64/* | \
+    arch/ppc/* | \
+    arch/powerpc/* | \
+    arch/arm/* | \
+    arch/sh/* | \
+    arch/sh64/* | \
+    arch/sparc/* | \
+    arch/ia64/* | \
+    include/asm-i386/* | \
+    include/asm-arm/* | \
+    include/asm-arm26/* | \
+    include/asm-frv/* | \
+    include/asm-parise/* | \
+    include/asm-v850/* | \
+    include/asm-cris/* | \
+    include/asm-sh/* | \
+    include/asm-ppc/* | \
+    include/asm-powerpc/* | \
+    include/asm-ia64/* | \
+    include/asm-x86_64/* )
+        echo delete patch $module from line $pline to $(($npline-1))
+        sed -i "$pline,$(($npline-1))d" $patchfile
+    ;;
+    esac
+    npline=$pline
+done
+
+

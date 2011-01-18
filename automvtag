@@ -1,0 +1,220 @@
+#!/bin/sh
+THISCAL=$0
+THISCMD=`echo $0 | sed 's:.*/\(.*\):\1:'`
+THISCMDPATH=`echo $0 | sed 's:\(.*/\)\(.*\):\1:'`
+
+THISPATH=`pwd`
+THISDIR=`pwd | sed 's:.*/\(.*\):\1:'`
+THISUPPATH=`pwd | sed 's:\(.*/\)\(.*\):\1:'`
+
+THISTID=`date +%Y%m%d%H%M%S`
+THISMAC=`/sbin/ifconfig eth0 | grep 'HWaddr' | sed 's/.*HWaddr \(.*\)/\1/'`
+THISIP=`/sbin/ifconfig eth0 | grep 'inet addr' | sed 's/.*addr:\(.*\)\(  Bcast.*\)/\1/'`
+THISUSR=`whoami`
+THISHOST=`uname -n`
+THISKV=`uname -v`
+THISARGC=$#
+THISARGV=$@
+
+
+RES_COL=40
+MOVE_TO_COL="echo -en \\033[${RES_COL}G"
+SETCOLOR_SUCCESS="echo -en \\033[1;32m"
+SETCOLOR_FAILURE="echo -en \\033[1;31m"
+SETCOLOR_WARNING="echo -en \\033[1;33m"
+SETCOLOR_NORMAL="echo -en \\033[0;39m"
+
+
+BRANCHTAG=jazz2-SDK-0_10-3L_Branch
+TAG=jazz2-SDK-0_10-3L-8
+cecho()
+{
+    case $1 in
+    red)   $SETCOLOR_FAILURE ;;
+    yellow)$SETCOLOR_WARNING ;;
+    green) $SETCOLOR_SUCCESS ;;
+    *)     $SETCOLOR_NORMAL  ;;
+    esac
+    
+    shift
+    echo -en "$@"
+    $SETCOLOR_NORMAL
+}
+this_help()
+{
+    cat <<-EOF >&2
+
+    usage: ./${0##*/} [ -t tag ] [ -l task list file ] [ files/folders... ]
+
+    example: ./${0##*/} -t mytag file1 folder1
+
+	EOF
+}
+
+movetag_file()
+{
+    if [ ! -d CVS ]; then
+        echo Error, no CVS folder found
+        return 1
+    fi
+
+    curtag=
+    if [ -f CVS/Tag ]; then
+        curtag=`cat CVS/Tag`
+    fi
+
+    if [ "$curtag" = "T$1" ]; then
+        $SETCOLOR_SUCCESS
+        echo Move tag on branch "[ $BRANCHTAG ]"
+        $SETCOLOR_NORMAL
+    fi
+    if [ "$curtag" = "N$1" ]; then
+        $SETCOLOR_SUCCESS
+        echo Move tag on node "[ $1 ]"
+        $SETCOLOR_NORMAL
+    fi
+    
+    if [ -f $2 ]; then
+        cvs update -r $BRANCHTAG -CPd $2
+        cvs tag -F $1 $2
+        return 0
+    fi
+
+    if [ -d $2 ]; then
+        cvs update -r $BRANCHTAG -CPd $2
+        cvs tag -R -F $1 $2
+        return 0
+    fi
+
+    echo Error, can not find $2
+    return 1
+
+}
+movetag_folder_file()
+{
+    #$1 TAG, $2 folder, $3 file/folder to tag
+    pushd $2
+    movetag_file $1 $3
+    popd 
+}
+env_check()
+{
+    [ "$env_checked" = "1" ] && return 0
+
+    if [ "$TAG" = "" ]; then
+        echo Error, no tag to tag, use -t tag
+        this_help
+        exit 1
+    fi
+
+    echo -en "move tag for branch "
+    $SETCOLOR_SUCCESS
+    echo -en "[ $BRANCHTAG ]"
+
+    $SETCOLOR_NORMAL
+    echo -en " tag "
+    #$MOVE_TO_COL
+    $SETCOLOR_FAILURE
+    echo -en "[ $TAG ]"
+    $SETCOLOR_NORMAL
+    echo 
+    env_checked=1
+}
+while [ $# -gt 0 ]; do
+    case $1 in
+    -t)
+        TAG=$2
+        shift 2;;
+    -l)
+        tasklist=$2;
+        shift 2;;
+    *)
+        env_check
+        movetag_file $TAG $1
+	shift
+        ;;
+    esac
+done
+
+env_check
+if [ ! -z "$tasklist" ]; then
+    if [ ! -f "$tasklist" ]; then
+        echo "Error: Can not find file $tasklist"
+	exit 0
+    fi
+    #read lines from it.
+    fpn=`cat $tasklist`
+    for i in $fpn; do
+        tfile=`echo $i | sed 's:.*/\(.*\):\1:'`
+        tpath=`echo $i | sed 's:\(.*/\)\(.*\):\1:'  | sed 's:\(.*\)/:\1:'`
+        [ "$tfile" = "$i" ] && tpath="."
+        movetag_folder_file $TAG $tpath $tfile
+    done
+fi
+movetag_tasks(){
+    movetag_folder_file $TAG videochat/ui videophonemain.cpp
+    movetag_folder_file $TAG bestv bestv.xml
+    movetag_folder_file $TAG browser browser.xml
+    movetag_folder_file $TAG camera camera.xml
+    movetag_folder_file $TAG capture capture.xml
+    movetag_folder_file $TAG discs discs.xml
+    movetag_folder_file $TAG flash flash.xml
+    movetag_folder_file $TAG jvm jvm.xml
+    movetag_folder_file $TAG karaoke karaoke.xml
+    movetag_folder_file $TAG pps pps.xml
+    movetag_folder_file $TAG qitian_game game.xml
+    movetag_folder_file $TAG rss rss.xml
+    movetag_folder_file $TAG sohu sohu.xml
+    movetag_folder_file $TAG thunderkk thunderkk.xml
+    movetag_folder_file $TAG videochat/ui videochat.xml
+    movetag_folder_file $TAG videoconference videoconference.xml
+    movetag_folder_file $TAG rss rssMain.cpp
+}
+movetag_task2(){
+    #cd  projects/sw/c2apps/pvr/filemanager/apps
+    movetag_folder_file $TAG bestv/ui BestvViewer.cpp
+    movetag_folder_file $TAG bestv/libVodBestvPlugin PPStream.cpp
+    movetag_folder_file $TAG pps/libVodPPStreamPlugin PPStream.cpp
+
+    movetag_folder_file $TAG tools/updateProcess  16mUpdate.cpp 
+    movetag_folder_file $TAG tools/updateProcess  16mUpdate.h   
+    movetag_folder_file $TAG tools/updateProcess  c2OsdApi.cpp  
+    movetag_folder_file $TAG tools/updateProcess  c2OsdApi.h    
+    movetag_folder_file $TAG tools/updateProcess  c2Update.cpp  
+    movetag_folder_file $TAG tools/updateProcess  c2Update.h    
+    movetag_folder_file $TAG tools/updateProcess  mtd-abi.h     
+    movetag_folder_file $TAG tools/updateProcess  mtd-user.h    
+
+    #cd sw_c2apps
+    movetag_folder_file $TAG tools/updateProcess c2Update.cpp
+    movetag_folder_file $TAG tools/updateProcess c2Update.h
+    movetag_folder_file $TAG pvr/misc run.sh.c2box
+}
+movetag_task3(){
+
+    pushd sw_media/media
+    movetag_folder_file $TAG core/avi/demux/src              MediaAviDemuxCore.cpp
+    movetag_folder_file $TAG core/frameRenderer/jazz2/src	C2FrameRenderJazz2Core.cpp
+    movetag_folder_file $TAG core/h264/dec/mpu/tango/src	H264HeaderParser.cpp
+    movetag_folder_file $TAG core/include/core		C2FrameRendererJazz2Core.h
+    movetag_folder_file $TAG core/include/core		MediaAviDemuxCore.h
+    movetag_folder_file $TAG core/include/core		MkvDemuxCore.h
+    movetag_folder_file $TAG core/jpeg/dec/src		jdene.cpp
+    movetag_folder_file $TAG core/mkv/demux/src		MkvDemuxCore.cpp
+    movetag_folder_file $TAG core/mpg/demux/src		MpgDemuxCore.cpp
+    movetag_folder_file $TAG core/tiff			tiff.cpp
+    movetag_folder_file $TAG filter/media			MediaFrameRendererJazzB.cpp
+    movetag_folder_file $TAG filter/media			MediaPcmMixer.cpp
+    movetag_folder_file $TAG filter/mkv/src			MkvDemuxFilt.cpp
+    movetag_folder_file $TAG filter/vidpostproc/src/jazz2	vidPostProcFiltJazz2.cpp
+    movetag_folder_file $TAG filter/voip/src			VoIPReaderThread.cpp
+    movetag_folder_file $TAG plugins/3rdParty/QualVideo	QVDemuxFilt.cpp
+    movetag_folder_file $TAG plugins/3rdParty/QualVideo	QVDemuxFilt.h
+    popd
+
+    pushd sw/kernel/linux-2.6
+    movetag_folder_file $TAG sound/soc/c2 jazz2-i2s.c
+    movetag_folder_file $TAG sound/soc/c2 jazz2-pcm.c
+    movetag_folder_file $TAG sound/soc/c2 jazz2-spdif.c
+    popd
+}

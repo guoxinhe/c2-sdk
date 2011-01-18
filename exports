@@ -1,0 +1,2 @@
+/video                      *(ro,sync)
+/public                     *(rw,sync)

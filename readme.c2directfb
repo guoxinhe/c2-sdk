@@ -1,0 +1,82 @@
+DirectFB-1.4.5 is the upgrade version of DirectFB-1.2.6 in C2's system, here is the relationship within DirectFB-1.4.5:
+
+DirectFB-1.4.5 build relative issues in step:
+1)  C2's source code maintain
+    cvs: projects/sw/directfb/DirectFB-1.4.5     
+    maintained by Landau, system team(Jack's team) BJ.
+
+2)  SDK package:
+    cvs: projects/sw/sdk/Makefile's target devtools-src:    
+    a key part of c2 'SDK' key Makefile:
+    this will create tar 1) to devtools/tarballs/DirectFB-1.4.5.tar.bz2
+    note: cvs: projects/sw/devtools/3rdParty/  has no any package of DirectFB
+
+3)  Build:
+    cvs: projects/sw/devtools/buildroot/package/directfb/directfb.mk  
+    the build method is updated from DirectFB-1.2.6 to DirectFB-1.4.5
+    This will build a really directfb module from the DirectFB-1.4.5.tar.bz2 created from 2)   
+    This script is tested before commit, and it will not download(wget) a really version from website.
+    Instead, it will extract the DirectFB-1.4.5.tar.bz2 pre-created by 'devtools-src:' of SDK's Makefile
+
+    When build DirectFB is a part of the devtools, or of its buildroot
+
+    Build option is given by Landau, the maintainer of this module.
+
+4)  Install:
+    DirectFB-1.4.5 is installed to devtools's install folder.
+    This is controlled by build script in build step:
+    cvs: projects/sw/devtools/buildroot/package/directfb/directfb.mk
+
+    Install option is given by Landau, the maintainer of this module.
+    Install result is checked and confirmed by Landau.
+
+5)  Download a new DirectFB-1.4.5 from directfb official website:
+    The old link of download DirectFB-1.4.5 is:
+    http://www.directfb.org/downloads/Core/DirectFB-1.4.5.tar.bz2
+
+    The new link of download DirectFB-1.4.5 is:
+    http://www.directfb.org/downloads/Core/DirectFB-1.4/DirectFB-1.4.5.tar.gz
+
+    The projects/sw/devtools/buildroot/package/directfb/directfb.mk still keeps' an old link
+    This link is tested before code commit but now does not work.
+
+6)  Why DirectFB-1.4.5.tar.bz2 is used.
+    This is because
+    a) DirectFB-1.2.6.tar.bz2 is used this way
+    b) That days' link is http://www.directfb.org/downloads/Core/DirectFB-1.4.5.tar.bz2
+
+7)  Why we can not find pacthes for DirectFB-1.4.5 in buildroot/package/directfb/
+    This is because some of the engineers in BJ using cvs+commit method to maintain code.
+    This part engineers does not using GNU release + package method.
+
+    Landau direct commit his modifications to cvs: projects/sw/directfb/DirectFB-1.4.5
+
+
+More info for 2)  SDK package:
+cvs: projects/sw/sdk/Makefile
+2 defines of DirectFB source code:
+CVS_SRC_DIRECTFB        := projects/sw/directfb/DirectFB-1.4.5
+DIRECTFB_FILE           := $(TEMP_DIR)/devtools/tarballs/DirectFB-1.4.5.tar.bz2
+
+devtools-src:
+	other jobs.....
+
+        @#checkout directfb
+        @echo Checkout $(CVS_SRC_DIRECTFB)
+        @cd $(SOURCE_DIR) && $(CHECKOUT)  $(CVS_SRC_DIRECTFB)
+        @cd $(SOURCE_DIR)/projects/sw/directfb; \
+            tar jcf $(DIRECTFB_FILE) \
+                --exclude=CVS      \
+                --exclude=CVSROOT  \
+                DirectFB-1.4.5
+
+	other jobs.....
+        @cd $(TEMP_DIR) ; tar cvfz $(PKG_NAME_SRC_DEVTOOLS) \
+                --exclude=CVS     \
+                --exclude=CVSROOT \
+                ./devtools/tarballs ./devtools/buildtools.sh ./devtools/autobuild \
+                ./devtools/uclibc.mk ./devtools/e2fsprogs.mk ./devtools/binutils.mk \
+                ./devtools/libpng.mk ./devtools/Config.in ./devtools/binutils.mk.64 \
+                ./devtools/gcc-uclibc-3.x.mk ./devtools/gcc-uclibc-3.x.mk.64 ./devtools/alsa
+
+

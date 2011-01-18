@@ -1,0 +1,5 @@
+#!/bin/bash
+
+scp $@ hguo@10.16.8.4:/home/hguo/sdk/
+
+

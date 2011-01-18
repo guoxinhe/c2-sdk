@@ -1,0 +1,11 @@
+#!/bin/sh
+
+usr=`whoami`
+if [ $# -lt 1 ]; then
+    scp * storage:/home/$usr/sdk/  &
+    scp * saturn:/home/$usr/sdk/  &
+else
+    scp $@ storage:/home/$usr/sdk/  &
+    scp $@ saturn:/home/$usr/sdk/  &
+fi
+

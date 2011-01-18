@@ -1,0 +1,15 @@
+#!/bin/sh
+
+TMPF=/tmp/tmpvi$$
+LOGF=$HOME/sdk/worklog
+vi $TMPF
+cp $LOGF $TMPF.tail
+
+echo `date +"%Y-%m-%d %H:%M:%S"`  >$LOGF
+cat $TMPF >>$LOGF
+echo ""  >>$LOGF
+cat $TMPF.tail >>$LOGF
+
+rm -f $TMPF $TMPF.tail
+
+

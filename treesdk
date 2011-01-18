@@ -1,0 +1,37 @@
+#!/bin/sh
+
+if [ "$THISIP" = "10.16.13.200" ]; then
+    psdk=/sdk
+else
+    psdk=`cat /etc/mtab | grep 10.16.13.200:/sdk | sed 's:.*sdk \(.*\)\( nfs.*\):\1:'`
+fi
+tmp=tmptree
+psdkoff=$psdk/jazz2/rel/official/c2-jazz2-sdk-0.10-2L
+curcd=`pwd`
+treef=`tree -if $psdkoff  | sed -e 's/ ->.*//g' -e "s:$psdkoff/::g"`
+for i in $treef ; do
+    echo $i
+done
+for i in $treef ; do
+    echo $i
+    continue;
+    case $i in
+    *.tar.gz)
+        cd $curcd
+        mkdir -p $tmp
+	rm -rf $tmp/*
+        tar xzf $psdkoff/$i -C $tmp
+	cd $tmp
+        flist=`ls`
+        if [ "$flist" = "prebuilt" ]; then cd $flist; fi
+        if [ "$flist" = "sw" ]; then cd $flist; fi
+        tree -L 3 | sed -e "s/\(.* directorie.*, .* file.*\)//g"
+        cd $curcd
+        ;;
+    *)
+	;;
+    esac
+done
+
+#echo sed -i -e "s/\(.* directorie.*, .* file.*\)//g"     #delete lines like 3 directories, 4 files
+#echo sed -i -e '/^\.$/d'                                 #delete lines only has a .

@@ -1,0 +1,45 @@
+#!/bin/sh                                              
+#----nfs mount entry                           
+ldir=/c2-media/s96video                                        
+sdir=10.16.13.96:/video                                        
+rose=$ldir/qabin                                 
+mkdir -p $ldir                                
+if [ ! -e $rose ]; then                       
+    mount -t nfs -o nolock $sdir $ldir       
+    echo nfs $sdir to $ldir mounted.         
+else                                           
+    echo nfs $sdir to $ldir already mounted. 
+fi                                             
+#----nfs mount entry                           
+ldir=/c2-media/s96public                                        
+sdir=10.16.13.96:/public                                        
+rose=$ldir/qalog                                 
+mkdir -p $ldir                                
+if [ ! -e $rose ]; then                       
+    mount -t nfs -o nolock $sdir $ldir       
+    echo nfs $sdir to $ldir mounted.         
+else                                           
+    echo nfs $sdir to $ldir already mounted. 
+fi                                             
+#----nfs mount entry                           
+ldir=/c2-media/s200video                                        
+sdir=10.16.13.200:/video                                        
+rose=$ldir/customers                                 
+mkdir -p $ldir                                
+if [ ! -e $rose ]; then                       
+    mount -t nfs -o nolock $sdir $ldir       
+    echo nfs $sdir to $ldir mounted.         
+else                                           
+    echo nfs $sdir to $ldir already mounted. 
+fi                                             
+#----nfs mount entry                           
+ldir=/c2-media/s200custom                                        
+sdir=10.16.13.200:/video/customers                                        
+rose=$ldir/QA_Streams                                 
+mkdir -p $ldir                                
+if [ ! -e $rose ]; then                       
+    mount -t nfs -o nolock $sdir $ldir       
+    echo nfs $sdir to $ldir mounted.         
+else                                           
+    echo nfs $sdir to $ldir already mounted. 
+fi                                             

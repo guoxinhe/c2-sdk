@@ -1,0 +1,24 @@
+#!/bin/sh
+
+
+if [ $# -lt 2 ]; then
+    echo help of c folder diff
+    echo cdiff path1 path2 [sub folder shared by path1 path2]
+    exit 0
+fi
+
+src1=$1
+src2=$2
+if [ "$3" != "" ]; then
+    src1=$1/$3
+    src2=$2/$3
+fi
+
+diff -rup  -b -B --ignore-all-space --ignore-blank-lines --ignore-space-change \
+	--exclude=*.order --exclude=*.cmd --exclude=*.ko  --exclude=*.o --exclude=*.d \
+	--exclude=*.lds --exclude=vmlinux*  \
+	--exclude=*.tgz --exclude=*.gz --exclude=*.bz2 --exclude=*.cpio  \
+	--exclude=Kconfig* --exclude=Makefile* --exclude=config* \
+	--exclude=CVS \
+	$src1 $src2
+# drivers/ /home/hguo/sdk/build/kernel/linux-2.6.29-cvs/drivers/

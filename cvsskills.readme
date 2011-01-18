@@ -1,0 +1,36 @@
+
+example to get all the modification  history list of a file:
+    cvs -q rlog -N sw_c2apps/pvr/misc/run.sh.c2box 
+
+Get who is the last revision commiter:
+    cvs -q rlog -N sw_c2apps/pvr/misc/run.sh.c2box  >rlog
+    grep  "^date: " rlog | sort
+
+Get who is the last revision commiter in certain date:
+        cvs -q rlog -N -d"2010-12-01 12:00:00<2010-12-01 12:00:00"  sw/kernel/linux-2.6.29/patches | grep "date: " |sort
+        date: 2010/11/09 05:54:57;  author: swine;  state: Exp;
+        date: 2010/11/09 05:54:57;  author: swine;  state: Exp;  lines: +1 -0
+        date: 2010/11/09 05:54:57;  author: swine;  state: Exp;  lines: +1 -0
+        date: 2010/11/11 02:43:30;  author: swine;  state: Exp;
+        date: 2010/11/11 02:43:30;  author: swine;  state: Exp;  lines: +1 -0
+        date: 2010/11/11 02:43:30;  author: swine;  state: Exp;  lines: +1 -0
+        date: 2010/11/11 06:44:50;  author: robinlee;  state: Exp;  lines: +163 -123
+     man rlog -ddates
+           Print information about revisions with a checkin date/time in the ranges given by the semicolon-separated list of dates.  A range
+           of the form d1<d2 or d2>d1 selects the revisions that were deposited between d1 and d2 exclusive.  A range of the form <d  or  d>
+           selects  all revisions earlier than d.  A range of the form d< or >d selects all revisions dated later than d.  If < or > is fol-
+           lowed by = then the ranges are inclusive, not exclusive.  A range of the form d selects the single, latest revision  dated  d  or
+           earlier.   The  date/time  strings d, d1, and d2 are in the free format explained in co(1).  Quoting is normally necessary, espe-
+           cially for < and >.  Note that the separator is a semicolon.
+    note: should use -d"date range expression"
+
+
+
+example to compare code by date time in cvs, output to patch format:
+    example cd to kernel/linux-2.6 that contains the work directory of cvs:
+    cvs -q  diff -cuRNH --ignore-all-space --ignore-blank-lines --ignore-space-change \
+        -D "2010-12-01 12:00:00" -D "2010-12-07 12:00:00"  \
+        include/asm-c2 2>/dev/null >>cvs.patch
+
+cvs -q  diff -cuRNH --ignore-all-space --ignore-blank-lines --ignore-space-change -D "2010-12-01 12:00:00" -D "2010-12-14 12:00:00"  
+        include/asm-c2 2>/dev/null >>cvs.patch

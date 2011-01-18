@@ -1,0 +1,181 @@
+#!/bin/sh
+THISCAL=$0
+THISCMD=`echo $0 | sed 's:.*/\(.*\):\1:'`
+THISDIR=`pwd`
+THISUSR=`whoami`
+THISTID=`date +%Y%m%d%H%M%S`
+
+src_file=dumpzero.bin
+dst_file=dumpzero.bin
+bs_count=200
+timestamp="date +%Y%m%d%H%M%S"
+size_mb=
+func_help(){
+    echo $THISCMD : Dump in a file and dump out, calculate the time used, IO speed in mb/s.
+    echo Usage: $THISCMD \<number of MB\>   "# 1000 for dump 1000 blocks(1000 MB) (block size is 1M bytes)."
+    echo In SD: $THISCMD 500  
+    echo In HDD: $THISCMD 1000
+    echo Make sure the test time reported is at least 5 seconds for a good measure result.
+    echo $THISCMD [--checkin] [--checkout] [--submit] [--update] [--install] [--uninstall]
+    echo Version 0.1.1
+    echo Copyright 2010, C2QA, all rights reservered.
+    exit 0
+}
+
+sizeof_filemb(){
+    sizeof_file=`stat -c %s $1`
+    size_mbf=$(($sizeof_file*1000/1048576))
+    len=${#size_mbf}
+    lenf=$(($len-3))
+#   size_mb=$(($size_mbf/1000)).$(($size_mbf%1000))
+   size_mb=${size_mbf:0:$lenf}.${size_mbf:$lenf:$len}
+}
+
+dd_zeroof(){
+    #$1 = 512 block count
+    #$2 = output file name
+    if [ "$2" != "." ] ; then
+        rm -rf $2
+    fi
+    #echo "    " >>mbpscp.log
+    #echo `$timestamp` >>mbpscp.log
+    #echo dd if=/dev/zero of=$2 bs=1048576 count=$1 conv=fsync >>mbpscp.log
+    echo dd if=/dev/zero of=$2 bs=1048576 count=$1 conv=fsync
+    tm_a=`date +%s`
+        dd if=/dev/zero of=$2 bs=1048576 count=$1 conv=fsync
+    tm_b=`date +%s`
+    
+    tm_c=$(($tm_b-$tm_a))
+    sizeof_file=`stat -c %s $2`
+    tm_div=$tm_c
+    if [ "$tm_div" = "0" ]; then 
+        tm_div=1
+    fi
+    #cp_mbps=$(($sizeof_file/$tm_div/1048576))
+    cp_mbpsf=$(($sizeof_file*1000/$tm_div/1048576))
+    #cp_mbps=$(($cp_mbpsf/1000)).$(($cp_mbpsf%1000))
+    len=${#cp_mbpsf}
+    lenf=$(($len-3))
+    cp_mbps=${cp_mbpsf:0:$lenf}.${cp_mbpsf:$lenf:$len}
+
+    sizeof_filemb $2
+    echo $size_mb MB written,  $tm_c seconds consumed, Write speed is $cp_mbps mb/s \(megabytes/second\).
+
+    #echo $size_mb MB copied,  $tm_c seconds consumed, speed is $cp_mbps mb/s \(megabytes/second\). >>mbpscp.log
+    #echo "    " >>mbpscp.log
+}
+dd_ifnull(){
+    #$1 = 512 block count
+    #$2 = input file name
+    #echo "    " >>mbpscp.log
+    #echo `$timestamp` >>mbpscp.log
+    #echo dd if=$2 of=/dev/null bs=1048576 count=$1 >>mbpscp.log
+    echo dd if=$2 of=/dev/null bs=1048576 count=$1 
+    tm_a=`date +%s`
+        dd if=$2 of=/dev/null bs=1048576 count=$1 
+    tm_b=`date +%s`
+    
+    tm_c=$(($tm_b-$tm_a))
+    sizeof_file=`stat -c %s $2`
+    tm_div=$tm_c
+    if [ "$tm_div" = "0" ]; then 
+        tm_div=1
+    fi
+    #cp_mbps=$(($sizeof_file/$tm_div/1048576))
+    cp_mbpsf=$(($sizeof_file*1000/$tm_div/1048576))
+    #cp_mbps=$(($cp_mbpsf/1000)).$(($cp_mbpsf%1000))
+    len=${#cp_mbpsf}
+    lenf=$(($len-3))
+    cp_mbps=${cp_mbpsf:0:$lenf}.${cp_mbpsf:$lenf:$len}
+
+    sizeof_filemb $2
+    echo $size_mb MB read,  $tm_c seconds consumed, Read speed is $cp_mbps mb/s \(megabytes/second\).
+
+    #echo $size_mb MB copied,  $tm_c seconds consumed, speed is $cp_mbps mb/s \(megabytes/second\). >>mbpscp.log
+    echo "    " >>mbpscp.log
+}
+func_checkin(){
+    local ret
+    for x in `diff -N /usr/bin/$THISCMD ./$THISCMD` ; do ret=$x; done
+    if [ "$ret" = "" ]; then
+        echo Checkin : Up to date.
+    else
+        echo Checkin : Differ
+    fi
+    exit 0
+}
+func_checkout(){
+    local ret
+    for x in `diff -N /usr/bin/$THISCMD ./$THISCMD` ; do ret=$x; done
+    if [ "$ret" = "" ]; then
+        echo Checkout : Up to date.
+    else
+        echo Checkout : Differ
+    fi
+    exit 0
+}
+func_submit(){
+    cp -u $THISCMD  /usr/bin/$THISCMD
+    exit 0
+}
+func_update(){
+    cp -u /usr/bin/$THISCMD  $THISCMD
+    exit 0
+}
+func_install(){
+    cp -f $THISCMD  /usr/bin/$THISCMD
+    cp -f $THISCMD  /video/qabin/$THISCMD
+    exit 0
+}
+func_uninstall(){
+    rm -f /usr/bin/$THISCMD
+    rm -f /video/qabin/$THISCMD
+    exit 0
+}
+while [ "$1" != "" ]; do
+    case $1 in
+    word1|word2|wordn)
+        echo func_dosomething
+        ;;
+    -a|-b|-c|-d|-e|-f|-g)
+        shift
+        cfg_something=$1
+        echo func_dosomething
+        ;;
+    help|-help|--help|h|-h|--h)
+        func_help        
+        exit 0
+        ;;
+    --checkin) #upgrade to system check only
+        func_checkin
+        ;;
+    --checkout) #upgrade to local check only
+        func_checkout
+        ;;
+    --submit) #upgrade to system if newer
+        func_submit
+        ;;
+    --update) #upgrade to local if newer
+        func_update
+        ;;
+    --install) #force a new install
+        func_install
+        ;;
+    --uninstall) #force a new uninstall
+        func_uninstall
+        ;;
+    *)
+        bs_count=$1
+        ;;
+    esac
+    shift
+done
+#todo: put the actions here
+
+if [ "$bs_count" = "" ]; then
+    bs_count=200
+fi
+
+dd_zeroof $bs_count $dst_file
+dd_ifnull $bs_count $src_file
+

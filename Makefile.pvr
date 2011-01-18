@@ -1,0 +1,1008 @@
+
+# Copyright (C) 2007 C2 Microsystems
+#
+# File: Makefile
+#
+#
+# Top-level makefile for building the C2 SDK package release.
+#
+
+SDK_KERNEL_VERSION	?= 2.6.23
+SDK_TARGET_ARCH		?= jazz2
+SDK_TARGET_GCC_ARCH	?= TANGO
+
+MAJOR                   := 0
+MINOR                   := 10
+VERSION			:= $(MAJOR).$(MINOR)
+BRANCH                  := 1L
+CANDIDATE		:= $(BRANCH)-10
+CVS_TAG			:= $(SDK_TARGET_ARCH)-SDK-$(MAJOR)_$(MINOR)-$(CANDIDATE)
+BUILDTIMES              := 1
+PRODUCT			:= $(SDK_TARGET_ARCH)-sdk
+SDK_VERSION_ALL		:= $(PRODUCT)-$(VERSION)-$(CANDIDATE)
+
+TOP_DIR			:= $(shell /bin/pwd)
+PKG_DIR			:= $(TOP_DIR)/$(SDK_VERSION_ALL)
+TEST_ROOT_DIR		:= $(TOP_DIR)/test_root
+SOURCE_DIR		:= /build/jazz2/dev/daily/sdk/source
+TEMP_DIR		:= $(TOP_DIR)/temp
+TODAY                   := $(shell date +%y%m%d)
+
+ifeq ($(shell uname -p), x86_64)
+GCC4_PATH		:= /c2/local/gcc4-x86_64/bin
+else
+GCC4_PATH		:= /c2/local/gcc4/bin
+endif
+
+ifneq ($(SDK_KERNEL_VERSION),2.6.23)
+LINUXDIR		:= linux-2.6.14
+else
+LINUXDIR                := linux-2.6
+endif
+
+ifneq ($(SDK_TARGET_ARCH),jazz2)
+LINUX_CONFIG:=c2_jazz1b_defconfig
+else
+LINUX_CONFIG:=c2_jazz2_smp_defconfig
+endif
+
+TOOLCHAIN_PATH		:= $(TEST_ROOT_DIR)/c2/daily/bin
+#QT_INSTALL_DIR		:= /c2/local/Trolltech/QtopiaCore-4.4.0-generic
+QT_INSTALL_DIR          := $(TEST_ROOT_DIR)/QtopiaCore-4.6.1-generic
+INSTALL_DIR		:= /local/$(shell whoami)/sdk-install/$(SDK_VERSION_ALL)
+PUBLISH_DIR		:= $(TOP_DIR)/publish/$(SDK_VERSION_ALL)
+
+# Allow the checkout option to be changed via an environment variable
+# using make -e, needed for automation, default is the CVS_TAG revision
+# Also allow an alternative option to be specified.
+# If CVS_TAG="", it will checkout the lastest files from top tree.
+ifneq ($(CVS_TAG),)
+CHECKOUT_OPTION         := -r $(CVS_TAG)
+endif
+CHECKOUT                := cvs -q co -AP $(CHECKOUT_OPTION)
+UPDATE                  := cvs -q update -CAPd $(CHECKOUT_OPTION)
+
+CVS_SRC_SDK             := projects/sw/sdk
+
+# SDK documentation
+PKG_NAME_DOCS_BASIC	:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-docs-basic.tar.gz
+PKG_NAME_DOCS_PREMIUM	:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-docs-premium.tar.gz
+
+# KERNEL package
+CVS_SRC_KERNEL		:= sw/kernel
+PKG_NAME_SRC_KERNEL	:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-kernel-src.tar.gz
+PKG_NAME_BIN_KERNEL	:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-kernel-bin.tar.gz
+PKG_NAME_BIN_KERNEL_NAND:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-kernel-nand-bin.tar.gz
+PKG_NAME_SRC_KERNEL_JAZZ2L:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-kernel-2.6.jazz2l-src.tar.gz	
+PKG_NAME_BIN_KERNEL_JAZZ2L:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-kernel-2.6.jazz2l-bin.tar.gz
+PKG_NAME_SRC_KERNEL_2632:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-kernel-2.6.32-src.tar.gz	
+PKG_NAME_BIN_KERNEL_2632:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-kernel-2.6.32-bin.tar.gz
+LINUXDIR_2632		:= linux-2.6.32
+
+# HDMI driver package WARNING proprietary source under NDA
+CVS_SRC_HDMI	:= projects/sw/bsp/hdmi
+CVS_SRC_HDMI_JAZZ2	:= projects/sw/bsp/hdmi/jazz2hdmi
+PKG_NAME_SRC_HDMI_AD9889  := $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-hdmi-ad9889-src.tar.gz
+PKG_NAME_SRC_HDMI_ANX9030 := $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-hdmi-anx9030-src.tar.gz
+PKG_NAME_SRC_HDMI_FUJITSU := $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-hdmi-src.tar.gz
+PKG_NAME_SRC_HDMI_JAZZ2   := $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-hdmi-src.tar.gz
+PKG_NAME_BIN_HDMI_AD9889  := $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-hdmi-ad9889-bin.tar.gz
+PKG_NAME_BIN_HDMI_ANX9030 := $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-hdmi-anx9030-bin.tar.gz
+PKG_NAME_BIN_HDMI_FUJITSU := $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-hdmi-bin.tar.gz
+PKG_NAME_BIN_HDMI_JAZZ2   := $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-hdmi-bin.tar.gz
+
+# SW_MEDIA package
+CVS_SRC_SW_MEDIA	:= sw_media
+PKG_NAME_SRC_SW_MEDIA	:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-sw_media-src.tar.gz
+PKG_NAME_BIN_SW_MEDIA	:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-sw_media-bin.tar.gz
+PKG_NAME_DOC_SW_MEDIA	:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-sw_media-doc.tar.gz
+CVS_SRC_WMDRM10		:= projects/sw/libwmdrm10
+PKG_NAME_BIN_WMDRM10	:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-wmdrm10-bin.tar.gz
+
+# VIVANTE package
+CVS_SRC_VIVANTE		:= projects/sw/bsp/vivante/VIVANTE_GAL2D_Unified
+PKG_NAME_SRC_VIVANTE	:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-gfx_2d-src.tar.gz
+PKG_NAME_BIN_VIVANTE	:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-gfx_2d-bin.tar.gz
+
+# SW_C2APPS package
+CVS_SRC_SW_C2APPS       := sw_c2apps
+PKG_NAME_SRC_SW_C2APPS  := $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-sw_c2apps-src.tar.gz
+PKG_NAME_SRC_P2P        := $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-p2p-src.tar.gz
+PKG_NAME_BIN_WEBKIT	:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-qtwebkit-bin.tar.gz
+PKG_NAME_SRC_C2BOX	:= $(PKG_DIR)/c2box/c2-$(SDK_VERSION_ALL)-c2box-src.tar.gz
+PKG_NAME_SRC_C2BOX_ALL	:= $(PKG_DIR)/c2box/c2-$(SDK_VERSION_ALL)-c2box-src-all.tar.gz
+PKG_NAME_SRC_MINIBD	:= $(PKG_DIR)/c2box/c2-$(SDK_VERSION_ALL)-minibd-src.tar.gz
+PKG_NAME_SRC_FLASH	:= $(PKG_DIR)/c2box/c2-$(SDK_VERSION_ALL)-flash-src.tar.gz
+PKG_NAME_SRC_KARAOKE	:= $(PKG_DIR)/c2box/c2-$(SDK_VERSION_ALL)-karaoke-src.tar.gz
+PKG_NAME_SRC_VIDEOCHAT	:= $(PKG_DIR)/c2box/c2-$(SDK_VERSION_ALL)-videochat-src.tar.gz
+PKG_NAME_SRC_THUNDERKK	:= $(PKG_DIR)/c2box/c2-$(SDK_VERSION_ALL)-thunderkk-src.tar.gz
+PKG_NAME_SRC_MVPHONE	:= $(PKG_DIR)/c2box/c2-$(SDK_VERSION_ALL)-mvphone-src.tar.gz
+PKG_NAME_SRC_BROWSER	:= $(PKG_DIR)/c2box/c2-$(SDK_VERSION_ALL)-browser-src.tar.gz
+PKG_NAME_SRC_IPCAM	:= $(PKG_DIR)/c2box/c2-$(SDK_VERSION_ALL)-ipcam-src.tar.gz
+PKG_NAME_SRC_JVM	:= $(PKG_DIR)/c2box/c2-$(SDK_VERSION_ALL)-jvm-src.tar.gz
+PKG_NAME_SRC_SOHU	:= $(PKG_DIR)/c2box/c2-$(SDK_VERSION_ALL)-sohu-src.tar.gz
+PKG_NAME_SRC_RECOEDING	:= $(PKG_DIR)/c2box/c2-$(SDK_VERSION_ALL)-recording-src.tar.gz
+
+# Demo package
+PKG_NAME_BIN_DEMO	:= $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-demo-bin.tar.gz
+PKG_NAME_BIN_DEMO_P2P   := $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-demo-bin-p2p.tar.gz
+PKG_NAME_C2BOX_DEMO	:= $(PKG_DIR)/c2box/c2-$(SDK_VERSION_ALL)-c2box-bin.tar.gz
+PKG_NAME_BIN_PPS	:= $(PKG_DIR)/c2box/c2-$(SDK_VERSION_ALL)-pps-bin.tar.gz
+PKG_NAME_BIN_BESTV	:= $(PKG_DIR)/c2box/c2-$(SDK_VERSION_ALL)-bestv-bin.tar.gz
+PKG_NAME_BIN_THUNDERKK	:= $(PKG_DIR)/c2box/c2-$(SDK_VERSION_ALL)-thunderkk-bin.tar.gz
+PKG_NAME_BIN_VIDEOPHONE	:= $(PKG_DIR)/c2box/c2-$(SDK_VERSION_ALL)-videophone-bin.tar.gz
+PKG_NAME_BIN_VIDEOCHAT	:= $(PKG_DIR)/c2box/c2-$(SDK_VERSION_ALL)-videochat-bin.tar.gz
+
+# Test package for QA
+PKG_NAME_SRC_SW_MEDIA_ALL  := $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-sw_media-src-all.tar.gz
+PKG_NAME_TEST_BIN_SW_MEDIA := $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-sw_media-test-bin.tar.gz
+PKG_NAME_BIN_SW_MEDIA_QA   := $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-sw_media-bin-QA.tar.gz
+PKG_NAME_BIN_DEMO_QA       := $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-demo-bin-QA.tar.gz
+PKG_NAME_BIN_APP_ORG       := $(PKG_DIR)/c2-$(SDK_VERSION_ALL)-app-bin-org.tar.gz
+
+
+.PHONY: all version doc kernel-src kernel-bin hdmi-src hdmi-bin sw_c2apps-src
+.PHONY: sw_media-src sw_media-bin sw_media_wmdrm10 vivante demo-bin
+.PHONY: install publish clean
+
+ALL_TARGETS += doc-jazz2 kernel-src kernel-bin hdmi-src hdmi-bin sw_c2apps-src
+ALL_TARGETS += sw_media-src sw_media-bin demo-bin 
+ifneq ($(SDK_TARGET_ARCH),jazz2)
+ALL_TARGETS += vivante-src vivante-bin
+endif
+
+# Conditionally add sw_media doxygen generated documents (needs doxygen, dot)
+# This limits the full build to platforms that meet this requirement.
+have_dot := $(shell which dot 2>/dev/null)
+ifdef have_dot
+  ALL_TARGETS += sw_media_doc
+endif
+
+
+#------------------------------------------------------------------------------
+all: $(ALL_TARGETS)
+	@$(if $(have_dot), ,echo NOTE skipped making sw_media doxygen docs!)
+	@ls -lt $(PKG_DIR)
+	@echo "DONE!"
+
+#------------------------------------------------------------------------------
+version:
+	# Print out the compiler version used
+	c2-linux-gcc -v
+
+#------------------------------------------------------------------------------
+doc:
+	# Documentation package included with SDK
+	@echo "BUILD TARGET: doc"
+	@cd $(TOP_DIR)
+	@mkdir -p $(SOURCE_DIR); mkdir -p $(TEMP_DIR)/doc; mkdir -p $(PKG_DIR)
+	
+	@cd $(SOURCE_DIR) && $(CHECKOUT) $(CVS_SRC_SDK)
+	@cd $(SOURCE_DIR) && $(CHECKOUT) jazzb/doc/instruction_set.pdf
+	@cd $(SOURCE_DIR) && $(CHECKOUT) jazzb/doc/ArchDocB54.pdf
+	@cd $(SOURCE_DIR) && $(CHECKOUT) \
+		projects/alg/sys-doc/UserSpec/C2_Linux_Programming_Guide.pdf
+	@cd $(SOURCE_DIR) && $(CHECKOUT) \
+		projects/alg/sdk-doc/doc
+	@cd $(SOURCE_DIR) && $(CHECKOUT) \
+		projects/alg/app-doc/spec/Streaming_API_User_Guide.pdf
+	@cd $(SOURCE_DIR) && cvs -q co $(CHECKOUT_OPTION) \
+		projects/jazz/evalplat/c2-pvr/PVR_HW_2.x.pdf
+	@cd $(SOURCE_DIR) && $(CHECKOUT) \
+		projects/alg/doc/pvr_phase1/PvrUserManual.doc
+	
+	# docs
+	@sed '{s,PVR-VER,$(VERSION),g;s,PVR-CAN,$(BRANCH),g}' \
+		$(SOURCE_DIR)/$(CVS_SRC_SDK)/vertical/PVR-README-generic.Basic \
+		> $(TEMP_DIR)/doc/README-v$(VERSION)
+	@cp $(SOURCE_DIR)/$(CVS_SRC_SDK)/sdk_docs/JtagUsersGuide.pdf $(TEMP_DIR)/doc
+	@cd $(SOURCE_DIR); \
+	    cp jazzb/doc/ArchDocB54.pdf \
+	    $(TEMP_DIR)/doc/C2_Vector_Programming_Guide.pdf
+	@cd $(SOURCE_DIR); \
+	    cp projects/alg/sys-doc/UserSpec/C2_Linux_Programming_Guide.pdf \
+	    $(TEMP_DIR)/doc
+	@cd $(SOURCE_DIR); \
+	    cp projects/alg/sdk-doc/doc/C2_Media_Manager_APIs.chm \
+	    projects/alg/sdk-doc/doc/C2_Media_Service_Provider_APIs.chm \
+	    $(TEMP_DIR)/doc
+	@cd $(SOURCE_DIR); \
+	    cp projects/alg/app-doc/spec/Streaming_API_User_Guide.pdf \
+	    $(TEMP_DIR)/doc
+	@cd $(SOURCE_DIR); \
+	    cp projects/jazz/evalplat/c2-pvr/PVR_HW_2.x.pdf \
+	    $(TEMP_DIR)/doc
+	@cd $(SOURCE_DIR); \
+	    cp projects/alg/doc/pvr_phase1/PvrUserManual.doc \
+	    $(TEMP_DIR)/doc
+	@cd $(TEMP_DIR); \
+	    tar cfz $(PKG_NAME_DOCS_BASIC) doc
+	
+	@sed '{s,PVR-VER,$(VERSION),g;s,PVR-CAN,$(BRANCH),g}' \
+		$(SOURCE_DIR)/$(CVS_SRC_SDK)/vertical/PVR-README-generic.Premium \
+		> $(TEMP_DIR)/doc/README-v$(VERSION)
+	@cd $(TEMP_DIR); \
+	    tar cfz $(PKG_NAME_DOCS_PREMIUM) doc
+	@rm -rf $(TEMP_DIR)/doc
+	
+#------------------------------------------------------------------------------
+doc-jazz2:
+	@echo "BUILD TARGET: doc"
+	@cd $(TOP_DIR)
+	@rm -rf $(TEMP_DIR)/doc
+	@mkdir -p $(SOURCE_DIR); mkdir -p $(TEMP_DIR)/doc; mkdir -p $(PKG_DIR)
+	        
+	@cd $(SOURCE_DIR) && $(CHECKOUT) $(CVS_SRC_SDK)
+	@cd $(SOURCE_DIR) && $(CHECKOUT) projects/alg/sdk-doc/Jazz2-SDK
+	
+	@sed '{s,PVR-VER,$(VERSION),g;s,PVR-CAN,$(BRANCH),g}' \
+		$(SOURCE_DIR)/$(CVS_SRC_SDK)/vertical/JAZZ2-README-generic.Basic \
+		> $(TEMP_DIR)/doc/README-v$(VERSION)
+	
+	@cd $(SOURCE_DIR); \
+	 cp projects/alg/sdk-doc/Jazz2-SDK/pdf/C2_Linux_Kernel_and_Integration_Guide.pdf \
+	    projects/alg/sdk-doc/Jazz2-SDK/pdf/C2_CC1202_Data_Sheet.pdf \
+	    projects/alg/sdk-doc/Jazz2-SDK/pdf/C2_CC12xx_SDK_HW_platform_spec_use_guide.pdf \
+	    projects/alg/sdk-doc/Jazz2-SDK/pdf/C2_CC1200_Sys_Designer_Guide.pdf \
+	    projects/alg/sdk-doc/Jazz2-SDK/pdf/C2_CC1200_SDK_0.9-2_Release_Note.pdf \
+	    projects/alg/sdk-doc/Jazz2-SDK/pdf/C2_CC1203_Data_Sheet.pdf \
+	    projects/alg/sdk-doc/Jazz2-SDK/pdf/C2_CC1200_board_layout_guide.pdf \
+	    projects/alg/sdk-doc/Jazz2-SDK/pdf/C2_CC1200_MSP_Widget_API_Programming_Guide.pdf \
+	    projects/alg/sdk-doc/Jazz2-SDK/pdf/C2_CC12xx_Demo_Quick_Start.pdf \
+	    $(TEMP_DIR)/doc
+	@cd $(TEMP_DIR); \
+	    tar cfz $(PKG_NAME_DOCS_BASIC) doc
+
+#------------------------------------------------------------------------------
+kernel-src:
+	@echo "BUILD TARGET: kernel-src"
+	@echo Using `which c2-linux-uclibc-g++`
+	
+	@mkdir -p $(SOURCE_DIR); mkdir -p $(TEMP_DIR); mkdir -p $(PKG_DIR); mkdir -p $(TEST_ROOT_DIR)
+	# Create package from tagged cvs sources
+	@cd $(SOURCE_DIR) && $(CHECKOUT) $(CVS_SRC_KERNEL)
+	
+	@rm -f $(PKG_NAME_SRC_KERNEL)
+	@rm -rf $(TEMP_DIR)/$(CVS_SRC_KERNEL)
+	@mkdir -p $(TEMP_DIR)/$(CVS_SRC_KERNEL)
+	
+	@cp -rf $(SOURCE_DIR)/$(CVS_SRC_KERNEL) $(TEMP_DIR)/$(CVS_SRC_KERNEL)/..
+	@cd $(TEMP_DIR)/$(CVS_SRC_KERNEL) && rm -rf linux-* && cp -rf $(SOURCE_DIR)/$(CVS_SRC_KERNEL)/$(LINUXDIR) .
+	@# Add -m32 switch (valid for both i386 and x86_64 builds)
+	@cd $(TEMP_DIR)/$(CVS_SRC_KERNEL)/$(LINUXDIR); \
+	        sed -i '{s,= gcc,= gcc -m32,g}' Makefile;
+	@# Add version
+	@cd $(TEMP_DIR)/$(CVS_SRC_KERNEL)/$(LINUXDIR)/arch/c2/configs; \
+	    sed -i 's/CONFIG_LOCALVERSION=""/CONFIG_LOCALVERSION="[$(SDK_VERSION_ALL)]"/' $(LINUX_CONFIG)
+	@cd $(TEMP_DIR)/$(CVS_SRC_KERNEL)/configs/jazz2-pvr-nand; \
+	    sed -i 's/CONFIG_LOCALVERSION=""/CONFIG_LOCALVERSION="[$(SDK_VERSION_ALL)]"/' defconfig
+	
+	@# package up kernel src
+	@cd $(TEMP_DIR); \
+	    tar cfz $(PKG_NAME_SRC_KERNEL) \
+    		--exclude=CVS \
+    		--exclude=CVSROOT \
+    		./$(CVS_SRC_KERNEL); \
+	    rm -rf $(CVS_SRC_KERNEL)
+
+kernel-src-jazz2l:
+	@echo "BUILD TARGET: kernel-src"
+	@echo Using `which c2-linux-uclibc-g++`
+	
+	@mkdir -p $(SOURCE_DIR)/kerneltg; mkdir -p $(TEMP_DIR); mkdir -p $(PKG_DIR); mkdir -p $(TEST_ROOT_DIR)
+	# Create package from tagged cvs sources
+	cd $(SOURCE_DIR)/kerneltg && cvs -q co -r JAZZ2L $(CVS_SRC_KERNEL)/linux-2.6
+	
+	@rm -f $(PKG_NAME_SRC_KERNEL_JAZZ2L)
+	@rm -rf $(TEMP_DIR)/$(CVS_SRC_KERNEL)
+	@mkdir -p $(TEMP_DIR)/$(CVS_SRC_KERNEL)
+	
+	@cp -rf $(SOURCE_DIR)/$(CVS_SRC_KERNEL) $(TEMP_DIR)/$(CVS_SRC_KERNEL)/..
+	@cd $(TEMP_DIR)/$(CVS_SRC_KERNEL) && rm -rf linux-* && cp -rf $(SOURCE_DIR)/kerneltg/sw/kernel/linux-2.6 .
+	@# Add -m32 switch (valid for both i386 and x86_64 builds)
+	@cd $(TEMP_DIR)/$(CVS_SRC_KERNEL)/$(LINUXDIR); \
+	        sed -i '{s,= gcc,= gcc -m32,g}' Makefile;
+	@# Add version
+	@cd $(TEMP_DIR)/$(CVS_SRC_KERNEL)/$(LINUXDIR)/arch/c2/configs; \
+	    sed -i 's/CONFIG_LOCALVERSION=""/CONFIG_LOCALVERSION="[$(SDK_VERSION_ALL)]"/' $(LINUX_CONFIG)
+	@cd $(TEMP_DIR)/$(CVS_SRC_KERNEL)/configs/jazz2-pvr-nand; \
+	    sed -i 's/CONFIG_LOCALVERSION=""/CONFIG_LOCALVERSION="[$(SDK_VERSION_ALL)]"/' defconfig
+	
+	@# package up kernel src
+	@cd $(TEMP_DIR); \
+	    tar cfz $(PKG_NAME_SRC_KERNEL_JAZZ2L) \
+    		--exclude=CVS \
+    		--exclude=CVSROOT \
+    		./$(CVS_SRC_KERNEL); \
+	    rm -rf $(CVS_SRC_KERNEL)
+
+kernel-src-2632:	
+	mkdir -p $(SOURCE_DIR); mkdir -p $(TEMP_DIR); mkdir -p $(PKG_DIR); mkdir -p $(TEST_ROOT_DIR)
+	rm -f $(PKG_NAME_SRC_KERNEL_2632)
+	rm -rf $(TEMP_DIR)/$(CVS_SRC_KERNEL)
+	mkdir -p $(TEMP_DIR)/$(CVS_SRC_KERNEL)
+	cp -rf $(SOURCE_DIR)/$(CVS_SRC_KERNEL) $(TEMP_DIR)/$(CVS_SRC_KERNEL)/..
+	cd $(TEMP_DIR)/$(CVS_SRC_KERNEL) && rm -rf linux-*
+	cd $(TEMP_DIR)/$(CVS_SRC_KERNEL) && mkdir -p linux-2.6.32 && cp -rf $(SOURCE_DIR)/$(CVS_SRC_KERNEL)/linux-2.6.29/patches linux-2.6.32/
+	
+	@# package up kernel src
+	rm -f $(PKG_NAME_SRC_KERNEL_2632)
+	cd $(TEMP_DIR); \
+	    tar cfz $(PKG_NAME_SRC_KERNEL_2632) \
+    		--exclude=CVS \
+    		--exclude=CVSROOT \
+    		./$(CVS_SRC_KERNEL); \
+	    rm -rf $(CVS_SRC_KERNEL)
+
+#add $(HOME)/bin  to path, we maybe put a 'quilt' to $(HOME)/bin when run from server
+kernel-bin-2632: override PATH := $(TOOLCHAIN_PATH):$(GCC4_PATH):/usr/local/bin:/usr/bin:/bin:$(HOME)/bin
+kernel-bin-2632: override TARGET_ARCH :=
+kernel-bin-2632:
+	# Now make sure it builds
+	@echo "BUILD TARGET: kernel-bin"
+	@echo Using `which c2-linux-uclibc-g++`
+	@mkdir -p $(TEST_ROOT_DIR)/kernel2632; mkdir -p $(PKG_DIR)
+	
+	# Create the binary package, put it into a newly created dir 'prebuilt'
+	@cd $(TEST_ROOT_DIR)/kernel2632; \
+	    chmod -R 777 prebuilt; rm -rf prebuilt; mkdir -p prebuilt; \
+	    cd prebuilt; tar xfz $(PKG_NAME_SRC_KERNEL_2632)
+	    cd $(TEST_ROOT_DIR)/kernel2632/prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR_2632); make -f patches/Makefile
+	    cd $(TEST_ROOT_DIR)/kernel2632/prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR_2632); chmod -R 755 * patches
+	
+	@cd $(TEST_ROOT_DIR)/kernel2632/prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR_2632); \
+	    cp arch/c2/configs/c2_jazz2_defconfig .config; \
+	    yes "" |make oldconfig;
+	@cd $(TEST_ROOT_DIR)/kernel2632/prebuilt/$(CVS_SRC_KERNEL); \
+	    make initramfs_gen.txt; cd $(LINUXDIR_2632); \
+	    time make -j5 
+	
+	@cd $(TEST_ROOT_DIR)/kernel2632; \
+	    tar cfz  $(PKG_NAME_BIN_KERNEL_2632) \
+		prebuilt/$(CVS_SRC_KERNEL)/1gb.part \
+		prebuilt/$(CVS_SRC_KERNEL)/initramfs_files \
+		prebuilt/$(CVS_SRC_KERNEL)/initramfs_source.in \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR_2632)/vmlinux \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR_2632)/vmlinux.bin \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR_2632)/vmlinux.dump \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR_2632)/System.map \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR_2632)/Makefile \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR_2632)/MAINTAINERS \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR_2632)/REPORTING-BUGS \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR_2632)/CREDITS \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR_2632)/COPYING \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR_2632)/usr \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR_2632)/.config \
+		prebuilt/$(CVS_SRC_KERNEL)/Makefile
+	cd $(TOP_DIR)
+	
+kernel-bin: override PATH := $(TOOLCHAIN_PATH):$(GCC4_PATH):/usr/local/bin:/usr/bin:/bin
+kernel-bin: override TARGET_ARCH :=
+kernel-bin:
+	# Now make sure it builds
+	@echo "BUILD TARGET: kernel-bin"
+	@echo Using `which c2-linux-uclibc-g++`
+	@mkdir -p $(TEST_ROOT_DIR); mkdir -p $(PKG_DIR)
+	
+	# Create the binary package, put it into a newly created dir 'prebuilt'
+	@cd $(TEST_ROOT_DIR); \
+	    rm -rf prebuilt; mkdir -p prebuilt; \
+	    cd prebuilt; tar xfz $(PKG_NAME_SRC_KERNEL)
+	
+	@cd $(TEST_ROOT_DIR)/prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR); \
+	    cp arch/c2/configs/$(LINUX_CONFIG) .config; \
+	    yes "" |make oldconfig;
+	@cd $(TEST_ROOT_DIR)/prebuilt/$(CVS_SRC_KERNEL); \
+	    make initramfs_gen.txt; cd $(LINUXDIR); \
+	    time make -j5 ARCH=c2 image
+	
+	@cd $(TEST_ROOT_DIR)/prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR); mv -f Makefile Makefile.save
+	@cd $(TEST_ROOT_DIR)/prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR); \
+	    echo "image:" > Makefile
+	@cd $(TEST_ROOT_DIR); \
+	    tar cfz $(PKG_NAME_BIN_KERNEL) \
+		prebuilt/$(CVS_SRC_KERNEL)/1gb.part \
+		prebuilt/$(CVS_SRC_KERNEL)/initramfs_files \
+		prebuilt/$(CVS_SRC_KERNEL)/initramfs_source.in \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR)/vmlinux \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR)/vmlinux.bin \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR)/vmlinux.dump \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR)/System.map \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR)/Makefile \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR)/MAINTAINERS \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR)/REPORTING-BUGS \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR)/CREDITS \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR)/COPYING \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR)/usr \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR)/.config \
+		prebuilt/$(CVS_SRC_KERNEL)/Makefile
+	
+	@cd $(TEST_ROOT_DIR)/prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR); \
+	 mv -f Makefile.save Makefile
+	cd $(TOP_DIR)
+
+kernel-nand-bin: override PATH := $(TOOLCHAIN_PATH):$(GCC4_PATH):/usr/local/bin:/usr/bin:/bin
+kernel-nand-bin: override TARGET_ARCH :=
+kernel-nand-bin:
+	# Now make sure it builds
+	@echo "BUILD TARGET: kernel-bin-nand"
+	@mkdir -p $(TEMP_DIR); mkdir -p $(PKG_DIR)
+	
+	@rm -f $(PKG_NAME_BIN_KERNEL_NAND)
+	@rm -rf $(TEMP_DIR)/$(CVS_SRC_KERNEL)
+	
+	# Create the binary package, put it into a newly created dir 'prebuilt'
+	@cd $(TEMP_DIR); \
+	    tar xfz $(PKG_NAME_SRC_KERNEL)
+	#@cd $(TEMP_DIR)/$(CVS_SRC_KERNEL)/configs/jazz2-pvr-nand; \
+	#    sed -i 's/CONFIG_LOCALVERSION=""/CONFIG_LOCALVERSION="[$(SDK_VERSION_ALL)]"/' defconfig
+	
+	@cd $(TEMP_DIR)/$(CVS_SRC_KERNEL); \
+	    make -j5 -f configs/jazz2-pvr-nand/pvr-nand.mk
+	
+	@cd $(TEMP_DIR)/$(CVS_SRC_KERNEL)/$(LINUXDIR); mv -f Makefile Makefile.save
+	@cd $(TEMP_DIR)/$(CVS_SRC_KERNEL)/$(LINUXDIR); \
+	    echo "image:" > Makefile
+	@cd $(TEMP_DIR); \
+	    tar cfz $(PKG_NAME_BIN_KERNEL_NAND) \
+		$(CVS_SRC_KERNEL)/initramfs_files \
+		$(CVS_SRC_KERNEL)/initramfs_source.in \
+		$(CVS_SRC_KERNEL)/rootfs.image \
+		$(CVS_SRC_KERNEL)/configs/jazz2-pvr-nand \
+		$(CVS_SRC_KERNEL)/$(LINUXDIR)/vmlinux \
+		$(CVS_SRC_KERNEL)/$(LINUXDIR)/vmlinux.bin \
+		$(CVS_SRC_KERNEL)/$(LINUXDIR)/vmlinux.dump \
+		$(CVS_SRC_KERNEL)/$(LINUXDIR)/zvmlinux.bin \
+		$(CVS_SRC_KERNEL)/$(LINUXDIR)/System.map \
+		$(CVS_SRC_KERNEL)/$(LINUXDIR)/Makefile \
+		$(CVS_SRC_KERNEL)/$(LINUXDIR)/MAINTAINERS \
+		$(CVS_SRC_KERNEL)/$(LINUXDIR)/REPORTING-BUGS \
+		$(CVS_SRC_KERNEL)/$(LINUXDIR)/CREDITS \
+		$(CVS_SRC_KERNEL)/$(LINUXDIR)/COPYING \
+		$(CVS_SRC_KERNEL)/$(LINUXDIR)/usr \
+		$(CVS_SRC_KERNEL)/$(LINUXDIR)/.config \
+		$(CVS_SRC_KERNEL)/Makefile
+	
+	cd $(TOP_DIR)
+
+kernel-bin-jazz2l: override PATH := $(TOOLCHAIN_PATH):$(GCC4_PATH):/usr/local/bin:/usr/bin:/bin
+kernel-bin-jazz2l: override TARGET_ARCH :=
+kernel-bin-jazz2l:
+	# Now make sure it builds
+	@echo "BUILD TARGET: kernel-bin"
+	@echo Using `which c2-linux-uclibc-g++`
+	@mkdir -p $(TEST_ROOT_DIR); mkdir -p $(PKG_DIR)
+	
+	# Create the binary package, put it into a newly created dir 'prebuilt'
+	@cd $(TEST_ROOT_DIR); \
+	    rm -rf prebuilt; mkdir -p prebuilt; \
+	    cd prebuilt; tar xfz $(PKG_NAME_SRC_KERNEL)
+	
+	@cd $(TEST_ROOT_DIR)/prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR); \
+	    cp arch/c2/configs/$(LINUX_CONFIG) .config; \
+	    yes "" |make oldconfig;
+	@cd $(TEST_ROOT_DIR)/prebuilt/$(CVS_SRC_KERNEL); \
+	    time make -j5 -f configs/jazz2-pvr-nand/jazz2l-nand.mk linux-2.6/vmlinux.bin
+	
+	@cd $(TEST_ROOT_DIR)/prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR); mv -f Makefile Makefile.save
+	@cd $(TEST_ROOT_DIR)/prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR); \
+	    echo "image:" > Makefile
+	@cd $(TEST_ROOT_DIR); \
+	    tar cfz $(PKG_NAME_BIN_KERNEL) \
+		prebuilt/$(CVS_SRC_KERNEL)/initramfs_files \
+		prebuilt/$(CVS_SRC_KERNEL)/initramfs_source.in \
+		prebuilt/$(CVS_SRC_KERNEL)/configs/jazz2-pvr-nand \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR)/vmlinux \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR)/vmlinux.bin \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR)/vmlinux.dump \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR)/zvmlinux.bin \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR)/System.map \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR)/Makefile \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR)/MAINTAINERS \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR)/REPORTING-BUGS \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR)/CREDITS \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR)/COPYING \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR)/usr \
+		prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR)/.config \
+		prebuilt/$(CVS_SRC_KERNEL)/Makefile
+	
+	@cd $(TEST_ROOT_DIR)/prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR); \
+	 mv -f Makefile.save Makefile
+	cd $(TOP_DIR)
+
+#------------------------------------------------------------------------------
+# WARNING: This is a propietary driver. There is a NDA (non-disclosure agreement)
+# WARNING: which means we can not include it with the kernel packages because we can
+# WARNING: not provide the source. 
+hdmi-src:
+	@echo "BUILD TARGET: hdmi-src"
+	@mkdir -p $(SOURCE_DIR); mkdir -p $(PKG_DIR)
+	@rm -f $(PKG_NAME_SRC_HDMI_AD9889)
+	@rm -f $(PKG_NAME_SRC_HDMI_ANX9030)
+	@rm -f $(PKG_NAME_BIN_HDMI_AD9889)
+	@rm -f $(PKG_NAME_BIN_HDMI_ANX9030)
+	@cd $(SOURCE_DIR) && $(CHECKOUT) -d PROPRIETARY $(CVS_SRC_HDMI)
+	
+	@cd $(SOURCE_DIR); \
+	   tar cfz $(PKG_NAME_SRC_HDMI_AD9889) \
+		--exclude=CVS \
+		--exclude=CVSROOT \
+		./PROPRIETARY/ad9889_drv
+	@cd $(SOURCE_DIR); \
+	   tar cfz $(PKG_NAME_SRC_HDMI_ANX9030) \
+		--exclude=CVS \
+		--exclude=CVSROOT \
+		./PROPRIETARY/anx9030_drv
+
+hdmi-jazz2-src:
+	@echo "BUILD TARGET: hdmi-src"
+	@mkdir -p $(SOURCE_DIR); mkdir -p $(PKG_DIR)
+	@rm -f $(PKG_NAME_SRC_HDMI_JAZZ2)
+	@rm -f $(PKG_NAME_BIN_HDMI_JAZZ2)
+	@cd $(SOURCE_DIR) && $(CHECKOUT) $(CVS_SRC_HDMI_JAZZ2)
+	@rm -rf $(TEMP_DIR)/PROPRIETARY; mkdir -p $(TEMP_DIR)/PROPRIETARY; cp -arf $(SOURCE_DIR)/$(CVS_SRC_HDMI_JAZZ2) $(TEMP_DIR)/PROPRIETARY;
+	@cd $(TEMP_DIR); \
+	   tar cfz $(PKG_NAME_SRC_HDMI_JAZZ2) \
+	        --exclude=CVS \
+	        --exclude=CVSROOT \
+	        ./PROPRIETARY/jazz2hdmi
+
+hdmi-bin: override PATH := $(TOOLCHAIN_PATH):$(GCC4_PATH):/usr/local/bin:/usr/bin:/bin
+hdmi-bin:
+	@echo "BUILD TARGET: hdmi-bin"
+	@mkdir -p $(PKG_DIR); mkdir -p $(TEST_ROOT_DIR)
+	@cp -rf $(SOURCE_DIR)/PROPRIETARY $(TEST_ROOT_DIR)
+	
+	@cd $(TEST_ROOT_DIR)/PROPRIETARY/ad9889_drv; \
+	    make KERNELDIR=$(TEST_ROOT_DIR)/prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR)
+	@cd $(TEST_ROOT_DIR)/PROPRIETARY; \
+	   tar cfz $(PKG_NAME_BIN_HDMI_AD9889) \
+	        ad9889_drv/ad9889.ko \
+	        ad9889_drv/LICENSE \
+	        ad9889_drv/README.C2
+	
+	@cd $(TEST_ROOT_DIR)/PROPRIETARY/anx9030_drv; \
+	    make KERNELDIR=$(TEST_ROOT_DIR)/prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR)
+	@cd $(TEST_ROOT_DIR)/PROPRIETARY; \
+	   tar cfz $(PKG_NAME_BIN_HDMI_ANX9030) \
+		anx9030_drv/anx9030.ko
+
+hdmi-jazz2-bin: override PATH := $(TOOLCHAIN_PATH):$(GCC4_PATH):/usr/local/bin:/usr/bin:/bin
+hdmi-jazz2-bin:
+	@echo "BUILD TARGET: hdmi-bin"
+	@mkdir -p $(PKG_DIR); rm -rf $(TEST_ROOT_DIR)/PROPRIETARY; mkdir -p $(TEST_ROOT_DIR)
+	@cd $(TEST_ROOT_DIR); tar -xzf $(PKG_NAME_SRC_HDMI_JAZZ2);
+	
+	@cd $(TEST_ROOT_DIR)/PROPRIETARY/jazz2hdmi/jazz2hdmi_drv; \
+	    make KERNELDIR=$(TEST_ROOT_DIR)/prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR)
+	@cd $(TEST_ROOT_DIR)/PROPRIETARY; \
+	   tar cfz $(PKG_NAME_BIN_HDMI_JAZZ2) \
+	        jazz2hdmi/jazz2hdmi_drv/hdmi_jazz2.ko 
+        
+#------------------------------------------------------------------------------
+sw_media-src:
+	@echo "BUILD TARGET: sw_media-src"
+	
+	@mkdir -p $(SOURCE_DIR)
+	@mkdir -p $(PKG_DIR)
+	@if test -d "$(SOURCE_DIR)/$(CVS_SRC_SW_MEDIA)"; then \
+	     cd $(SOURCE_DIR)/$(CVS_SRC_SW_MEDIA); $(UPDATE); \
+	 else \
+	     cd $(SOURCE_DIR); $(CHECKOUT) $(CVS_SRC_SW_MEDIA); \
+	 fi
+	@cd $(SOURCE_DIR); \
+	    tar cfz $(PKG_NAME_SRC_SW_MEDIA_ALL) \
+		--exclude=CVS \
+		--exclude=CVSROOT \
+		$(CVS_SRC_SW_MEDIA)
+
+
+sw_media-bin: override PATH := $(TOOLCHAIN_PATH):$(GCC4_PATH):/usr/local/bin:/usr/bin:/bin
+sw_media-bin:
+	@echo "BUILD TARGET: sw_media-bin"
+	@echo Using `which c2-linux-uclibc-g++`
+	@mkdir -p $(TEMP_DIR); mkdir -p $(PKG_DIR)
+	
+	@rm -f $(PKG_NAME_SRC_SW_MEDIA)
+	@rm -f $(PKG_NAME_BIN_SW_MEDIA)
+	@rm -f $(PKG_NAME_TEST_BIN_SW_MEDIA)
+	@rm -rf $(PKG_DIR)/plugins
+	@rm -rf $(TEMP_DIR)/$(CVS_SRC_SW_MEDIA)
+	
+	# Build source and target packages
+	@cd $(SOURCE_DIR); \
+	    cp -rf $(CVS_SRC_SW_MEDIA) $(TEMP_DIR)
+	
+	# Write version information
+	@cd $(TEMP_DIR)/$(CVS_SRC_SW_MEDIA)/media/daemon/msp/mspdaemon/; \
+	    sed -i '{s, "*".*,"$(SDK_VERSION_ALL)";,g}' mspVersion.h
+	@ cd $(TEMP_DIR)/$(CVS_SRC_SW_MEDIA)/build/build/customer/build; \
+	    cp globalconfig-C2-PVR-REAL-$(SDK_TARGET_ARCH) globalconfig-C2-PVR
+	
+	@cd $(TEMP_DIR); \
+	    time $(CVS_SRC_SW_MEDIA)/scripts/customizesdk_$(SDK_TARGET_ARCH) $(CVS_SRC_SW_MEDIA) temp_sw_media.tar; \
+	    gzip temp_sw_media.tar; \
+	    mv temp_sw_media.tar.gz $(PKG_NAME_SRC_SW_MEDIA); \
+	   mv temp_sw_media-bin-test.tar.gz $(PKG_NAME_TEST_BIN_SW_MEDIA)
+	@cd $(TEMP_DIR); \
+	    mkdir $(PKG_DIR)/plugins; \
+	    for d in *.tar.gz; do \
+		mv -f $$d $(PKG_DIR)/plugins/`echo $$d | sed 's/temp_/c2-$(SDK_VERSION_ALL)-/'`; \
+	    done
+	
+	# Make sure it builds
+	@cd $(TEST_ROOT_DIR); \
+            rm -rf ./$(CVS_SRC_SW_MEDIA);
+	@cd $(TEST_ROOT_DIR); \
+	    tar xfz $(PKG_NAME_SRC_SW_MEDIA); \
+	    cd ./$(CVS_SRC_SW_MEDIA); \
+	    time make -j5
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_SW_MEDIA); \
+            tar zcf $(PKG_NAME_BIN_SW_MEDIA_QA) \
+                TARGET_LINUX_C2_$(SDK_TARGET_GCC_ARCH)_RELEASE
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_SW_MEDIA); \
+	    tar zcf $(PKG_NAME_BIN_SW_MEDIA) \
+		--exclude=RealPluginModule.plugin.so \
+		TARGET_LINUX_C2_$(SDK_TARGET_GCC_ARCH)_RELEASE
+	@cd $(TEST_ROOT_DIR); \
+	    rm -rf $(CVS_SRC_SW_MEDIA); \
+	    tar xfz $(PKG_NAME_SRC_SW_MEDIA)
+	@rm $(PKG_NAME_SRC_SW_MEDIA)
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_SW_MEDIA); \
+	    rm -rf media/plugins/real; \
+	    cp build/build/customer/build/globalconfig-C2-PVR-$(SDK_TARGET_ARCH) \
+		build/build/customer/build/globalconfig-C2-PVR
+	@cd $(TEST_ROOT_DIR); \
+	    tar zcf $(PKG_NAME_SRC_SW_MEDIA) $(CVS_SRC_SW_MEDIA)
+	
+	cd $(TOP_DIR)
+	pwd
+	date
+
+sw_media_wmdrm10:
+	# WMDRM10 libray package, it is a patch for sw_media
+	@echo "BUILD TARGET: Creating WMDRM10 libray package"
+	@mkdir -p $(TEMP_DIR)
+	
+	@cd $(SOURCE_DIR); $(CHECKOUT) $(CVS_SRC_WMDRM10)
+	@cd $(TEMP_DIR); cp -rf $(SOURCE_DIR)/$(CVS_SRC_WMDRM10) .; \
+	    rm -f libwmdrm10/readme.txt
+	
+	@cd $(TEMP_DIR); \
+	    tar zcf $(PKG_NAME_BIN_WMDRM10) \
+		--exclude=CVS \
+		--exclude=CVSROOT \
+		libwmdrm10
+	@rm -rf $(TEMP_DIR)/libwmdrm10
+#------------------------------------------------------------------------------
+sw_media_doc: override PATH := /usr/local/bin:/usr/bin:/bin:/local/roger/usr/bin
+sw_media_doc:
+	# Make sw_media doxygen package
+	@echo "BUILD TARGET: Creating sw_media doxygen-generated docs."
+	@mkdir -p $(SOURCE_DIR); mkdir -p $(TEMP_DIR)
+	@cd $(TEMP_DIR); mkdir -p doxygen-tmp
+	@cd $(TEMP_DIR)/doxygen-tmp; tar xfz $(PKG_NAME_SRC_SW_MEDIA)
+	@cd $(SOURCE_DIR); $(CHECKOUT) $(CVS_SRC_SDK)
+	@cd $(TEMP_DIR)/doxygen-tmp; cp $(SOURCE_DIR)/$(CVS_SRC_SDK)/sdk_tools/sw_media_doc.cfg .
+	@cd $(TEMP_DIR)/doxygen-tmp; doxygen sw_media_doc.cfg
+	@cd $(TEMP_DIR)/doxygen-tmp; tar cvfz $(PKG_NAME_DOC_SW_MEDIA) ./doc
+	@cd $(TEMP_DIR); rm -rf doxygen-tmp
+
+#------------------------------------------------------------------------------
+vivante-src:
+	@echo "BUILD TARGET: vivante-src"
+	@mkdir -p $(SOURCE_DIR); mkdir -p $(PKG_DIR)
+	@rm -f $(PKG_NAME_SRC_VIVANTE)
+	@rm -f $(PKG_NAME_BIN_VIVANTE)
+	@cd $(SOURCE_DIR) && $(CHECKOUT) $(CVS_SRC_VIVANTE)
+	
+	@cd $(SOURCE_DIR); \
+	   tar cfz $(PKG_NAME_SRC_VIVANTE) \
+		--exclude=CVS \
+		--exclude=CVSROOT \
+		$(CVS_SRC_VIVANTE)
+        
+vivante-bin: override PATH := $(TOOLCHAIN_PATH):$(GCC4_PATH):/usr/local/bin:/usr/bin:/bin
+vivante-bin:
+	@echo "BUILD TARGET: vivante-bin"
+	@mkdir -p $(PKG_DIR); mkdir -p $(TEST_ROOT_DIR)
+	@cd $(TEST_ROOT_DIR); \
+	    rm -rf $(CVS_SRC_VIVANTE); \
+	    tar xfz $(PKG_NAME_SRC_VIVANTE)
+	
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_VIVANTE); \
+	    make KERNELDIR=$(TEST_ROOT_DIR)/prebuilt/$(CVS_SRC_KERNEL)/$(LINUXDIR) install
+	@cd $(TEST_ROOT_DIR)/$(CVS_SRC_VIVANTE); \
+	   tar cfz $(PKG_NAME_BIN_VIVANTE) \
+	        build
+	
+#------------------------------------------------------------------------------
+# creat sw_c2apps package 
+sw_c2apps-src: 
+	@echo "Creating package $(PKG_NAME_SRC_SW_C2APPS)"
+	
+	@mkdir -p $(SOURCE_DIR); mkdir -p $(TEMP_DIR); mkdir -p $(PKG_DIR)/c2box
+	# Get the sw_c2apps from tagged cvs sources
+	@if test -d "$(SOURCE_DIR)/$(CVS_SRC_SW_C2APPS)" ; then \
+	     cd $(SOURCE_DIR)/$(CVS_SRC_SW_C2APPS); $(UPDATE); \
+         else \
+             cd $(SOURCE_DIR); $(CHECKOUT) $(CVS_SRC_SW_C2APPS); \
+         fi
+	
+	@rm -f $(PKG_NAME_SRC_SW_C2APPS)
+	@cd $(TEMP_DIR); rm -rf $(CVS_SRC_SW_C2APPS); \
+	    cp -rf $(SOURCE_DIR)/$(CVS_SRC_SW_C2APPS) .
+	@cd $(TEMP_DIR)/$(CVS_SRC_SW_C2APPS)/pvr/filemanager2/Gui; \
+            sed -i '{s, "*".*,"$(SDK_VERSION_ALL)-$(BUILDTIMES)";,g}' pvrVersion.h
+	@cd $(TEMP_DIR)/$(CVS_SRC_SW_C2APPS)/pvr/filemanager/include; \
+            sed -i '{s, ".*","$(SDK_VERSION_ALL)-$(BUILDTIMES)",g}' version.h
+	
+	@cd $(TEMP_DIR); \
+	    tar zcf $(PKG_NAME_SRC_SW_C2APPS) \
+	        --exclude=CVS \
+	        --exclude=CVSROOT \
+	        --exclude=ipcam \
+		--exclude=dtv \
+		--exclude=p2p/PiPlugin \
+		--exclude=p2p/httpPlugin \
+		--exclude=p2p/tplugin \
+		--exclude=p2p/yt \
+		--exclude=p2p/libThunderPlugin \
+		--exclude=filemanager \
+	        $(CVS_SRC_SW_C2APPS)
+	@cd $(TEMP_DIR); \
+	    tar zcf $(PKG_NAME_SRC_C2BOX_ALL) \
+	        --exclude=CVS \
+	        --exclude=CVSROOT \
+	        --exclude=ipcam \
+		--exclude=dtv \
+		--exclude=p2p/PiPlugin \
+		--exclude=p2p/httpPlugin \
+		--exclude=p2p/tplugin \
+		--exclude=p2p/yt \
+		--exclude=p2p/libThunderPlugin \
+		--exclude=filemanager2 \
+	        $(CVS_SRC_SW_C2APPS)
+	@cd $(TEMP_DIR); \
+	    tar zcf $(PKG_NAME_SRC_C2BOX) \
+	        --exclude=CVS \
+	        --exclude=CVSROOT \
+	        --exclude=ipcam \
+		--exclude=dtv \
+		--exclude=p2p/PiPlugin \
+		--exclude=p2p/httpPlugin \
+		--exclude=p2p/tplugin \
+		--exclude=p2p/yt \
+		--exclude=p2p/libThunderPlugin \
+		--exclude=filemanager2 \
+		--exclude=apps/discs \
+		--exclude=apps/flash \
+		--exclude=apps/karaoke \
+		--exclude=apps/videochat \
+		--exclude=apps/thunderkk \
+		--exclude=apps/videophone \
+		--exclude=apps/dtv \
+		--exclude=apps/pps \
+		--exclude=apps/browser \
+		--exclude=apps/camera \
+		--exclude=apps/jvm \
+		--exclude=apps/sohu \
+		--exclude=apps/capture \
+	        $(CVS_SRC_SW_C2APPS)
+	@cd $(TEMP_DIR); \
+	    tar zcf $(PKG_NAME_SRC_MINIBD) \
+		--exclude=CVS \
+		$(CVS_SRC_SW_C2APPS)/pvr/filemanager/apps/discs
+	@cd $(TEMP_DIR); \
+	    tar zcf $(PKG_NAME_SRC_FLASH) \
+		--exclude=CVS \
+		$(CVS_SRC_SW_C2APPS)/pvr/filemanager/apps/flash
+	@cd $(TEMP_DIR); \
+	    tar zcf $(PKG_NAME_SRC_KARAOKE) \
+		--exclude=CVS \
+		$(CVS_SRC_SW_C2APPS)/pvr/filemanager/apps/karaoke
+	@cd $(TEMP_DIR); \
+	    tar zcf $(PKG_NAME_SRC_THUNDERKK) \
+		--exclude=CVS \
+		$(CVS_SRC_SW_C2APPS)/pvr/filemanager/apps/thunderkk
+	@cd $(TEMP_DIR); \
+	    tar zcf $(PKG_NAME_SRC_MVPHONE) \
+		--exclude=CVS \
+		$(CVS_SRC_SW_C2APPS)/pvr/filemanager/apps/videophone
+	@cd $(TEMP_DIR); \
+	    tar zcf $(PKG_NAME_SRC_BROWSER) \
+		--exclude=CVS \
+		$(CVS_SRC_SW_C2APPS)/pvr/filemanager/apps/browser
+	@cd $(TEMP_DIR); \
+	    tar zcf $(PKG_NAME_SRC_IPCAM) \
+		--exclude=CVS \
+		$(CVS_SRC_SW_C2APPS)/pvr/filemanager/apps/camera
+	@cd $(TEMP_DIR); \
+	    tar zcf $(PKG_NAME_SRC_JVM) \
+		--exclude=CVS \
+		$(CVS_SRC_SW_C2APPS)/pvr/filemanager/apps/jvm
+	@cd $(TEMP_DIR); \
+	    tar zcf $(PKG_NAME_SRC_RECOEDING) \
+		--exclude=CVS \
+		$(CVS_SRC_SW_C2APPS)/pvr/filemanager/apps/capture
+	@cd $(TEMP_DIR); \
+	    tar zcf $(PKG_NAME_SRC_SOHU) \
+		--exclude=CVS \
+		$(CVS_SRC_SW_C2APPS)/pvr/filemanager/apps/sohu
+	@rm -rf $(TEMP_DIR)/$(CVS_SRC_SW_C2APPS)
+
+#------------------------------------------------------------------------------
+# compile demo binary
+demo-bin: override PATH := $(TOOLCHAIN_PATH):$(QT_INSTALL_DIR)/bin:$(GCC4_PATH):/usr/local/bin:/usr/bin:/bin
+demo-bin:
+	@echo "BUILD TARGET: demo-bin"
+	@rm -f $(PKG_NAME_BIN_DEMO)
+	@mkdir -p $(SOURCE_DIR); mkdir -p $(TEST_ROOT_DIR); mkdir -p $(PKG_DIR)/c2box
+	@rm -rf $(TEST_ROOT_DIR)/$(PRODUCT)
+	@mkdir -p $(TEST_ROOT_DIR)/$(PRODUCT)
+	
+	@cd $(SOURCE_DIR) && $(CHECKOUT) $(CVS_SRC_SDK)
+	
+	@cd $(TEST_ROOT_DIR)/$(PRODUCT); \
+	    tar xfz $(PKG_NAME_SRC_SW_C2APPS); \
+	    mkdir $(CVS_SRC_SW_MEDIA); cd $(CVS_SRC_SW_MEDIA); tar xzf $(PKG_NAME_BIN_SW_MEDIA_QA)
+	
+	# build filemanager
+	@cd $(TEST_ROOT_DIR)/$(PRODUCT)/$(CVS_SRC_SW_C2APPS); \
+	    BUILD_TARGET=TARGET_LINUX_C2 TARGET_ARCH=$(SDK_TARGET_GCC_ARCH) BUILD=RELEASE \
+		SW_MEDIA_PATH=$(TEST_ROOT_DIR)/$(PRODUCT)/$(CVS_SRC_SW_MEDIA) \
+		make install; \
+	    tar czf $(PKG_NAME_BIN_APP_ORG) work; \
+	    cp -a work ../
+	 @if test "$(SDK_TARGET_ARCH)" = "jazzb"; then \
+            cd $(TEST_ROOT_DIR)/$(PRODUCT); \
+	    cp -f $(TEST_ROOT_DIR)/PROPRIETARY/anx9030_drv/anx9030.ko work; \
+         fi
+	
+	# copy vivante lib to work/lib
+	@if test "$(SDK_TARGET_ARCH)" = "jazz2" || test "$(SDK_TARGET_ARCH)" = "jazz2l" ; then \
+	    cd $(TEST_ROOT_DIR)/$(PRODUCT); \
+	    cp -f $(TEST_ROOT_DIR)/PROPRIETARY/jazz2hdmi/jazz2hdmi_drv/hdmi_jazz2.ko work; \
+	 fi
+	
+	@echo "Creating package $(PKG_NAME_BIN_DEMO)"
+	@cd $(TEST_ROOT_DIR)/$(PRODUCT); \
+	    tar cfz $(PKG_NAME_BIN_DEMO_QA) work
+	#@cd $(TEST_ROOT_DIR)/$(PRODUCT); \
+	#     c2-linux-strip `find work`
+	@cd $(TEST_ROOT_DIR)/$(PRODUCT); \
+	    rm work/plugins/RealPluginModule.plugin.so; \
+	    tar cfz $(PKG_NAME_BIN_DEMO) work
+	
+	@cd $(QT_INSTALL_DIR); \
+	    tar cfz $(PKG_NAME_BIN_WEBKIT) lib/libQtWebKit.so* 
+	
+	@cd $(TEST_ROOT_DIR)/$(PRODUCT); \
+	    rm -rf $(CVS_SRC_SW_C2APPS); \
+	    cp -rf $(SOURCE_DIR)/$(CVS_SRC_SW_C2APPS) ./;
+	
+	# build c2box
+	@cd $(TEST_ROOT_DIR)/$(PRODUCT); \
+	    rm -rf $(CVS_SRC_SW_C2APPS); \
+	    tar zxf $(PKG_NAME_SRC_C2BOX) 
+	# Make sure it builds 
+	@cd $(TEST_ROOT_DIR)/$(PRODUCT)/$(CVS_SRC_SW_C2APPS); \
+	    BUILD_TARGET=TARGET_LINUX_C2 TARGET_ARCH=$(SDK_TARGET_GCC_ARCH) BUILD=RELEASE \
+		SW_MEDIA_PATH=$(TEST_ROOT_DIR)/$(PRODUCT)/$(CVS_SRC_SW_MEDIA) \
+		ENABLE_NEW_APP=TRUE make install
+	@cd $(TEST_ROOT_DIR)/$(PRODUCT); \
+	    rm -rf $(CVS_SRC_SW_C2APPS); \
+	    tar zxf $(PKG_NAME_SRC_C2BOX_ALL) 
+	@cd $(TEST_ROOT_DIR)/$(PRODUCT)/$(CVS_SRC_SW_C2APPS); \
+	    BUILD_TARGET=TARGET_LINUX_C2 TARGET_ARCH=$(SDK_TARGET_GCC_ARCH) BUILD=RELEASE \
+		SW_MEDIA_PATH=$(TEST_ROOT_DIR)/$(PRODUCT)/$(CVS_SRC_SW_MEDIA) \
+		ENABLE_NEW_APP=TRUE make install; \
+	   rm -rf ../work; \
+	   cp -a work ../
+	
+	@if test "$(SDK_TARGET_ARCH)" = "jazz2" || test "$(SDK_TARGET_ARCH)" = "jazz2l" ; then \
+	    cd $(TEST_ROOT_DIR)/$(PRODUCT); \
+	    cp -f $(TEST_ROOT_DIR)/PROPRIETARY/jazz2hdmi/jazz2hdmi_drv/hdmi_jazz2.ko work; \
+	 fi
+	
+	@mkdir -p $(PKG_DIR)/plugins; \
+	    cd $(TEST_ROOT_DIR)/$(PRODUCT); \
+	    mkdir -p $(TEST_ROOT_DIR)/$(PRODUCT)/pps/work/plugins; \
+	    mkdir -p $(TEST_ROOT_DIR)/$(PRODUCT)/pps/work/appplugins; \
+	    mkdir -p $(TEST_ROOT_DIR)/$(PRODUCT)/pps/work/lib; \
+	    mkdir -p $(TEST_ROOT_DIR)/$(PRODUCT)/pps/work/app/pps; \
+	    cd $(TEST_ROOT_DIR)/$(PRODUCT)/pps; \
+	    cp -arf $(TEST_ROOT_DIR)/$(PRODUCT)/$(CVS_SRC_SW_C2APPS)/pvr/filemanager/apps/pps/libVodPPStreamPlugin/lib/libemscore.so work/lib/; \
+	    cp -arf $(TEST_ROOT_DIR)/$(PRODUCT)/$(CVS_SRC_SW_C2APPS)/pvr/filemanager/apps/pps/libVodPPStreamPlugin/lib/libemsnet.so work/lib/; \
+	    cp -arf $(TEST_ROOT_DIR)/$(PRODUCT)/$(CVS_SRC_SW_C2APPS)/pvr/filemanager/apps/pps/pps.xml work/app/; \
+	    cp -arf $(TEST_ROOT_DIR)/$(PRODUCT)/$(CVS_SRC_SW_C2APPS)/pvr/filemanager/apps/pps/libVodPPStreamPlugin/config/ems.conf work/; \
+	    cp -arf $(TEST_ROOT_DIR)/$(PRODUCT)/$(CVS_SRC_SW_C2APPS)/pvr/filemanager/apps/pps/libVodPPStreamPlugin/config/C2_USER_ID work/; \
+	    cp -arf $(TEST_ROOT_DIR)/$(PRODUCT)/$(CVS_SRC_SW_C2APPS)/pvr/filemanager/lib/plugin/libvod-PPS.plugin.so work/plugins; \
+	    cp -arf $(TEST_ROOT_DIR)/$(PRODUCT)/$(CVS_SRC_SW_C2APPS)/pvr/filemanager/lib/plugin/libp2p-PPS.plugin.so work/appplugins; \
+	    cp -arf $(TEST_ROOT_DIR)/$(PRODUCT)/$(CVS_SRC_SW_C2APPS)/pvr/filemanager/target/pps work/app/pps/; \
+	    cd $(TEST_ROOT_DIR)/$(PRODUCT)/pps/work/app/pps; \
+	    ln -s ../../imageformats imageformats; \
+	    ln -s ../../appplugins appplugins; \
+	    ln -s ../../asc_pun.txt asc_pun.txt; \
+	    ln -s ../../words-english words-english; \
+	    ln -s ../../words-chinese.txt words-chinese.txt; \
+	    cd $(TEST_ROOT_DIR)/$(PRODUCT)/pps; \
+	    tar cfz $(PKG_NAME_BIN_PPS) \
+	        work; \
+	    mkdir -p $(TEST_ROOT_DIR)/$(PRODUCT)/bestv/work/app/bestv; \
+	    mkdir -p $(TEST_ROOT_DIR)/$(PRODUCT)/bestv/work/lib; \
+	    mkdir -p $(TEST_ROOT_DIR)/$(PRODUCT)/bestv/work/plugins; \
+	    cd $(TEST_ROOT_DIR)/$(PRODUCT)/bestv; \
+	    cp -arf $(TEST_ROOT_DIR)/$(PRODUCT)/$(CVS_SRC_SW_C2APPS)/pvr/filemanager/target/bestv work/app/bestv/; \
+	    cp -arf $(TEST_ROOT_DIR)/$(PRODUCT)/$(CVS_SRC_SW_C2APPS)/pvr/filemanager/apps/bestv/bestv.conf work/app/bestv/; \
+	    cp -arf $(TEST_ROOT_DIR)/$(PRODUCT)/$(CVS_SRC_SW_C2APPS)/pvr/filemanager/apps/bestv/bestv.xml work/app/; \
+	    cp -arf $(TEST_ROOT_DIR)/$(PRODUCT)/$(CVS_SRC_SW_C2APPS)/pvr/filemanager/lib/plugin/libvod-bestv.plugin.so work/plugins/; \
+	    cp -arf $(TEST_ROOT_DIR)/$(PRODUCT)/$(CVS_SRC_SW_C2APPS)/pvr/filemanager/apps/bestv/lib/libemscore.so work/lib/; \
+	    cp -arf $(TEST_ROOT_DIR)/$(PRODUCT)/$(CVS_SRC_SW_C2APPS)/pvr/filemanager/apps/bestv/lib/libemsnet.so work/lib/; \
+	    cp -arf $(TEST_ROOT_DIR)/$(PRODUCT)/$(CVS_SRC_SW_C2APPS)/pvr/filemanager/apps/bestv/lib/libcurl.so work/lib/; \
+	    cp -arf $(TEST_ROOT_DIR)/$(PRODUCT)/$(CVS_SRC_SW_C2APPS)/pvr/filemanager/apps/bestv/lib/libbcti_c2.so work/lib/; \
+	    cd $(TEST_ROOT_DIR)/$(PRODUCT)/bestv/work/lib; \
+	    ln -s libcurl.so libcurl.so.4; \
+	    ln -s libemscore.so libemscore.so.0; \
+	    ln -s libemscore.so libemscore.so.0.1.1106; \
+	    ln -s libemsnet.so libemsnet.so.0; \
+	    ln -s libemsnet.so libemsnet.so.0.1.1106; \
+	    cd $(TEST_ROOT_DIR)/$(PRODUCT)/bestv/work/app/bestv; \
+	    ln -s ../../imageformats imageformats; \
+	    cd $(TEST_ROOT_DIR)/$(PRODUCT)/bestv/; \
+	    tar czf $(PKG_NAME_BIN_BESTV) \
+	        work; \
+	    cd $(TEST_ROOT_DIR)/$(PRODUCT); \
+	    tar cfz $(PKG_NAME_BIN_THUNDERKK) \
+		work/plugins/libvod-thunderkk.plugin.so \
+		work/lib/libembed_thunder.so; \
+	 
+	@cd $(TEST_ROOT_DIR)/$(PRODUCT); \
+		cp -f $(TEST_ROOT_DIR)/PROPRIETARY/jazz2hdmi/jazz2hdmi_drv/hdmi_jazz2.ko work/lib/ ; \
+		rm -f work/hdmi_jazz2.ko
+	@cd $(TEST_ROOT_DIR)/$(PRODUCT); tar xfz $(PKG_NAME_BIN_VIVANTE) ;\
+		cp -f build/sdk/drivers/libGAL.so           work/lib/ ;\
+		cp -f build/sdk/drivers/galcore.ko          work/lib/ ;\
+		cp -f build/sdk/drivers/libdirectfb_gal.so  work/lib/ ;\
+		
+	@cd $(TEST_ROOT_DIR)/$(PRODUCT); \
+	    rm  -rf work/app/videophone \
+		-f work/app/videophone.xml \
+		-rf work/app/videochat \
+		-f work/app/videochat.xml \
+		-f work/lib/libqv.so \
+		-f work/lib/libssl.so \
+		-f work/lib/libhuan_api.so \
+		-f work/lib/libvideochat.so \
+		-f work/lib/libdevice_conn_c2_11.so \
+		-f work/lib/libcrypto.so \
+		-rf work/phone; \
+	    tar cfz $(PKG_NAME_C2BOX_DEMO) work
+
+#------------------------------------------------------------------------------
+install:
+	echo "Installing SDK into $(INSTALL_DIR)"
+	mkdir -p $(INSTALL_DIR)
+	rm -rf $(INSTALL_DIR)/$(SDK_VERSION_ALL)
+	cp -r $(PKG_DIR) $(INSTALL_DIR)/$(SDK_VERSION_ALL)
+
+#------------------------------------------------------------------------------
+publish:
+	# Put SDK files on place accessable by the web
+	echo "Publishing SDK to $(PUBLISH_DIR)"
+	mkdir -p $(PUBLISH_DIR)
+	cp $(PKG_NAME_SRC_KERNEL) $(PUBLISH_DIR)
+	cp $(PKG_NAME_SRC_SW_MEDIA) $(PUBLISH_DIR)
+	cp $(PKG_NAME_BIN_KERNEL) $(PUBLISH_DIR)
+	cp $(PKG_NAME_BIN_SW_MEDIA) $(PUBLISH_DIR)
+	cp $(PKG_NAME_BIN_DEMO) $(PUBLISH_DIR)
+
+#------------------------------------------------------------------------------
+clean:
+	@echo "BUILD_TARGET: clean"
+	rm -rf $(PKG_DIR)
+	#rm -rf $(TEST_ROOT_DIR)
+	rm -rf $(TEMP_DIR) 
+
+#------------------------------------------------------------------------------
+.NOTPARALLEL:

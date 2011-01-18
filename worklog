@@ -1,0 +1,3 @@
+2010-12-22 15:32:02
+function that render movie to display:
+    sw_media/media/core/frameRenderer C2FrameRendererJazz2Core::RenderBuffer 

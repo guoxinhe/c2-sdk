@@ -1,0 +1,274 @@
+#!/bin/sh
+
+. /home/hguo/sdk/autoenvs
+
+banner=sw_media
+
+if [ "$THISIP" = "10.16.13.200" ]; then
+    THISSDKMNT=/sdk
+else
+    THISSDKMNT=`cat /etc/mtab | grep 10.16.13.200:/sdk | sed 's:.*sdk \(.*\)\( nfs.*\):\1:'`
+fi
+# Project's root folder for R&D. marked by $banner folder.
+if [ -d `pwd`/$banner ]; then
+    THISPROOT=`pwd`
+fi
+while [ ! -d `pwd`/$banner ]; do
+    cd ..
+    if [ "`pwd`" = "/" ]; then
+        break;
+    fi
+    if [ -d `pwd`/$banner ]; then
+        THISPROOT=`pwd`
+        break;
+    fi
+done
+if [ "`pwd`" != "$THISPATH" ]; then
+    #restore to old pwd if fail search
+    cd $THISPATH
+fi
+[ -z "$THISPROOT" ] && THISPROOT=$THISPATH
+
+# Tool chain's folder goes here
+#THISC2=$THISPROOT
+THISC2=/c2/pclocal
+THISLOG=$THISPATH/$THISTID.log
+
+#configurations, some symble links are used to distinguish the purpose usage.
+if [ "$THISCMD" = "c2sdk" ]; then
+    THISSDK=$THISSDKMNT/jazz2/rel/candidate
+else
+    THISSDK=$THISSDKMNT/jazz2/dev/weekly
+fi
+#where toolchain folder c2/daily/bin goes to
+THISQT=/c2/local/Trolltech/QtopiaCore-4.5.1-generic
+
+# Set up a default search path.
+PATH="/sbin:/usr/sbin:/bin:/usr/bin"
+PATH=$THISQT/bin:$THISC2/c2/daily-jazz2/bin:$PATH
+export PATH
+
+#this is c2 sdk defined variables
+export SDK=$THISPROOT
+export QTHOME=$THISQT
+export C2_DEVTOOLS_PATH=$THISC2/c2/daily
+export ENABLE_NEW_APP=TRUE
+
+func_listthis(){
+    echo "THISCAL   =" $THISCAL
+    echo "THISCMD   =" $THISCMD
+    echo "THISCMDPATH=" $THISCMDPATH
+    echo "THISPROOT =" $THISPROOT
+    echo "THISPATH  =" $THISPATH
+    echo "THISDIR   =" $THISDIR
+
+    echo "THISTID   =" $THISTID
+    echo "THISMAC   =" $THISMAC
+    echo "THISIP    =" $THISIP
+    echo "THISUSR   =" $THISUSR
+    echo "THISHOST  =" $THISHOST
+    echo "THISKV    =" $THISKV
+    echo "THISC2    =" $THISC2
+    echo "THISLOG   =" $THISLOG
+
+    echo "THISSDKMNT=" $THISSDKMNT
+    echo "THISSDK   =" $THISSDK
+    echo "THISQT    =" $THISQT
+    echo "    "
+    echo "-------------------------------------"
+    echo "SDK             =" $SDK
+    echo "QTHOME          =" $QTHOME
+    echo "C2_DEVTOOLS_PATH=" $C2_DEVTOOLS_PATH
+    echo "ENABLE_NEW_APP  =" $ENABLE_NEW_APP
+}
+func_lastof(){
+#find the last item in the ls $1 sort by time(-c) revers(-r)
+    #search in current path first
+    cfg_lastof=NULL
+    last=
+    files=`ls -c -r $1`
+    for i in $files ; do
+        last=$i
+    done
+    #then search in build path if exist
+    if [ -z "$last" ]; then
+        if [ "$cfg_lastbuildpath" != "" ];then
+            if [ -d $cfg_lastbuildpath ];then
+                cfg_lastof=NULL
+                last=
+                files=`ls -c -r $cfg_lastbuildpath/$1`
+                for i in $files ; do
+                    last=$i
+                done
+            fi
+        fi
+    fi
+    #then search in build path subs if exist
+    if [ -z "$last" ]; then
+        if [ "$cfg_lastbuildpath" != "" ];then
+            if [ -d $cfg_lastbuildpath ];then
+                cfg_lastof=NULL
+                last=
+                files=`ls -c -r $cfg_lastbuildpath/plugins/$1`
+                for i in $files ; do
+                    last=$i
+                done
+            fi
+        fi
+    fi
+    #then search in build path subs if exist
+    if [ -z "$last" ]; then
+        if [ "$cfg_lastbuildpath" != "" ];then
+            if [ -d $cfg_lastbuildpath ];then
+                cfg_lastof=NULL
+                last=
+                files=`ls -c -r $cfg_lastbuildpath/c2box/$1`
+                for i in $files ; do
+                    last=$i
+                done
+            fi
+        fi
+    fi
+    #then search in version path if exist
+    if [ -z "$last" ]; then
+        if [ "$cfg_lastversionpath" != "" ];then
+            if [ -d $cfg_lastversionpath ];then
+                cfg_lastof=NULL
+                last=
+                files=`ls -c -r $cfg_lastversionpath/$1`
+                for i in $files ; do
+                    last=$i
+                done
+            fi
+        fi
+    fi
+
+    if [ "$last" != "" ]; then
+        cfg_lastof=$last
+    else
+        cfg_lastof=
+    fi
+    return 0
+}
+
+func_help(){
+    echo "$THISCMD : setup a basic environment of c2 sdk development"
+    echo "$THISCMD [--diff] [--install] [--uninstall]"
+    echo "$THISCMD [--make [args]* ] make with the set envs"
+    echo "$THISCMD [--qmake [args]* ] qmake with the set envs"
+    echo Version 0.1.2
+    echo Copyright 2010, C2. All rights reservered.
+}
+
+func_diff(){
+    local ret
+    for x in `diff -N /usr/bin/$THISCMD ./$THISCMD` ; do ret=$x; done
+    if [ "$ret" = "" ]; then
+        echo "up to date: diff /usr/bin/$THISCMD ./$THISCMD"
+    else
+        diff -N /usr/bin/$THISCMD ./$THISCMD
+        echo "listed result of: diff /usr/bin/$THISCMD ./$THISCMD"
+    fi
+}
+func_install(){
+    cp -f $THISCMD  /usr/bin/$THISCMD
+    echo cp -f $THISCMD  /usr/bin/$THISCMD
+}
+func_uninstall(){
+    rm -f /usr/bin/$THISCMD
+    echo rm -f /usr/bin/$THISCMD
+}
+func_test(){
+    echo please put test code here.
+}
+
+func_lastof $THISSDK
+cfg_lastversion=$cfg_lastof
+cfg_lastbuild=$cfg_lastof
+
+if [ "$THISCMD" = "c2sdk" ]; then
+    cfg_lastof=NULL
+    last=
+    files=`ls $THISSDK/$cfg_lastbuild/[0-9]* -d -c -r`
+    for i in $files ; do
+        last=$i
+    done
+    if [ "$last" != "" ]; then
+        cfg_lastof=$last
+    else
+        cfg_lastof=
+    fi
+    cfg_lastbuild=`echo $cfg_lastof | sed 's:.*/\(.*\):\1:'`
+    cfg_lastversionpath=$THISSDK/$cfg_lastversion
+    cfg_lastbuildpath=$THISSDK/$cfg_lastversion/$cfg_lastbuild
+else
+    cfg_lastversionpath=$THISSDK/$cfg_lastversion
+    cfg_lastbuildpath=$THISSDK/$cfg_lastbuild
+fi
+
+
+#while [ "$1" != "" ]; do
+#done
+#  $#
+#  $?
+case $1 in
+    --help)
+        func_help
+        exit 0
+        ;;
+    --list)
+        func_listthis 
+        shift
+        exit 0
+        ;;
+    --diff) #upgrade to system check only
+        func_diff
+        shift
+        exit 0
+        ;;
+    --install) #force a new install
+        func_install
+        shift
+        exit 0
+        ;;
+    --uninstall) #force a new uninstall
+        func_uninstall
+        shift
+        exit 0
+        ;;
+    --make) #force a new make with the new evn set
+        shift
+        make $@
+        exit 0
+        ;;
+    --qmake) #force a new qmake with the new evn set
+        shift
+        qmake $@
+        exit 0
+        ;;
+    --test)
+        echo $#  $$
+        func_test
+        shift
+        exit 0
+        ;;
+    -l)
+        func_listthis 
+        echo Last version is: $cfg_lastversion
+        echo Last build is: $cfg_lastbuild
+        echo Last build path is: $cfg_lastbuildpath
+        shift
+        exit 0
+        ;;
+    -ls)
+	echo ls $cfg_lastbuildpath
+	ls $cfg_lastbuildpath  $@ --color
+        shift
+        exit 0
+        ;;
+    *)
+	break
+        ;;
+esac
+
+

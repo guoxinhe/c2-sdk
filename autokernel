@@ -1,0 +1,130 @@
+#!/bin/sh
+
+. /home/hguo/sdk/autofunc
+
+banner=init/main.c
+
+if [ -f `pwd`/$banner ]; then
+    THISPROOT=`pwd`
+fi
+while [ ! -f `pwd`/$banner ]; do
+    cd ..
+    if [ "`pwd`" = "/" ]; then
+        break;
+    fi
+    if [ -f `pwd`/$banner ]; then
+        THISPROOT=`pwd`
+        break;
+    fi
+done
+if [ "`pwd`" != "$THISPATH" ]; then
+    cd $THISPATH
+fi
+[ -z "$THISPROOT" ] && THISPROOT=$THISPATH
+
+# PATH is defined in the head file
+
+func_help_this(){
+    echo usage: $THISCMD [-config] [-install] [-copy] [-clean]
+    echo "    auto compile kernel"
+    echo "    path=$PATH"
+    echo "    pwd=`pwd`, kernel at=$THISPROOT"
+}
+
+func_copy_kernel_to_nfs_folder(){
+    if [ -f vmlinux.bin ]; then
+        mkdir -p /local/$THISUSR/uboot/  /local/c2/
+        cp -f vmlinux      /local/$THISUSR/uboot/vmlinux
+        cp -f vmlinux.bin  /local/$THISUSR/uboot/vmlinux.bin
+        echo cp -f vmlinux      /local/$THISUSR/uboot/vmlinux
+        echo cp -f vmlinux.bin  /local/$THISUSR/uboot/vmlinux.bin
+        echo diff result:
+        diff vmlinux      /local/$THISUSR/uboot/vmlinux
+        diff vmlinux.bin  /local/$THISUSR/uboot/vmlinux.bin
+    fi
+    if [ -f zvmlinux.bin ]; then
+        mkdir -p /local/$THISUSR/uboot/  /local/c2/
+        cp -f zvmlinux.bin  /local/$THISUSR/uboot/zvmlinux.bin
+        echo cp -f zvmlinux.bin  /local/$THISUSR/uboot/zvmlinux.bin
+    fi
+}
+
+if [ "`pwd`" != "$THISPROOT" ]; then
+    cd $THISPROOT
+    THISPATH=`pwd`
+    THISDIR=`pwd | sed 's:.*/\(.*\):\1:'`
+fi
+while [ $# -gt 0 ];do
+    case $1 in
+    --help|-h)
+        func_help_this
+        exit 0
+        ;;
+    -config) doconfig=yes;;
+    -copy|-cp)
+	func_copy_kernel_to_nfs_folder
+	exit 0
+	;;
+    -clean) flg_clean=1;;
+    -nand) nand="make -j5 -f configs/jazz2-pvr-nand/pvr-nand.mk";;
+    exit)
+	exit 0
+	;;
+    *)
+        echo unknown command $1
+	exit 0
+	break;
+        ;;
+    esac
+    shift
+done
+
+case $THISDIR in
+    linux-2.6.29*|linux-2.6.32*)
+        if [ "$doconfig" = "yes" ]; then
+	    make clean
+            cp arch/c2/configs/c2_jazz2_defconfig ./.config
+            #cp  arch/c2/configs/c2_jazz2_smp_defconfig ./.config
+            make oldconfig
+            #make menuconfig
+            cd ../
+            make clean
+            make initramfs_gen.txt
+            cd $THISDIR
+        fi
+        if [ "$flg_clean" = "1" ]; then make clean;fi
+	if [ -z "$nand" ] ; then
+            make 
+	else
+	    make -j5 -f configs/jazz2-pvr-nand/pvr-nand.mk
+	fi
+	func_copy_kernel_to_nfs_folder
+        ;;
+    linux-2.6*)
+        if [ "$doconfig" = "yes" ]; then
+            #cp arch/c2/configs/c2_jazz2_defconfig ./.config
+            cp  arch/c2/configs/c2_jazz2_smp_defconfig ./.config
+            make oldconfig
+            #make menuconfig
+            cd ../
+            make initramfs_gen.txt
+            cd $THISDIR
+	fi
+        if [ "$flg_clean" = "1" ]; then make clean;fi
+	if [ -z "$nand" ] ; then
+            make vmlinux.bin
+	else
+	    pushd .. >/dev/null
+	    make -j5 -f configs/jazz2-pvr-nand/pvr-nand.mk linux-2.6/vmlinux.bin
+	    popd
+	fi
+	func_copy_kernel_to_nfs_folder
+        ;;
+    kernel)
+        echo enter a linux source folder to build
+        ;;
+    *)
+        echo unknow linux source folder, write makefile for it.
+        ;;
+esac
+

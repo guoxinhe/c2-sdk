@@ -1,0 +1,40 @@
+## step 1 search all the system pid's context, find the exception one.
+#-------------------------------------------------------------------
+by ps
+ 3172 root     44816 S    ./mspDaemon 
+ 3173 root     44816 R    ./mspDaemon    <--exception
+ 3174 root     44816 S    ./mspDaemon 
+by registers/context, tools 'plife'
+    epc   : 2b0ff520 0x2b0ff520     Tainted: P  <--exception address
+    ra    : 2abca5f4 0x2abca5f4                 <--return address
+    Status: 8001020b    USER EXL IE IPI   
+    Cause : 20000008                            <--why exception
+    BadVA : 7dfffe00
+    ExcCode: 2					<--exception code(parse result)
+
+there is a syscall 'syslog' and its 'dmesg', we can expand it for powerfull debug.
+syscall:  syslog
+bash cmd: dmesg
+kernel:  printk
+
+## step 2 get the context of the exception pid
+#-------------------------------------------------------------------
+ref step 1.
+this include:
+registers
+stacks
+call trace list
+process/thread info from 'task_struct'
+
+
+## step 3 get the exception instructions in liba, parse it
+#-------------------------------------------------------------------
+ref address from epc, or ra
+ref folder /proc/$pid file maps, smaps
+get the lib name, lib address arrange, find out the lib to debug
+dump out the symbol table, assemler code from the lib:
+    c2-linux-objdump -dtlr $your-find-lib-name  >$urlib.map
+use the map file grep what the $address happens, pickup the line and parse it.
+
+    
+   

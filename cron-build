@@ -1,0 +1,295 @@
+#!/bin/sh
+
+[ -z "$MISSION" ] && export MISSION=`echo $0 | sed 's:.*/\(.*\):\1:'`
+[ -z "$rlog" ] && export rlog=$HOME/rlog/rlog.$MISSION
+mkdir -p $HOME/rlog
+recho()
+{
+    #progress echo, for debug during run as the crontab task.
+    if [ ! -z "$rlog" ] ; then
+    echo -en `date +"%Y-%m-%d %H:%M:%S"` " " >>$rlog.log.txt
+    echo "$@" >>$rlog.log.txt
+    fi
+    echo "$@"
+}
+this_help()
+{
+    cat <<-EOF >&2
+
+  man page
+    usage: ./${0##*/} [ -cfg config file ] 
+    copyright, 2010. guo.xinhe. c2 microsystems.
+
+  options
+    -cfg config file:  give a customer configure file, override the default one.
+
+  output
+    run log file, for debug, at $HOME/rlog/rlog.${0##*/}.log.txt
+    lock file, for safe build, at $HOME/lock/lock.${0##*/}.lock
+    send email, after build. put error module owner to -c $CCTO list
+    webpage, after build. access.c2micro.com/~$USER/build/${0##*/}
+    build result at: /sdk/jazz2l/(daily|weekly|rel)/result/<version>
+    upload to: server:/sdk/jazz2l/(daily|weekly|rel)/<version>
+
+  action
+    1. mute load default configure
+    2. mute [ optional ] load customer configure
+    3. mute security check and lock.
+    4. mute wait for pre-job done.
+    5. star work 
+    6. output logs for debug code/build script.
+    7. upload build result to server.
+    8. upload build logs to server
+    9. send report success/fail via website
+    10. send report success/fail via email
+    11. clean garbage and unlock.
+    12. on error: parse result, upload logs, send email, show on website
+
+  build procedure
+    1. Create branch, mostly executed at cvs server side.
+    2. Tag and move tag, mostly executed at cvs server side.
+    3. Code checkout and update locallly
+    4. Source package
+    5. Build and package binary
+    6. Check result and send report
+
+    example: ./${0##*/} -cfg /local/myconfig
+    $argc $argvs , $argva
+	EOF
+}
+addto_send()
+{
+    while [ $# -gt 0 ] ; do
+        if [ "$SENDTO" = "" ]; then 
+            SENDTO=$1 ; 
+        else
+          r=`echo $SENDTO | grep $1`
+          if [ "$r" = "" ]; then 
+            SENDTO=$SENDTO,$1 ; 
+          fi
+        fi
+        shift
+    done
+    export SENDTO
+}
+addto_cc()
+{
+    while [ $# -gt 0 ] ; do
+        if [ "$CCTO" = "" ]; then 
+            CCTO=$1 ; 
+        else
+          r=`echo $CCTO | grep $1`
+          if [ "$r" = "" ]; then 
+            CCTO=$CCTO,$1 ; 
+          fi
+        fi
+        shift
+    done
+    export CCTO
+}
+send_email()
+{
+    [ -z "$mail_title" ] && mail_title="this is mail title"
+    (
+    echo "something in mail body"
+    ) 2>&1 | mail -s"$mail_title" -c $CCTO $SENDTO
+}
+send_webserver()
+{
+    echo done
+}
+thread_branch()
+{
+    # send the config file to remote server
+    # send script to remote server and let server do it.
+    # the result will saved on server for fetch back.
+    echo start thread branch
+}
+wait_branch_done()
+{
+    if [ "$DO_BRANCH" != "1" ]; then
+        echo "1"
+        return 
+    fi
+
+    # get result file from server
+    # grep the line contains the $1 and find it has success flags
+    # return the result
+    echo wait branch done
+    nr_wait=0
+    while [ "$nr_wait" -lt "5" ]; do
+        echo virtual wait branch done 5, $nr_wait 
+        sleep 1
+        nr_wait=$(($nr_wait+1))
+    done
+    echo branch done.
+}
+thread_tag()
+{
+    # send the config file to remote server
+    # send script to remote server and let server do it.
+    # the result will saved on server for fetch back.
+    echo start thread tag
+}
+wait_tag_done()
+{
+    if [ "$DO_TAG" != "1" ]; then
+        echo "1"
+        return 
+    fi
+    # get result file from server
+    # grep the line contains the $1 and find it has success flags
+    # return the result
+    echo wait tag done
+    nr_wait=0
+    while [ "$nr_wait" -lt "5" ]; do
+        echo virtual wait tag done 5, $nr_wait 
+        sleep 1
+        nr_wait=$(($nr_wait+1))
+    done
+    echo tag done
+}
+thread_checkout()
+{
+    # checkout and save the result to file
+    CMDROOT=/build/jazz2t/daily
+    $CMDROOT/cron-checkout -MODLIST $CMDROOT/cron-colist -CVSSTAT $CMDROOT/cvsstat -SOURCE_DIR $CMDROOT/sdk/source  >cvslog 2>&1 &
+    cvscothread_id=$!
+    recho cvscothread_id=$id 
+    sleep 2
+    recho start thread checkout
+}
+path_totoken()
+{
+    #convert all the /.- to _ for $1
+    local tkn=`echo $1 | sed -e 's:/:_:g' -e 's:-:_:g'  -e 's:\.:_:g'`
+    echo $tkn
+    return 0
+}
+
+wait_checkout_module_done()
+{
+    # get result file from server
+    # grep the line contains the $1 and find it has success flags
+    # return the result
+    tkn=`path_totoken $1`
+    cvsstat=`pwd`/cvsstat
+    retline=`grep "$tkn:" $cvsstat`
+    if [ -z "$retline" ];then
+        recho module $1 is not in cvs checkout list
+        return
+    fi
+
+    echo wait checkout $1 done
+    nr_wait=0
+    while [ "$nr_wait" -lt "43200" ]; do
+        retline=`grep "$tkn:" $cvsstat`
+        retdone=`echo $retline | sed 's/.*:\(.*\)/\1/g'`
+        [ "$retdone" = "0" ] && break
+        [ "$retdone" = "x" ] && break
+        echo -en "\\033[10G"  wait $1 : $retdone  $nr_wait seconds
+        #echo virtual wait checkout $1 5, $nr_wait 
+        sleep 1
+        nr_wait=$(($nr_wait+1))
+    done
+    [ "$nr_wait" != "0" ] && echo
+    [ "$retdone" = "0" ] && echo checkout $1 done
+    [ "$retdone" = "x" ] && echo checkout $1 fail
+    [ "$retdone" = "-" ] && echo checkout $1 timeout
+    echo
+}
+
+rlog_envs()
+{
+    cat <<-EOF >&$rlog.env.txt
+    DO_TAG               =$DO_TAG                                    
+    PRODUCT              =$PRODUCT                                   
+    WORK_DIR             =$WORK_DIR                                  
+    MAJOR                =$MAJOR                                     
+    MINOR                =$MINOR                                     
+    BRANCH               =$BRANCH                                    
+    TAGVER               =$TAGVER                                    
+    SDK_TARGET_ARCH      =$SDK_TARGET_ARCH                    
+    SDK_TARGET_GCC_ARCH  =$SDK_TARGET_GCC_ARCH                
+    SDK_KERNEL_VERSION   =$SDK_KERNEL_VERSION                 
+    SDK_CVS_USER         =$SDK_CVS_USER                       
+    DATE                 =$DATE                               
+    CANDIDATE            =$CANDIDATE                          
+    CVS_TAG              =$CVS_TAG                            
+    QT_INSTALL_DIR       =$QT_INSTALL_DIR                     
+    TOOLCHAIN_PATH       =$TOOLCHAIN_PATH                     
+    SDK_VER              =$SDK_VER                            
+    INSTALL_DIR          =$INSTALL_DIR                        
+    ENV                  =$ENV 
+	EOF
+}
+defconfig=defconfig
+usrconfig=tmp$$
+argc=$#
+argva="$@"
+argvs="$*"
+if [ $# -gt 1 ] && [ "$1" = "-cfg" ] ; then
+    usrconfig=$2
+    shift 2
+fi
+
+[ -f $defconfig ] && . $defconfig
+[ -f $usrconfig ] && . $usrconfig
+
+## secoruty checking
+#-------------------------------------------------------------------
+DO_TAG=Y
+PRODUCT=$*
+WORK_DIR=$PWD
+MAJOR=0
+MINOR=10
+BRANCH=3L
+TAGVER=8
+export SDK_TARGET_ARCH=jazz2
+export SDK_TARGET_GCC_ARCH=TANGO
+export SDK_KERNEL_VERSION=2.6.23
+export SDK_CVS_USER=$USER
+export DATE=`date +%y%m%d`
+export CANDIDATE=${BRANCH}-${TAGVER}
+#export CVS_TAG=${SDK_TARGET_ARCH}-SDK-${MAJOR}_${MINOR}-${CANDIDATE}
+export QT_INSTALL_DIR=$WORK_DIR/sdk/test_root/QtopiaCore-4.6.1-generic
+export TOOLCHAIN_PATH=$WORK_DIR/sdk/test_root/c2/daily/bin
+export SDK_VER=${MAJOR}.${MINOR}-${BRANCH}
+export INSTALL_DIR=/build/sdk-install/c2-${SDK_TARGET_ARCH}-sdk-${SDK_VER}
+ENV="CANDIDATE=${CANDIDATE} CVS_TAG=${CVS_TAG} QT_INSTALL_DIR=${QT_INSTALL_DIR} \
+     TOOLCHAIN_PATH=${TOOLCHAIN_PATH} MAJOR=${MAJOR} MINOR=${MINOR}"
+BLOG=
+PSTAT=
+
+export SDK_RESULTS_DIR=
+
+DO_BRANCH=0
+DO_TAG=0
+
+[ "$reportenvs" != "" ] && rlog_envs
+
+if [ "$err" != "" ];then
+    this_help
+    exit 0
+fi
+
+if [ "$DO_BRANCH" = "1" ]; then
+    thread_branch $branch_name $branch_module_config_file
+    wait_branch_done
+fi
+if [ "$DO_TAG" = "1" ]; then
+    thread_tag $tag_name $tag_module_config_file
+    wait_tag_done
+fi
+
+thread_checkout $tag_name $cvs_module_config_file
+
+wait_checkout_module_done projects/sw/sdk/Makefile
+wait_checkout_module_done projects/sw/sdk/vertical
+wait_checkout_module_done projects/sw/sdk
+
+## secoruty checking
+#-------------------------------------------------------------------
+
+exit 0
+

@@ -1,0 +1,42 @@
+#!/bin/sh
+
+#echo Running $@
+
+task_type=
+timeid=
+while [ $# -gt 0 ];do
+  case $1 in
+    -tag|-checkout|-srcpackage|-build|-binpackage|-smoketest)
+        task_type=`echo $1|sed 's/-\(.*\)/\1/g'`
+        shift;;
+    -tid*) timeid=`echo $1|sed 's/-tid\(.*\)/\1/g'`   shift;;
+    -*) shift;;
+    *)break;;
+  esac
+done
+
+sdkdir=`pwd`
+mkdir -p $sdkdir
+#timeid=`date +%Y%m%d%H%M%S`
+log=$sdkdir/log/$timeid
+slog=$sdkdir/slog/$timeid
+temp=$sdkdir/temp/$timeid
+package=$sdkdir/package/$timeid
+
+status_file=$1
+log_file=$2
+shift 2
+
+echo start mission `date` $@  >>$log_file
+
+
+echo $@ >>$log_file
+$@  >>$log_file   2>&1
+
+ret=$?
+
+echo $ret >$status_file
+
+#echo $@ returns $ret
+exit $ret
+

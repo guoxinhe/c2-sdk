@@ -1,0 +1,46 @@
+#!/bin/sh
+
+. autofunc
+
+
+pre1=/sdk/jazz2/rel/official/c2-jazz2-sdk-0.10-2L
+pre2=/sdk/jazz2/rel/official/C2Box-0.10-2L
+
+relink_file(){
+    #lrwxrwxrwx 1 684 101 99 2010-07-15 14:32 /sdk/jazz2/rel/official/C2Box-0.10-2L/Premium/c2-jazz2-sdk-0.10-2L-pps-bin.tar.gz -> /sdk/jazz2/rel/candidate/c2-jazz2-sdk-0.10-2L/0.10-2L-8/c2box/c2-jazz2-sdk-0.10-2L-8-pps-bin.tar.gz
+    
+    #reserve link name
+    a=$1
+    b=`ls -l $a`
+
+    #old file 
+    c=`echo $b | sed 's,.* -> \(.*\),\1,'`
+    #new file
+    d=`echo $c | sed 's,0.10-2L-8,0.10-2L-9,g'`
+    echo $c
+    echo $d
+    rm $a
+    ln -s $d $a
+}
+
+relink_folder(){
+  f=`find $1 -type l`
+  for i in $f ; do
+    if [ -h $i ]; then
+        relink_file $i
+    else
+        echo shit! not a symble link! $i
+	ls $i
+    fi
+  done
+
+}
+
+#[ $# -lt 1 ] && echo no input path && exit 0
+
+#shit=`find $1 -type l`
+
+
+relink_folder $pre1
+relink_folder $pre2
+
