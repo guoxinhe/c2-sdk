@@ -18,12 +18,12 @@ recho_time_consumed()
 }
 disk_check()
 {
-    umount  "/dev/$SD"1  "/dev/$SD"5  "/dev/$SD"6  
-    [ ! -z "$CONFIG_FSCHECK" ] && umount "/dev/$SD"7
-    fsck.vfat "/dev/$SD"1
-    fsck.ext2 "/dev/$SD"5
-    fsck.ext3 "/dev/$SD"6
-    [ ! -z "$CONFIG_FSCHECK" ] && fsck.ext2 "/dev/$SD"7
+    umount  ${SD}1  ${SD}5  ${SD}6  
+    [ ! -z "$CONFIG_FSCHECK" ] && umount ${SD}7
+    fsck.vfat ${SD}1
+    fsck.ext2 ${SD}5
+    fsck.ext3 ${SD}6
+    [ ! -z "$CONFIG_FSCHECK" ] && fsck.ext2 ${SD}7
 }
 disk_umount()
 {
@@ -37,10 +37,10 @@ disk_mount()
     pushd $tmp
 	echo mount sd card contents...
         mkdir -p sd1 sd5 sd6 sd7
-        mount "/dev/$SD"1 sd1
-        mount "/dev/$SD"5 sd5
-        mount "/dev/$SD"6 sd6
-        [ ! -z "$CONFIG_FSCHECK" ] && mount "/dev/$SD"7 sd7
+        mount ${SD}1 sd1
+        mount ${SD}5 sd5
+        mount ${SD}6 sd6
+        [ ! -z "$CONFIG_FSCHECK" ] && mount ${SD}7 sd7
         ls sd1 sd5 sd6 sd7
     popd
 }
@@ -53,8 +53,8 @@ disk_remove()
 }
 disk_existcheck()
 {
-    if [ ! -b /dev/$SD ] ; then
-        echo "no device: /dev/$SD*  using -sd [sdb|sdc|sdd|sde|sdf|sdg]"
+    if [ ! -b ${SD} ] ; then
+        echo "no device: ${SD}*  using -sd [sdb|sdc|sdd|sde|sdf|sdg]"
         err=$(($err+1))
     fi
     if [ "$SD" = "sda" ] ; then
@@ -70,18 +70,20 @@ help()
     -k  path-kernel-bin.tar.gz
     -w  path-work-bin.tar.gz
     -t  path-devtools-bin.tar.gz
-    -sd sd card device name, sdb = /dev/sdb
-    -ls mount sd card, ls, and exit.
-    -rm remove content in sd card and exit.
+    -sd sd card device name, i.e. /dev/sdb
     -sdk auto detect the kernel work toolchain in current folder.
     -tmp tmp dir, default to /tmp
     -fsck force fscheck before any operation
 
-    Warning: all files in sd card is removed.
-    Note : need sudo and password during make a sd card
-        sd card should already have 4 partitions: p1:fat, p5:ext2, p6:ext3, p7:ext2
+    -ls mount sd card, ls, and exit.
+    -rm remove content in sd card and exit.
 
-    example: sudo ./${0##*/} -sd sde -k ... -w ... -t ...
+    Warning: all files in sd card may be removed.
+    Note : need sudo and password during make a sd card
+        make sure sd card contains 4 partitions: p1:fat, p5:ext2, p6:ext3, p7:ext2
+        otherwise, please create it first.	
+
+    example: sudo ./${0##*/} -sd /dev/sde -k ... -w ... -t ...
 
 	EOF
 }
@@ -100,32 +102,32 @@ while [ $# -gt 0 ]; do
     -sd)
         SD=$2
         shift 2;;
-    -ls)
-	disk_mount
-        exit 0;;
-    -rm)
-	if [ -b /dev/$SD ] ; then
-		echo Remove contents in /dev/$SD
-		disk_check
-		disk_mount
-		disk_remove
-		disk_umount
-		echo Remove contents in /dev/$SD done.
-	else
-		echo no sd device found
-	fi
-        exit 0
-        shift;;
+    -tmp)
+        tmp=$2
+        shift 2;;
     -sdk)
 	kernel=`pwd`/c2-*-kernel-bin.tar.gz
         work=`pwd`/c2box/c2-*-c2box-bin.tar.gz
         devtools=`pwd`/c2-*-devtools-bin.tar.gz
         shift;;
-    -tmp)
-        tmp=$2
-        shift 2;;
     -fsck)
         CONFIG_FSCHECK=1
+        shift;;
+    -ls)
+	disk_mount
+        exit 0;;
+    -rm)
+	if [ -b ${SD} ] ; then
+		echo Remove contents in ${SD}
+		disk_check
+		disk_mount
+		disk_remove
+		disk_umount
+		echo Remove contents in ${SD} done.
+	else
+		echo no sd device found
+	fi
+        exit 0
         shift;;
     *)
         echo unknown command $1
@@ -149,8 +151,6 @@ if [ ! -d $tmp/c2 ]; then
   if [ ! -f $devtools ] ; then
     echo "no devtools(/c2/local/c2/daily-jazz2 is not fit for this):" $devtools
     err=$(($err+1))
-  else
-    tar xzvf $devtools -C $tmp
   fi
 fi
 
@@ -158,17 +158,33 @@ if [ $err -gt 0 ] ; then
     help
     exit $err
 fi
-export PATH=$tmp/c2/daily/bin:$PATH
 
+echo using ${SD}
+echo using $devtools
+echo using $kernel
+echo using $work
+echo using $tmp
+[ $CONFIG_FSCHECK ] && echo force do fsck=yes
+echo "Warning: all data in disk may be destroied if you answer 'y'"
+echo "is the upper settings correct[N/y] ?"
+read confirm
+[ "$confirm" != "y" ] && exit 0
+
+export PATH=$tmp/c2/daily/bin:$PATH
 disk_check
 disk_mount
 disk_remove
 disk_umount
 
+if [ ! -d $tmp/c2 ]; then
+    ACT_TAR_DEVTOOLS=1
+    tar xzvf $devtools -C $tmp
+fi
 rm -rf $tmp/prebuilt
+ACT_TAR_KERNEL=1
 tar xzvf $kernel -C $tmp
 pushd $tmp/prebuilt/sw/kernel
-    make SD=/dev/$SD install
+    make SD=${SD} install
 popd
 sleep 5
 
@@ -179,4 +195,7 @@ cp -f $work $tmp/sd1
 sync
 disk_umount
 recho_time_consumed
+
+[ $ACT_TAR_DEVTOOLS ] && rm -rf $tmp/c2        &
+[ $ACT_TAR_KERNEL   ] && rm -rf $tmp/prebuilt  &
 

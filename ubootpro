@@ -1,25 +1,76 @@
-setenv nad_showlogo 'nand device 0; nand read 0xa0000000 0x800000 0x100000;logo init'
-setenv nad_boot 'nand read 0xa0000000 0x0 0x600000;go'
-setenv nad_erase 'nand device 0;nand erase'
-setenv nfs_setserver 'set serverip 10.16.8.4;set ipaddr 10.16.11.66'
-setenv nfs_rvmlinux 'set bootfile /local/hguo/uboot/vmlinux.bin;set loadaddr 0xa0000000;nfs'
-setenv nfs_rzvmlinux 'set bootfile /local/hguo/uboot/zvmlinux.bin;set loadaddr 0xa0000000;nfs'
-setenv nfs_rrootfs 'set bootfile /local/hguo/uboot/rootfs.image;set loadaddr 0xa0000000;nfs'
-setenv nfs_rlogo 'set bootfile /local/hguo/uboot/logo.bmp;set loadaddr 0xa0000000;nfs'
-setenv nfs_bootvm 'run nad_showlogo;run nfs_setserver;run nfs_rvmlinux;go'
-setenv nfs_bootzvm 'run nad_showlogo;run nfs_setserver;run nfs_rzvmlinux;go'
-setenv nfs_wkernel 'nand device 0; mw.b 0xa0000000 0xff 0x600000;run nfs_rzvmlinux;nand write 0xa0000000 0x0 0x600000'
-setenv nfs_wrootfs 'nand device 0; mw.b 0xa0000000 0xff 0x2800000;run nfs_rrootfs;nand write.yaffs 0xa0000000 0x2000000 0x2000000'
-setenv nfs_wlogo 'nand device 0;mw.b 0xa0000000 0xff 0x400000;run nfs_rlogo;nand write 0xa0000000 0x800000 0x400000'
-setenv nfs_wfirmware 'run nfs_setserver; run nad_erase; run nfs_wkernel; run nfs_wrootfs; run nfs_wlogo'
-setenv bootcmd 'run nfs_bootzvm'
+#/bin/sh
+#burn nand system via nfs server:/local/hguo/nfsroot/boot/   
+#zvmlinux.bin rootfs.image logo.bmp
+#
+#Please modify the macaddr, ip, server ip, and nfs root before use it.
+
+#big jazz2l board's setting
+setenv macaddr       '00:E0:c3:00:01:02'
+setenv ethaddr       '00:E0:c3:00:01:02'
+setenv ipaddr        '10.16.8.168'
+
+#big jazz2 board's setting
+setenv macaddr       '00:50:C2:7A:F3:07'
+setenv ethaddr       '00:50:C2:7A:F3:07'
+setenv ipaddr        '10.16.11.66'
+
+#run smp+UP mode
+setenv bootargs      'mem=512m,256m,32m debug console=uart,mmio,0xb0224000,115200n8 video=c2fb:cpst,pal,60,fbcm:16M root=ramfs nosmp'
+#bootargs ramfs
+setenv bootargs      'mem=256m,128m,32m debug console=uart,mmio,0xb0224000,115200n8 video=c2fb:cpst,ntsc,60,fbcm:16M root=ramfs'
+#bootargs nfsroot, key append: root=/dev/nfs rw nfsroot=10.16.13.199:/local/hguo/nfsroot ip=dhcp init=/init
+setenv bootargs      'mem=256m,128m,32m debug console=uart,mmio,0xb0224000,115200n8 video=c2fb:cpst,ntsc,60,fbcm:16M root=/dev/nfs rw nfsroot=10.16.13.199:/local/hguo/nfsrootjazz2l ip=dhcp init=/init'
+#bootargs ramfs + kgdb, key append: kgdboc=ttyS0,115200 kgdbwait
+setenv bootargs      'mem=512m,256m debug console=uart,mmio,0xb0224000,115200n8 video=c2fb:cpst,ntsc,60,fbcm:16M root=ramfs kgdboc=ttyS0,115200 kgdbwait'
+#normal jazz2 boot
+setenv bootargs      'mem=512m,256m debug console=uart,mmio,0xb0224000,115200n8 video=c2fb:cpst,ntsc,60,fbcm:16M root=ramfs'
+
+setenv nad_erase      'nand device 0;nand erase'
+setenv nad_showlogo   'nand device 0; nand read 0xa0000000 0x800000 0x100000;logo init'
+setenv nad_boot       'run nad_showlogo;nand device 0;nand read 0xa0000000 0x0 0x600000;go'
+setenv nfs_setserver  'set serverip 10.16.8.4'
+setenv nfs_rvmlinux   'set bootfile /local/hguo/nfsroot/boot/vmlinux.bin; set loadaddr 0xa0000000;nfs'
+setenv nfs_rzvmlinux  'set bootfile /local/hguo/nfsroot/boot/zvmlinux.bin;set loadaddr 0xa0000000;nfs'
+setenv nfs_rrootfs    'set bootfile /local/hguo/nfsroot/boot/rootfs.image;set loadaddr 0xa0000000;nfs'
+setenv nfs_rlogo      'set bootfile /local/hguo/nfsroot/boot/logo.bmp;    set loadaddr 0xa0000000;nfs'
+setenv nfs_wkernel    'nand device 0; mw.b 0xa0000000 0xff 0x600000; run nfs_rzvmlinux;nand write 0xa0000000 0x0 0x600000'
+setenv nfs_wrootfs    'nand device 0; mw.b 0xa0000000 0xff 0x2800000;run nfs_rrootfs;  nand write.yaffs 0xa0000000 0x2000000 0x2000000'
+setenv nfs_wlogo      'nand device 0; mw.b 0xa0000000 0xff 0x400000; run nfs_rlogo;    nand write 0xa0000000 0x800000 0x400000'
+setenv nfs_wfirmware  'run nfs_setserver; run nad_erase; run nfs_wkernel; run nfs_wrootfs; run nfs_wlogo'
+setenv nfs_showlogo   'run nfs_setserver; run nfs_rlogo; logo init'
+setenv nfs_bootvm     'run nfs_showlogo;run nfs_setserver;run nfs_rvmlinux;go'
+setenv nfs_bootzvm    'run nfs_showlogo;run nfs_setserver;run nfs_rzvmlinux;go'
+setenv bootcmd        'run nfs_bootvm'
 save
 
-setenv abs_erase 'nand device 0;nand erase'
-setenv abs_kernel 'device 0; mw.b 0xa0000000 0xff 0x600000;sdload zvmlinux.bin 0xa0000000;nand write 0xa0000000 0x0 0x600000'
-setenv abs_rootfs 'nand device 0; mw.b 0xa0000000 0xff 0x2800000; sdload rootfs.image 0xa0000000;nand write.yaffs 0xa0000000 0x2000000 0x2000000'
-setenv abs_logo 'nand device 0;mw.b 0xa0000000 0xff 0x400000;sdload logo.bmp 0xa0000000;nand write 0xa0000000 0x800000 0x400000'
-setenv abs_loadkernel 'nand device 0; nand read 0xa0000000 0x0 0x600000'
-setenv abs_loadlogo 'nand device 0; nand read 0xa0000000 0x800000 0x400000;logo init'
-setenv abs_go 'run abs_erase;run abs_kernel; run abs_rootfs; run abs_logo; run abs_loadlogo; run abs_loadkernel; go'
-setenv abs_extract 'mkdir -p /sd; mount -t vfat /dev/mmc1 /sd; cd /home ;tar xzvf /sd/c2-jazz2-sdk-*'
+#update system from sd card
+setenv sdc_erase      'nand device 0;nand erase'
+setenv sdc_rwkernel   'nand device 0; mw.b 0xa0000000 0xff 0x00600000; sdload zvmlinux.bin 0xa0000000;nand write       0xa0000000 0x0000000 0x0600000'
+setenv sdc_rwrootfs   'nand device 0; mw.b 0xa0000000 0xff 0x02800000; sdload rootfs.image 0xa0000000;nand write.yaffs 0xa0000000 0x2000000 0x2000000'
+setenv sdc_rwlogo     'nand device 0; mw.b 0xa0000000 0xff 0x00400000; sdload logo.bmp     0xa0000000;nand write       0xa0000000 0x0800000 0x0400000'
+setenv sdc_loadkernel 'nand device 0; nand read 0xa0000000 0x00000000 0x600000'
+setenv sdc_loadlogo   'nand device 0; nand read 0xa0000000 0x00800000 0x400000;logo init'
+setenv sdc_wfirmware  'run sdc_erase;run sdc_rwkernel; run sdc_rwrootfs; run sdc_rwlogo; run sdc_loadlogo; run sdc_loadkernel; go'
+setenv sdc_extract    'mkdir -p /sd; mount -t vfat /dev/mmc1 /sd; cd /home ;tar xzvf /sd/c2-jazz2-sdk-*'
+setenv bootcmd        'run nad_boot'
+save
+
+#bootargs TV Mode setting
+video=c2fb:cpst,ntsc,60,fbcm:16M　　TV
+video=c2fb:cpnt,720p,60,fbcm:16M　　Component
+video=c2fb:viod,720p,60,fbcm:16M　　HDMI 
+
+#run with/without smp
+wioutsmp: bootargs append: nosmp
+
+#enable kgdb:
+this need kernel make config with CONFIG_KGDB, select from Kernel Hacking-->KGDB
+in pc side, 
+# c2-elf-gdb vmlinux
+# (c2-gdb) set c2 kmode
+# (c2-gdb) set remotebaud 115200
+# (c2-gdb) target remote /dev/ttyUSB0 
+
+
+setenv sddroid     'sdload vmlinux.bin; setenv bootargs mem=384m,128m console=ttyS0 debug video=c2fb:cpst,ntsc,60,fbcm:16M root=/dev/mmcblk0p5 rw ip=dhcp init=/init androidboot.console=ttyS0; go'
+setenv bootcmd     'run sddroid'
