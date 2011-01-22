@@ -1,11 +1,63 @@
 #!/bin/sh
 
-[ -f /home/hguo/sdk/autoenvs ] && . /home/hguo/sdk/autoenvs
-[ -z "$MISSION" ] && export MISSION=$THISCMD
-[ -f /home/hguo/sdk/autorlog ] && . /home/hguo/sdk/autorlog
+THISCAL=$0
+THISCMD=${0##*/}   #`echo $0 | sed 's:.*/\(.*\):\1:'`
+THISCMDPATH=`echo $0 | sed 's:\(.*/\)\(.*\):\1:'  | sed 's:\(.*\)/:\1:'`
 
-BJ=10.16.13.200  #storage
-SJ=10.0.5.129    #saturn
+THISPATH=`pwd`
+
+THISTID=`    date +%Y%m%d%H%M%S`
+THISDATESET=`date +%m%d%H%M%Y.%S`
+THISMAC=`/sbin/ifconfig eth0 | grep 'HWaddr' | sed 's/.*HWaddr \(.*\)/\1/'`
+THISIP=`/sbin/ifconfig eth0 | grep 'inet addr' | sed 's/.*addr:\(.*\)\(  Bcast.*\)/\1/'`
+THISUSR=`whoami`
+THISHOST=`uname -n`
+THISKV=`uname -v`
+THISARGC=$#
+THISARGV=$@
+
+RES_COL=40
+MOVE_TO_COL="echo -en \\033[${RES_COL}G"
+SETCOLOR_SUCCESS="echo -en \\033[1;32m"
+SETCOLOR_FAILURE="echo -en \\033[1;31m"
+SETCOLOR_WARNING="echo -en \\033[1;33m"
+SETCOLOR_NORMAL="echo -en \\033[0;39m"
+[ -z "$MISSION" ] && export MISSION=$THISCMD
+[ -z "$rlog" ] && export rlog=$HOME/rlog/rlog.$MISSION
+recho()
+{
+    #progress echo, for debug during run as the crontab task.
+    if [ ! -z "$rlog" ] ; then
+    echo -en `date +"%Y-%m-%d %H:%M:%S"` " " >>$rlog.log.txt
+    echo "$@" >>$rlog.log.txt
+    fi
+    echo "$@"
+}
+echo_time_used()
+{
+    tm_start=$1
+    tm_stop=`date +%s`
+    shift 1
+    tm_c=$(($tm_stop-$tm_start))
+    tm_h=$(($tm_c/3600))
+    tm_m=$(($tm_c/60))
+    tm_m=$(($tm_m%60))
+    tm_s=$(($tm_c%60))
+    echo "$@" "$tm_c seconds / $tm_h:$tm_m:$tm_s consumed."
+}
+tm_a=`date +%s`
+mkdir -p $HOME/rlog
+touch $rlog.log.txt
+
+which git >/dev/null
+ret=$?
+if [ $ret -eq 0 ]; then
+  CONFIG_USEGIT=1
+  echo git supported, using git
+fi
+
+BJ=10.16.13.199  #codec
+SJ=10.0.5.193    #calypso
 PC=10.16.8.4     #Delllinux
 servers="$PC $BJ $SJ"
 
@@ -23,11 +75,34 @@ case $THISIP in
         servers="$BJ $SJ"
         recho Sync to BJ/SJ Server ;;
 esac
+
 if [ $# -lt 1 ]; then
     recho Sync folder $THISPATH, all files and folders
 else
     recho Sync folder $THISPATH, file $@
 fi
+
+if [ $CONFIG_USEGIT ]; then
+if [ ! -d .git ]; then
+    echo "There is no git repository, create it now[N/y] ?"
+    read confirm
+    [ "$confirm" != "y" ] && exit 0
+    git init
+    git add .
+    git commit -m "init this folder as git repository on date $(date)"
+else
+    clean=$(git status | grep "nothing to commit (working directory clean)")
+    if [ "$clean" == "" ]; then
+        echo "add these to git"
+        git status
+        git add .
+        git commit -m "commit at $(date)"
+    else
+        echo "git is clean."
+    fi
+fi
+fi
+
 for i in $servers; do
     if [ "$i" = "$THISIP" ]; then
         #do not sync to itself
@@ -38,12 +113,16 @@ for i in $servers; do
     $MOVE_TO_COL
     recho "----------------    >>>>    ----------------"
     $SETCOLOR_NORMAL
-    ssh $i mkdir -p $THISPATH
-    if [ $# -lt 1 ]; then
-        scp -r * $i:$THISPATH
+    if [ $CONFIG_USEGIT ]; then
+        git push $i:$THISPATH
     else
-        scp -r $@ $i:$THISPATH
+        ssh $i mkdir -p $THISPATH
+        if [ $# -lt 1 ]; then
+            scp -r * $i:$THISPATH
+        else
+            scp -r $@ $i:$THISPATH
+        fi
+        recho 
     fi
-    recho 
 done
-recho_time_consumed
+echo_time_used $tm_a
