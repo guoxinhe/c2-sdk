@@ -1,0 +1,138 @@
+Index: sw_media/media/daemon/widget/include/msp/mspDefs.h
+===================================================================
+--- sw_media.orig/media/daemon/widget/include/msp/mspDefs.h
++++ sw_media/media/daemon/widget/include/msp/mspDefs.h
+@@ -93,5 +93,33 @@
+  #define DEBUG(...)
+ #endif
+ 
++#define DODGE_DEBUG 1
++#ifdef DODGE_DEBUG
++#define DODGE_DEFAULT 0
++int inline cmdflag(unsigned int a)
++{
++    extern unsigned long __cmdflag_array[32];
++    if((a>>5) >= (sizeof(__cmdflag_array)/sizeof(unsigned long)))
++        return 0;
++    return !!(__cmdflag_array[a>>5]&(1UL<<(a&0x1F)));
++}
++int inline cmdflag_set(unsigned int a, int on)
++{
++    extern unsigned long __cmdflag_array[32];
++    if((a>>5) >= (sizeof(__cmdflag_array)/sizeof(unsigned long)))
++        return 0;
++    if(on)
++        __cmdflag_array[a>>5] |=  (1UL<<(a&0x1F));
++    else
++        __cmdflag_array[a>>5] &= ~(1UL<<(a&0x1F));
++    return __cmdflag_array[a>>5]&(1UL<<(a&0x1F));
++}
++#define dojprintf(...) do { if(cmdflag(DODGE_DEFAULT)) { \
++    extern volatile unsigned long *dodge_c2clock;extern unsigned long __nrdodgecalled;\
++    fprintf(stderr, "[%08X][%ld:%s:%s:%d] ",(unsigned int)(*dodge_c2clock), __nrdodgecalled++, __FILE__, __FUNCTION__, __LINE__); \
++    fprintf(stderr, __VA_ARGS__); } }while(0)
++#else
++#define dojprintf(...) do { }while(0)
++#endif
+ #endif  //_MSP_DEFS_H_
+ 
+Index: sw_media/media/daemon/widget/mspdaemon/mspDaemon.cpp
+===================================================================
+--- sw_media.orig/media/daemon/widget/mspdaemon/mspDaemon.cpp
++++ sw_media/media/daemon/widget/mspdaemon/mspDaemon.cpp
+@@ -645,14 +645,85 @@ int InvokeFunction( MspSendMsg *msg,MspR
+ 
+     return 0x0;
+ }
++#ifdef DODGE_DEBUG
++#include <sys/mman.h>
++static int dodge_fdc2reg=-1;
++static volatile unsigned char *dodge_c2regbase=NULL;
++volatile unsigned long *dodge_c2clock=NULL;
++#define C2LBSYS_MMAP_SIZE 0x1000
++#define C2LBSYS_BASE      0x2012c000  //c2's local bus sys space, 0x2012c05c=os jiffy clock source
++static int dodge_c2regbase_mmap(void)
++{
++    if(dodge_fdc2reg<0)
++        dodge_fdc2reg = open("/dev/mem",  O_RDONLY | O_SYNC);
++
++    if(dodge_fdc2reg>0 && dodge_c2regbase==NULL)
++        dodge_c2regbase = (u8*)mmap( 0, C2LBSYS_MMAP_SIZE,
++              PROT_READ, MAP_SHARED, dodge_fdc2reg, C2LBSYS_BASE );
++
++    if ( dodge_c2regbase==(unsigned char *)(-1) || dodge_c2regbase==NULL) {
++        printf("Can not mmap physical address 0x%08X, size=0x%08X\n", C2LBSYS_BASE, C2LBSYS_MMAP_SIZE);
++        dodge_c2regbase=NULL;
++        dodge_c2clock=(volatile unsigned long *)(&dodge_c2clock);
++    } else {
++        printf("mmap physical address 0x%08X, size=0x%08X OK\n", C2LBSYS_BASE, C2LBSYS_MMAP_SIZE);
++        dodge_c2clock=(volatile unsigned long *)(dodge_c2regbase+0x5C);
++        return 0;
++    }
++    return -1;
++}
++static int dodge_c2regbase_unmap(void)
++{
++    if(dodge_c2regbase!=NULL)
++        munmap((void *)dodge_c2regbase, C2LBSYS_MMAP_SIZE);
++    dodge_c2regbase=NULL;
++    dodge_c2clock=NULL;
++
++    if(dodge_fdc2reg>0)
++        close(dodge_fdc2reg);
++    dodge_fdc2reg = -1;
++    return 0;
++}
++
++unsigned long __cmdflag_array[32]={0,};
++unsigned long __nrdodgecalled=0;
++int cmdflag_module_init(void)
++{
++    unsigned int i;
++    for(i=0;i<sizeof(__cmdflag_array)/sizeof(unsigned long);i++)
++        __cmdflag_array[i]=0;
++    return 0;
++}
++#ifdef DODGE_DEFAULT
++#undef DODGE_DEFAULT
++#endif
++#define DODGE_DEFAULT 0x100
++#endif
+ 
+ int main(int argc, char *argv[])
+ {
+     char filename[PATH_MAX] = {0};
+ 
++#ifdef DODGE_DEBUG
++    dodge_c2clock=(volatile unsigned long *)(&dodge_c2clock);
++    cmdflag_module_init();
++    cmdflag_set(DODGE_DEFAULT, 1);
++#endif
+     while (1)
+     {
++#ifdef DODGE_DEBUG
++        char ch = getopt(argc, argv, "0123456789hnprtcvX:Y:W:H:");
++	if ('0'<=ch && ch<='9') {
++            if(ch=='0') { //enable the most critical condition, like printk's level
++                dodge_c2regbase_mmap();
++                dojprintf("dodge initialized, id=0x%X, clock=0x%08X\n",DODGE_DEFAULT, (unsigned )*dodge_c2clock);
++            }
++            cmdflag_set(ch-'0', 1);
++            continue;
++        }
++#else
+         char ch = getopt(argc, argv, "hnprtcvX:Y:W:H:");
++#endif
+         
+         if (ch == -1)
+         {
+@@ -964,6 +1035,9 @@ POWER_OFF:
+         }
+     }
+   
++#ifdef DODGE_DEBUG
++    dodge_c2regbase_unmap();
++#endif
+     return 0;
+ }
+ 

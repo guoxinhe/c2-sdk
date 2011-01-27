@@ -98,7 +98,8 @@ else
         git add .
         git commit -m "commit at $(date)"
     else
-        echo "git is clean."
+        echo "git is clean, does not push."
+	exit 0
     fi
 fi
 fi

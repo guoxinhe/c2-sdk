@@ -1,0 +1,25 @@
+  LD      vmlinux.o
+  MODPOST vmlinux.o
+  LD      vmlinux
+  SYSMAP  System.map
+  SYSMAP  .tmp_System.map
+c2-linux-objcopy --remove-section=.reginfo -O binary vmlinux vmlinux.bin
+c2-linux-objdump -d -t -lr vmlinux > vmlinux.dump
+c2-linux-objdump -f vmlinux
+
+vmlinux:     file format elf32-c2
+architecture: c2:tango, flags 0x00000012:
+EXEC_P, HAS_SYMS
+start address 0x806a4000
+
+c2-elf-gcc  -DSTANDALONE -O2 -fno-builtin -I../../../../include -I../../../../include/asm-c2 -DUNZIP_ENTRY=0x82000000 -DRAM_STACK_ADDR=0x83400000 -D__KERNEL__ -march=tango -DKRNL_LOAD_ADDR=0x80000000 -DKRNL_ENTRY=0x80000800 -mgrouped -O2 -c hdr.c
+gzip -f -9 < ../../../../vmlinux.bin > vmlinux.bin.gz
+c2-elf-ld -A c2:tango -r -b binary -T dataobj.lds -o piggy.o vmlinux.bin.gz
+c2-elf-ld -Bstatic -A c2:tango --no-warn-mismatch -Map self-unzip.map -T self-unzip.lds -Ttext 0x82000000 -o self-unzip -L. start.ram.o hdr.o adler32.o zlib.o jmp_krnl.o piggy.o
+c2-elf-objcopy --remove-section=.reginfo -O binary self-unzip self-unzip.bin
+c2-elf-ld -A c2:tango -r -b binary -T dataobj.lds -o tmpself.o self-unzip.bin
+c2-elf-ld -Bstatic -A c2:tango -Map zvmlinux.map -T zvmlinux.lds -o zvmlinux -L. mvbin.o tmpself.o
+c2-elf-objcopy --remove-section=.reginfo -O binary zvmlinux zvmlinux.bin
+  Building modules, stage 2.
+  MODPOST 1 modules
+
