@@ -1,5 +1,10 @@
 #!/bin/sh
 
+
+if [ $1 == "nogit" ]; then
+    CONFIG_NOGIT=1
+    shift
+fi
 THISCAL=$0
 THISCMD=${0##*/}   #`echo $0 | sed 's:.*/\(.*\):\1:'`
 THISCMDPATH=`echo $0 | sed 's:\(.*/\)\(.*\):\1:'  | sed 's:\(.*\)/:\1:'`
@@ -49,13 +54,14 @@ tm_a=`date +%s`
 mkdir -p $HOME/rlog
 touch $rlog.log.txt
 
+if [ -z $CONFIG_NOGIT ]; then
 which git >/dev/null
 ret=$?
 if [ $ret -eq 0 ]; then
   CONFIG_USEGIT=1
   echo git supported, using git
 fi
-
+fi
 BJ=10.16.13.199  #codec
 SJ=10.0.5.193    #calypso
 PC=10.16.8.4     #Delllinux
