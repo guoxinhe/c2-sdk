@@ -2,14 +2,14 @@
 
 TMPF=/tmp/tmpvi$$
 LOGF=$HOME/sdk/worklog
-vi $TMPF
-cp $LOGF $TMPF.tail
 
-echo `date +"%Y-%m-%d %H:%M:%S"`  >$LOGF
-cat $TMPF >>$LOGF
-echo ""  >>$LOGF
-cat $TMPF.tail >>$LOGF
+echo `date +"%Y-%m-%d %H:%M:%S"`  >$TMPF
+echo ""  >>$TMPF
 
-rm -f $TMPF $TMPF.tail
+vi $TMPF +2
+cat $LOGF >>$TMPF
+cp -f $TMPF $LOGF
+rm -f $TMPF
+
 
 

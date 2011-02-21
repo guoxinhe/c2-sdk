@@ -1,3 +1,14 @@
+2011-02-21 17:20:46
+  O insert engineer's git module to git server's repo, write op steps to wiki android
+
+  to be done:
+  O commit sdk build script, link create script, prepare for release
+  O work on jazz2l kernel with janet
+
+  low priority
+  O delay add tango3L to sw_media build check
+  
+      
 2010-12-22 15:32:02
 function that render movie to display:
     sw_media/media/core/frameRenderer C2FrameRendererJazz2Core::RenderBuffer 
