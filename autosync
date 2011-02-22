@@ -1,6 +1,9 @@
 #!/bin/sh
 
-
+#when sync via git:
+# system suppprt git
+# user has created git fir the first time
+# user does not using nogit in command line parameter
 if [ $1 == "nogit" ]; then
     CONFIG_NOGIT=1
     shift
@@ -55,12 +58,12 @@ mkdir -p $HOME/rlog
 touch $rlog.log.txt
 
 if [ -z $CONFIG_NOGIT ]; then
-which git >/dev/null
-ret=$?
-if [ $ret -eq 0 ]; then
-  CONFIG_USEGIT=1
-  echo git supported, using git
-fi
+    which git >/dev/null
+    ret=$?
+    if [ $ret -eq 0 ]; then
+      CONFIG_USEGIT=1
+      echo git supported, using git
+    fi
 fi
 BJ=10.16.13.199  #codec
 SJ=10.0.5.193    #calypso
@@ -92,10 +95,13 @@ if [ $CONFIG_USEGIT ]; then
 if [ ! -d .git ]; then
     echo "There is no git repository, create it now[N/y] ?"
     read confirm
-    [ "$confirm" != "y" ] && exit 0
-    git init
-    git add .
-    git commit -m "init this folder as git repository on date $(date)"
+    if [ "$confirm" == "y" ] ; then
+        git init
+        git add .
+        git commit -m "init this folder as git repository on date $(date)"
+    else
+        CONFIG_USEGIT=
+    fi
 else
     clean=$(git status | grep "nothing to commit (working directory clean)")
     if [ "$clean" == "" ]; then
