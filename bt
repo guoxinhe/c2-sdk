@@ -3,3 +3,4 @@
 pwd
 echo $0
 echo ${0##*/}
+cat ${0##*/}
