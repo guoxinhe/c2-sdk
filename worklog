@@ -1,3 +1,170 @@
+2011-02-23 13:54:42
+
+kernel module rebase result: next 5 file have conflict, 
+#	both modified:      arch/c2/include/asm/jazz2fb.h
+#	both modified:      arch/c2/include/asm/jazz2osd.h
+#	both modified:      drivers/video/c2/jazz2fb.c
+#	both modified:      drivers/video/c2/jazz2init.c
+#	both modified:      drivers/video/c2/jazz2osd.c
+
+Jack's suggestion is let Peter sync from branch 'devel' to mentor.
+
+2011-02-23 12:01:56
+Merge kernel code conflict from branch 'master' to 'devel'
+
+step 1. repo sync your code
+        goes to your android repo folder and do 
+            repo sync
+step 2. checkout kernel branches
+        goes to kernel folder
+            git checkout master       : ckeckout master for check
+            git checkout devel        : switch back to c2's devel branch
+step 3. Get the conflict
+            git log --oneline --exit-code master --not devel
+        result:
+            0906496 Update C2 video driver
+        check the changes:
+            git log 0906496
+step 4. Do rebase
+        git checkout devel            :switch back to c2's devel branch if need
+        git rebase master
+
+        Here is the reslut that cause the conflict:
+            First, rewinding head to replay your work on top of it...
+            Applying: Jack Sun's update to .32 video drivers, merged in from current state of .23 tree
+            Using index info to reconstruct a base tree...
+            <stdin>:458: trailing whitespace.
+            #define C2_PFMT_MODE_444_8BIT		0x0	
+            <stdin>:522: trailing whitespace.
+            #define C2_DISP_CSC_SD2HD_MASK	0x00000001 // setup for SD2HD color space converter 
+            <stdin>:523: trailing whitespace.
+            #define C2_DISP_CSC_HD2SD_MASK	0x00000002 // setup for HD2SD color space converter 
+            <stdin>:526: trailing whitespace.
+            #define C2_DISP_CSC_SD2RGB_MASK	0x00000008 // setup for SD2RGB color space converter 
+            <stdin>:528: trailing whitespace.
+            #define C2_VDMA_FIFO_SIZE_MASK	0x000000E0 // 
+            warning: squelched 5 whitespace errors
+            warning: 10 lines add whitespace errors.
+            Falling back to patching base and 3-way merge...
+            Auto-merging arch/c2/include/asm/jazz2fb.h
+            CONFLICT (content): Merge conflict in arch/c2/include/asm/jazz2fb.h
+            Auto-merging arch/c2/include/asm/jazz2osd.h
+            CONFLICT (content): Merge conflict in arch/c2/include/asm/jazz2osd.h
+            Auto-merging drivers/video/c2/jazz2fb.c
+            CONFLICT (content): Merge conflict in drivers/video/c2/jazz2fb.c
+            Auto-merging drivers/video/c2/jazz2init.c
+            CONFLICT (content): Merge conflict in drivers/video/c2/jazz2init.c
+            Auto-merging drivers/video/c2/jazz2osd.c
+            CONFLICT (content): Merge conflict in drivers/video/c2/jazz2osd.c
+            Failed to merge in the changes.
+            Patch failed at 0001 Jack Sun's update to .32 video drivers, merged in from current state of .23 tree
+            
+            When you have resolved this problem run "git rebase --continue".
+            If you would prefer to skip this patch, instead run "git rebase --skip".
+            To restore the original branch and stop rebasing run "git rebase --abort".
+step 5. Merge by hand
+        after merge and do git rebase --continue
+
+step 6. pull before push back
+            git pull
+step 7. push back to repo
+            git master            : see the master's name
+            git push origin devel
+
+step 7. Send email report this rebase.
+
+
+
+        Thanks,
+        Herman
+
+
+
+
+
+2011-02-23 11:18:19a
+ git checkout devel
+ git show-ref
+ git branch
+ git rebase master
+First, rewinding head to replay your work on top of it...
+Applying: Jack Sun's update to .32 video drivers, merged in from current state of .23 tree
+Using index info to reconstruct a base tree...
+<stdin>:458: trailing whitespace.
+#define C2_PFMT_MODE_444_8BIT		0x0	
+<stdin>:522: trailing whitespace.
+#define C2_DISP_CSC_SD2HD_MASK	0x00000001 // setup for SD2HD color space converter 
+<stdin>:523: trailing whitespace.
+#define C2_DISP_CSC_HD2SD_MASK	0x00000002 // setup for HD2SD color space converter 
+<stdin>:526: trailing whitespace.
+#define C2_DISP_CSC_SD2RGB_MASK	0x00000008 // setup for SD2RGB color space converter 
+<stdin>:528: trailing whitespace.
+#define C2_VDMA_FIFO_SIZE_MASK	0x000000E0 // 
+warning: squelched 5 whitespace errors
+warning: 10 lines add whitespace errors.
+Falling back to patching base and 3-way merge...
+Auto-merging arch/c2/include/asm/jazz2fb.h
+CONFLICT (content): Merge conflict in arch/c2/include/asm/jazz2fb.h
+Auto-merging arch/c2/include/asm/jazz2osd.h
+CONFLICT (content): Merge conflict in arch/c2/include/asm/jazz2osd.h
+Auto-merging drivers/video/c2/jazz2fb.c
+CONFLICT (content): Merge conflict in drivers/video/c2/jazz2fb.c
+Auto-merging drivers/video/c2/jazz2init.c
+CONFLICT (content): Merge conflict in drivers/video/c2/jazz2init.c
+Auto-merging drivers/video/c2/jazz2osd.c
+CONFLICT (content): Merge conflict in drivers/video/c2/jazz2osd.c
+Failed to merge in the changes.
+Patch failed at 0001 Jack Sun's update to .32 video drivers, merged in from current state of .23 tree
+
+When you have resolved this problem run "git rebase --continue".
+If you would prefer to skip this patch, instead run "git rebase --skip".
+To restore the original branch and stop rebasing run "git rebase --abort".
+
+2011-02-23 10:46:14
+kernel has no branch c2micro-froyo  and devel. 
+how to rebase?
+
+gituser@git:/tmp/hguo/kernel$ git show-ref
+0906496daed3d30ca5e7d717691e62a2d264c94e refs/heads/master
+0906496daed3d30ca5e7d717691e62a2d264c94e refs/remotes/origin/HEAD
+4e8cbbb3ff56dca14b4cb287e4249189bf9df83f refs/remotes/origin/devel
+0906496daed3d30ca5e7d717691e62a2d264c94e refs/remotes/origin/master
+gituser@git:/tmp/hguo/kernel$ git branch
+* master
+
+2011-02-23 10:28:02
+rp-whatsnew 
+project dalvik/
+86c316b Fix last templates for C2 Jit
+
+hguo@git:/tmp/hguo$ git clone /mentor-mirror/build/platform/dalvik.git dalvik.git
+hguo@git:/tmp/hguo$ cd dalvik.git/
+hguo@git:/tmp/hguo/dalvik.git$ git show-ref
+86c316bb897c838502c12a4d497304e1d6a3a9d5 refs/heads/c2micro-froyo
+86c316bb897c838502c12a4d497304e1d6a3a9d5 refs/remotes/origin/HEAD
+86c316bb897c838502c12a4d497304e1d6a3a9d5 refs/remotes/origin/c2micro-froyo
+61ef437ee84550c637a5a0a123a772e3e756741a refs/remotes/origin/devel
+98c2591a3de16682c957edc0d4fd3d10aacb3cb9 refs/remotes/origin/froyo
+de2fc73cc9115f5b7259b07553810ad32413475a refs/remotes/origin/master
+
+hguo@git:/tmp/hguo/dalvik.git$ git checkout devel
+Branch devel set up to track remote branch devel from origin.
+Switched to a new branch 'devel'
+hguo@git:/tmp/hguo/dalvik.git$ git branch
+  c2micro-froyo
+* devel
+hguo@git:/tmp/hguo/dalvik.git$ git rebase c2micro-froyo
+First, rewinding head to replay your work on top of it...
+Fast-forwarded devel to c2micro-froyo.
+hguo@git:/tmp/hguo/dalvik.git$ git remote
+origin
+hguo@git:/tmp/hguo/dalvik.git$ git push origin
+Total 0 (delta 0), reused 0 (delta 0)
+To /mentor-mirror/build/platform/dalvik.git
+   61ef437..86c316b  devel -> devel
+hguo@git:/tmp/hguo/dalvik.git$ git push origin devel
+Everything up-to-date
+
 2011-02-21 17:20:46
   O insert engineer's git module to git server's repo, write op steps to wiki android
 

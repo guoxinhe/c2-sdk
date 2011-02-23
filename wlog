@@ -9,6 +9,7 @@ echo ""  >>$TMPF
 vi $TMPF +2
 cat $LOGF >>$TMPF
 cp -f $TMPF $LOGF
+cp -f $LOGF /public/    #backup for ref
 rm -f $TMPF
 
 
