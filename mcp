@@ -1,11 +1,15 @@
 #!/bin/sh
 
-#!/bin/sh
-
-
 if [ $# -lt 3 ]; then
-    echo multi source destination copy
-    echo ${0##*/} srcpath dstpath  pathfile1...
+cat <<ENDOFHELP
+    multi source to multi destination copy
+    ${0##*/} srcpath dstpath  pathfile1...
+
+    example ${0##*/} ../old  .  f1 f2/f3
+    will execute:
+    "    cp -rf ../old/f1 ./f1"
+    "    cp -rf ../old/f2/f3 ./f2/f3"
+ENDOFHELP
     exit 0
 fi
 
