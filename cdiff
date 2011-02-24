@@ -19,6 +19,6 @@ diff -rup  -b -B --ignore-all-space --ignore-blank-lines --ignore-space-change \
 	--exclude=*.lds --exclude=vmlinux*  \
 	--exclude=*.tgz --exclude=*.gz --exclude=*.bz2 --exclude=*.cpio  \
 	--exclude=Kconfig* --exclude=Makefile* --exclude=config* \
-	--exclude=CVS --exlcude=.git --exclude=.git* \
+	--exclude=CVS --exclude=.git --exclude=.git* \
 	$src1 $src2
 # drivers/ /home/hguo/sdk/build/kernel/linux-2.6.29-cvs/drivers/
