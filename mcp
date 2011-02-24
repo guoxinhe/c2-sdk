@@ -13,6 +13,7 @@ src=$1
 dst=$2
 shift 2
 while [ $# -gt 0 ];do
+    echo cp -rf $src/$1 $dst/$1
     cp -rf $src/$1 $dst/$1
     shift
 done
