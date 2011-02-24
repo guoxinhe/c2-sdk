@@ -4,7 +4,7 @@
 # system suppprt git
 # user has created git fir the first time
 # user does not using nogit in command line parameter
-if [ $1 == "nogit" ]; then
+if [ "$1" == "nogit" ]; then
     CONFIG_NOGIT=1
     shift
 fi
