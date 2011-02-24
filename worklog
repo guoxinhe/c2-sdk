@@ -1,3 +1,14 @@
+2011-02-24 10:09:17
+kernel.git git rebase, using devel's code
+arch/c2/include/asm/jazz2fb.h 
+arch/c2/include/asm/jazz2osd.h 
+drivers/video/c2/jazz2fb.c 
+drivers/video/c2/jazz2init.c 
+drivers/video/c2/jazz2osd.c 
+drivers/video/c2/jazz2init.c  
+drivers/video/c2/jazz2osd.c
+
+
 2011-02-23 13:54:42
 
 kernel module rebase result: next 5 file have conflict, 
