@@ -1,0 +1,19 @@
+#!/bin/sh
+
+#!/bin/sh
+
+
+if [ $# -lt 3 ]; then
+    echo multi source destination copy
+    echo ${0##*/} srcpath dstpath  pathfile1...
+    exit 0
+fi
+
+src=$1
+dst=$2
+shift 2
+while [ $# -gt 0 ];do
+    cp -rf $src/$1 $dst/$1
+    shift
+done
+
