@@ -1,0 +1,59 @@
+#!/bin/sh
+##  cron debug message code, these setting does not pass to Makefile
+#----------------------------------------------------------------------
+#export MISSION=`echo $0 | sed 's:.*/\(.*\):\1:'`
+export MISSION=${0##*/}
+export rlog=$HOME/rlog/rlog.$MISSION
+mkdir -p $HOME/rlog
+recho()
+{
+    #progress echo, for debug during run as the crontab task.
+    if [ ! -z "$rlog" ] ; then
+    echo `date +"%Y-%m-%d %H:%M:%S"` " $@" >>$rlog.log.txt
+    fi
+    echo `date +"%Y-%m-%d %H:%M:%S"` " $@"
+}
+recho_time_consumed()
+{
+    tm_b=`date +%s`
+    tm_c=$(($tm_b-$1))
+    tm_h=$(($tm_c/3600))
+    tm_m=$(($tm_c/60))
+    tm_m=$(($tm_m%60))
+    tm_s=$(($tm_c%60))
+    shift
+    recho "$@" "$tm_c seconds / $tm_h:$tm_m:$tm_s consumed."
+}
+
+repodir=/mentor-mirror/build
+tmpfile=/tmp/rp-whatsnew-$$
+
+recho "Checking repositories $repodir ..."
+cd $repodir
+recho "repo sync"
+repo sync  | tee $tmpfile
+rsize=$(stat -c%s $tmpfile)
+if [ $rsize -le 2 ]; then
+    echo "    nothing new found" | tee $tmpfile
+fi
+cat $tmpfile >>$rlog.log.txt
+
+recho "Wha's new for all modules..." 
+repo forall -p -c "git log --oneline --exit-code c2micro-froyo --not devel"  | tee $tmpfile
+rsize=$(stat -c%s $tmpfile)
+if [ $rsize -le 2 ]; then
+    echo "    nothing new found" | tee $tmpfile
+fi
+cat $tmpfile >>$rlog.log.txt
+
+cd kernel.git
+recho "Wha's new for kernel..."
+git log --oneline --exit-code master --not devel  | tee $tmpfile
+rsize=$(stat -c%s $tmpfile)
+if [ $rsize -le 2 ]; then
+    echo "    nothing new found" | tee $tmpfile
+fi
+cat $tmpfile >>$rlog.log.txt
+
+cd ..
+
