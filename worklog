@@ -1,3 +1,43 @@
+2011-02-25 17:34:35
+
+sync kernel and merge from master:
+26ca4de Added input-device emulation layer to c2_ir driver
+
+commit 02e171a6f6b86183825fec4b977a426275c149f9
+Merge: 7003a9d 26ca4de
+Author: C2.Build.Server <build@s196>
+Date:   Fri Feb 25 17:28:30 2011 +0800
+
+    Merge branch 'master' into devel
+
+git log drivers/char/Kconfig
+commit 02e171a6f6b86183825fec4b977a426275c149f9
+Merge: 7003a9d 26ca4de
+Author: C2.Build.Server <build@s196>
+Date:   Fri Feb 25 17:28:30 2011 +0800
+
+    Merge branch 'master' into devel
+
+commit 26ca4de1105b6e00529ce74d079911c127b0d6b0
+Author: Nikita Shulga <nikita_shulga@mentor.com>
+Date:   Fri Feb 25 16:18:47 2011 +0900
+
+    Added input-device emulation layer to c2_ir driver
+    
+    Change-Id: I91e841e86b2a8e0b11f605d3b1944872c2ebdc7e
+
+
+
+hguo@git:/tmp/hguo/kernel-110225$ git push origin devel
+Counting objects: 16, done.
+Delta compression using up to 2 threads.
+Compressing objects: 100% (6/6), done.
+Writing objects: 100% (6/6), 620 bytes, done.
+Total 6 (delta 5), reused 0 (delta 0)
+Unpacking objects: 100% (6/6), done.
+To /mentor-mirror/build/kernel.git
+   7003a9d..02e171a  devel -> devel
+
 2011-02-24 10:09:17
 kernel.git git rebase, using devel's code
 arch/c2/include/asm/jazz2fb.h 

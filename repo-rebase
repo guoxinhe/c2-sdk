@@ -1,0 +1,64 @@
+#!/bin/sh
+##  cron debug message code, these setting does not pass to Makefile
+#----------------------------------------------------------------------
+#export MISSION=`echo $0 | sed 's:.*/\(.*\):\1:'`
+export MISSION=${0##*/}
+export rlog=$HOME/rlog/rlog.$MISSION
+mkdir -p $HOME/rlog
+recho()
+{
+    #progress echo, for debug during run as the crontab task.
+    if [ ! -z "$rlog" ] ; then
+    echo `date +"%Y-%m-%d %H:%M:%S"` " $@" >>$rlog.log.txt
+    fi
+    echo `date +"%Y-%m-%d %H:%M:%S"` " $@"
+}
+recho_time_consumed()
+{
+    tm_b=`date +%s`
+    tm_c=$(($tm_b-$1))
+    tm_h=$(($tm_c/3600))
+    tm_m=$(($tm_c/60))
+    tm_m=$(($tm_m%60))
+    tm_s=$(($tm_c%60))
+    shift
+    recho "$@" "$tm_c seconds / $tm_h:$tm_m:$tm_s consumed."
+}
+
+repodir=/mentor-mirror/build
+tmpfile=/tmp/${0##*/}-$$
+
+recho "This will do 'repo rebase' for a specified module"
+
+gmodule=$1
+
+mkdir /tmp/$USER
+pushd /tmp/$USER
+rm -rf ${gmodule%.git}
+git clone $gmodule
+
+if [ ! -d ${gmodule%.git} ]; then
+    echo Fail on:
+    echo "    git clone $gmodule"
+    exit 0
+fi
+pushd ${gmodule%.git}
+master=$(git branch)
+remote=$(git remote)
+git checkout devel
+git rebase $master
+
+echo "Please confirm now can do \"git push $master devel\", are you want continue now[N/y] ?"
+read confirm
+if [ "$confirm" == "y" ] ; then
+    git push $master devel
+else
+    echo "Please merge it manually, then call"
+    echo "    git push $master devel"
+fi
+
+popd
+popd
+
+
+

@@ -28,6 +28,12 @@ recho_time_consumed()
 repodir=/mentor-mirror/build
 tmpfile=/tmp/rp-whatsnew-$$
 
+recho "This will do 'repo sync', then foreach git do git log check,
+    find the updated modules for repo rebase
+
+    updated modules are listed, need do 'repo rebase' manually.
+"
+
 recho "Checking repositories $repodir ..."
 cd $repodir
 recho "repo sync"
@@ -54,6 +60,4 @@ if [ $rsize -le 2 ]; then
     echo "    nothing new found" | tee $tmpfile
 fi
 cat $tmpfile >>$rlog.log.txt
-
-cd ..
 
