@@ -58,14 +58,15 @@ echo $gname master=$master, remote=$remote
 
 git checkout devel
 #git rebase $master
+echo "git merge $master"
 git merge $master
 
-echo "Please confirm now can do \"git push $master devel\", are you want continue now[N/y] ?"
+echo "Please confirm now can do \"git push $remote devel\", are you want continue now[N/y] ?"
 read confirm
 if [ "$confirm" == "y" ] ; then
-    git push $master devel
+    git push $remote devel
 else
     echo "Please merge it manually, then call"
-    echo "    git push $master devel"
+    echo "    git push $remote devel"
 fi
 
