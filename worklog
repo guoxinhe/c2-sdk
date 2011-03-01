@@ -1,3 +1,32 @@
+2011-03-01 14:28:10
+merge notice
+
+merge platform/bionic.git
+First, rewinding head to replay your work on top of it...
+Fast-forwarded devel to c2micro-froyo.
+
+Total 0 (delta 0), reused 0 (delta 0)
+To /mentor-mirror/build/platform/bionic.git
+   febedc9..cb1fb9f  devel -> devel
+
+merge platform/system/core.git
+Merge made by recursive.
+ debuggerd/Android.mk     |    6 +++++
+ debuggerd/crashglue-c2.S |   47 ++++++++++++++++++++++++++++++++++++++++++++++
+ debuggerd/debuggerd.c    |   19 +++++++++++------
+ 3 files changed, 65 insertions(+), 7 deletions(-)
+ create mode 100644 debuggerd/crashglue-c2.S
+git push origin devel
+Counting objects: 4, done.
+Delta compression using up to 2 threads.
+Compressing objects: 100% (2/2), done.
+Writing objects: 100% (2/2), 296 bytes, done.
+
+Total 2 (delta 1), reused 0 (delta 0)
+Unpacking objects: 100% (2/2), done.
+To /mentor-mirror/build/platform/system/core.git
+   4ab3ac6..b546d54  devel -> devel
+
 2011-02-25 17:34:35
 
 sync kernel and merge from master:

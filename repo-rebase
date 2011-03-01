@@ -31,22 +31,34 @@ tmpfile=/tmp/${0##*/}-$$
 recho "This will do 'repo rebase' for a specified module"
 
 gmodule=$1
-
-mkdir /tmp/$USER
-pushd /tmp/$USER
-rm -rf ${gmodule%.git}
-git clone $gmodule
-
-if [ ! -d ${gmodule%.git} ]; then
+gname=${gmodule##*/}
+gname=${gname%.git}
+if [ ! -d $gmodule ];then
     echo Fail on:
-    echo "    git clone $gmodule"
+    echo "    can not found module $gmodule"
     exit 0
 fi
-pushd ${gmodule%.git}
-master=$(git branch)
+
+mkdir -p /tmp/$USER
+cd /tmp/$USER
+rm -rf ${gname}
+git clone $gmodule
+
+if [ ! -d ${gname} ]; then
+    echo Fail on:
+    echo "    git clone $gmodule"
+    echo "    can not found folder $gname"
+    exit 0
+fi
+cd ${gname}
+master=$(git branch | grep ^* | sed 's/\* \(.*\)/\1/g')
 remote=$(git remote)
+
+echo $gname master=$master, remote=$remote
+
 git checkout devel
-git rebase $master
+#git rebase $master
+git merge $master
 
 echo "Please confirm now can do \"git push $master devel\", are you want continue now[N/y] ?"
 read confirm
@@ -56,9 +68,4 @@ else
     echo "Please merge it manually, then call"
     echo "    git push $master devel"
 fi
-
-popd
-popd
-
-
 
