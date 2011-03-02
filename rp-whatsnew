@@ -25,14 +25,79 @@ recho_time_consumed()
     recho "$@" "$tm_c seconds / $tm_h:$tm_m:$tm_s consumed."
 }
 
+generate_repo_sync_email()
+{
+    linesnew=`sed -n '$=' $rlog.log.txt`
+    if [ $? -gt 0 ]; then 
+    linesnew=0
+    fi
+    echo "============================= mail body start ============================="
+    if [ $linesnew -gt $lines ];then
+    tail -$((linesnew-lines)) $rlog.log.txt
+    fi
+    echo "============================= mail  body  end ============================="
+}
+generate_email_header()
+{
+	[ $refname      ] || refname=refname     
+	[ $refname_type ] || refname_type=refname_type
+	[ $oldrev       ] || oldrev=oldrev      
+	[ $newrev       ] || newrev=newrev      
+	# --- Email (all stdout will be the email)
+	# Generate header
+	cat <<-EOF
+	To: hguo@c2micro.com,android_repo@c2micro.com
+	Subject: repo sync check report on ssh://gituser@git.bj.c2micro.com/mentor-minor/build
+	Content-Type: text/plain; charset=utf-8
+	X-Git-Refname: $refname
+	X-Git-Reftype: $refname_type
+	X-Git-Oldrev: $oldrev
+	X-Git-Newrev: $newrev
+
+	This is an automated email from git.bj.c2micro.com:/home-localuser/gituser/bin/rp-whatsnew
+	Please don't reply
+	EOF
+}
+generate_email_footer()
+{
+	SPACE=" "
+	cat <<-EOF
+
+	Regards,
+	Git Server User
+	git.bj.c2micro.com 10.16.13.31
+	EOF
+}
+generate_email()
+{
+	generate_email_header
+
+	generate_repo_sync_email
+
+	generate_email_footer
+}
+send_mail()
+{
+	#call method: generate_email $oldrev $newrev $refname | send_mail
+	if [ -n "$envelopesender" ]; then
+		/usr/sbin/sendmail -t -f "$envelopesender"
+	else
+		/usr/sbin/sendmail -t
+	fi
+}
+
 repodir=/mentor-mirror/build
 tmpfile=/tmp/rp-whatsnew-$$
-
-recho "This will do 'repo sync', then foreach git do git log check,
+nrupdate=0
+tm_a=`date +%s`
+lines=`sed -n '$=' $rlog.log.txt`
+if [ $? -gt 0 ]; then 
+    lines=0
+fi
+recho "Start repo sync on $repodir
+    This will do 'repo sync', then foreach git do git log check,
     find the updated modules for repo rebase
-
-    updated modules are listed, need do 'repo rebase' manually.
-"
+    updated modules are listed, need do 'repo rebase' manually."
 
 recho "Checking repositories $repodir ..."
 cd $repodir
@@ -41,6 +106,8 @@ repo sync  | tee $tmpfile
 rsize=$(stat -c%s $tmpfile)
 if [ $rsize -le 2 ]; then
     echo "    nothing new found" | tee $tmpfile
+else
+    nrupdate=$((nrupdate+1))
 fi
 cat $tmpfile >>$rlog.log.txt
 
@@ -49,6 +116,8 @@ repo forall -p -c "git log --oneline --exit-code c2micro-froyo --not devel"  | t
 rsize=$(stat -c%s $tmpfile)
 if [ $rsize -le 2 ]; then
     echo "    nothing new found" | tee $tmpfile
+else
+    nrupdate=$((nrupdate+1))
 fi
 cat $tmpfile >>$rlog.log.txt
 
@@ -58,6 +127,12 @@ git log --oneline --exit-code master --not devel  | tee $tmpfile
 rsize=$(stat -c%s $tmpfile)
 if [ $rsize -le 2 ]; then
     echo "    nothing new found" | tee $tmpfile
+else
+    nrupdate=$((nrupdate+1))
 fi
 cat $tmpfile >>$rlog.log.txt
 
+recho_time_consumed $tm_a "$repodir repo sync task done"
+echo "" >>$rlog.log.txt
+
+generate_email | send_mail
