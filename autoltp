@@ -1,0 +1,149 @@
+#!/bin/sh
+
+nfsroot=/local/hguo/nfsroot
+ltpstatus=$nfsroot/autoltp/ltpstatus
+
+ltp_datestart=100101
+ltp_timestart=120000
+ltp_datedone=100101
+ltp_timedone=130000
+ltp_kernelversion=2.6.23
+ltp_kernelbuild=100101
+ltp_kernelarch=jazz2
+ltp_gccversion=4.0.3
+ltp_gccbuild=100101
+ltp_clientname=c2
+ltp_clientip=10.16.11.66
+ltp_hostname=`hostname`
+ltp_hostip=$(/sbin/ifconfig eth0|sed -n 's/.*inet addr:\([^ ]*\).*/\1/p')
+ltp_kernel=$nfsroot/boot/vmlinux.bin
+ltp_release=$nfsroot/ltprelease
+ltp_result=$nfsroot/ltpresult
+ltp_nrtested=0
+ltp_status=null
+
+if [ -f $ltpstatus ]; then
+    . $ltpstatus
+else
+    mkdir -p ${ltpstatus%/*}
+    touch $ltpstatus
+fi
+
+ltp_check_running()
+{
+    nowdate=$(date +%y%m%d)
+    nowtime=$(date +%H%M%S)
+    forcestop=0
+    echo ltp_check_running
+    echo ltp_datestart=$ltp_datestart , now $nowdate
+    echo ltp_timestart=$ltp_timestart , now $nowtime
+    [ $nowdate -lt $ltp_datestart ] && forcestop=$((forcestop+1))
+
+    duration=$((nowdate-ltp_datestart))
+    [ $duration -ge 3 ] && forcestop=$((forcestop+1))
+
+    duration=$((duration*86400))   #to seconds
+    duration=$((duration+nowtime))
+    duration=$((duration-ltp_timestart))
+    [ $duration -ge 60 ] && forcestop=$((forcestop+1))
+
+    if [ $forcestop -gt 0 ];then
+        echo Already running $duration seconds, should stop.
+        ltp_status=done
+        ltp_datedone=$nowdate
+        ltp_timedone=$nowtime
+    else
+        echo Building $ltp_kernelbuild is runnging for $duration seconds
+    fi
+}
+ltp_check_newkernel()
+{
+    path=/sdk/jazz2/dev/weekly
+    new_kernelbuild=000000
+    allv=`ls /sdk/jazz2/dev/weekly`
+
+    for i in $allv ;do
+        [ $i -gt $new_kernelbuild ] && new_kernelbuild=$i
+        #case $i in
+        #[\d][\d][\d][\d][\d][\d])
+        #  [ $i -gt $new_kernelbuild ] && new_kernelbuild=$i
+        #  ;;
+        #*)echo unknown format of $i 
+        #  ;;
+        #esac
+    done
+    [ $CONFIG_DEBUG ] && echo find new kernel version is: $new_kernelbuild
+}
+
+this_help()
+{
+cat <<TEXTEND
+    Usage $0  [ --debug ] [ --help ]
+    example $0 
+TEXTEND
+}
+
+while [ $# -gt 0 ] ; do
+    case $1 in
+    --help|-h|\?|-\?)  this_help; shift; exit 0;;
+    --debug) CONFIG_DEBUG=y; shift;;
+    *) break;
+    esac
+done
+
+[ $CONFIG_DEBUG ] && (
+echo nfsroot=$nfsroot
+echo ltpstatus=$ltpstatus
+)
+
+case $ltp_status in
+    running)
+        ltp_check_running
+        ;;
+    null | none | done ) 
+        ltp_check_newkernel
+        if [ $ltp_kernelbuild -lt $new_kernelbuild ];then
+            echo Find a new kernel build $new_kernelbuild, start it
+            ltp_kernelbuild=$new_kernelbuild
+            ltp_status=running
+            ltp_datestart=$(date +%y%m%d)
+            ltp_timestart=$(date +%H%M%S)
+        else 
+            echo Last build $ltp_kernelbuild already tested.
+        fi
+        ;;
+    *) echo "unknown status";;  
+esac
+
+update_ltpstatus_profile()
+{
+cat <<ENDOFOUT >$ltpstatus
+#!/bin/sh
+# auto created file, do not edit
+# last update on `date`, by $USER, on `hostname`
+
+ltp_gccversion=$ltp_gccversion
+ltp_gccbuild=$ltp_gccbuild
+ltp_datestart=$ltp_datestart
+ltp_timestart=$ltp_timestart
+ltp_datedone=$ltp_datedone
+ltp_timedone=$ltp_timedone
+ltp_kernelversion=$ltp_kernelversion
+ltp_kernelbuild=$ltp_kernelbuild
+ltp_kernelarch=$ltp_kernelarch
+ltp_gccversion=$ltp_gccversion
+ltp_gccbuild=$ltp_gccbuild
+ltp_clientname=$ltp_clientname
+ltp_clientip=$ltp_clientip
+ltp_hostname=$ltp_hostname
+ltp_hostip=$ltp_hostip
+ltp_kernel=$ltp_kernel
+ltp_release=$ltp_release
+ltp_result=$ltp_result
+ltp_nrtested=$((ltp_nrtested+1))
+ltp_status=$ltp_status
+
+ENDOFOUT
+}
+
+update_ltpstatus_profile
