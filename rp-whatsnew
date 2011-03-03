@@ -46,7 +46,7 @@ generate_email_header()
 	# --- Email (all stdout will be the email)
 	# Generate header
 	cat <<-EOF
-	To: hguo@c2micro.com,android_repo@c2micro.com
+	To: $recipients
 	Subject: repo sync check report on ssh://gituser@git.bj.c2micro.com/mentor-minor/build
 	Content-Type: text/plain; charset=utf-8
 	X-Git-Refname: $refname
@@ -70,6 +70,11 @@ generate_email_footer()
 }
 generate_email()
 {
+	recipients=hguo@c2micro.com
+	if [ $nrupdate -gt 0 ];then
+		recipients=$recipients,android_repo@c2micro.com
+	fi
+	
 	generate_email_header
 
 	generate_repo_sync_email
@@ -85,7 +90,6 @@ send_mail()
 		/usr/sbin/sendmail -t
 	fi
 }
-
 repodir=/mentor-mirror/build
 tmpfile=/tmp/rp-whatsnew-$$
 nrupdate=0
@@ -131,6 +135,12 @@ else
     nrupdate=$((nrupdate+1))
 fi
 cat $tmpfile >>$rlog.log.txt
+
+if [ $nrupdate -gt 0 ];then
+    echo "" >>$rlog.log.txt
+    echo "    Merge suggestion: manually merge manybe need."  >>$rlog.log.txt
+    echo "" >>$rlog.log.txt
+fi
 
 recho_time_consumed $tm_a "$repodir repo sync task done"
 echo "" >>$rlog.log.txt
