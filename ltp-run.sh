@@ -30,19 +30,16 @@ ltp_test()
 {
     mkdir -p /local /home/work /.ssh
     func_nfs 10.16.8.4:/local                 /local
-    export PATH=$PATH:/local/c2
-    [ -f /home/c2net ] || cp -f /local/c2/c2net /home; 
-    [ -f /home/authorized_keys ] || cp -f /local/c2/authorized_keys /home; 
     [ -f /.ssh/authorized_keys ] || cp -f /local/c2/authorized_keys /.ssh;
     [ -f /local/hguo/nfsroot/autoltp/ltpstatus ] && . /local/hguo/nfsroot/autoltp/ltpstatus
-    d=`diff /home/work/run.sh /local/c2/ltp-run.sh`
-    [ "$d" != "" ] && (cp -f /local/c2/ltp-run.sh /home/work/run.sh;sync;echo "ltp-run.sh updated";)
-    mkdir -p /local/hguo/nfsroot/ltpresult
-    echo $THISIP >/local/hguo/nfsroot/ltpresult/clientip
-    rm -f /local/hguo/nfsroot/ltpresult/done
-    cd /local/hguo/nfsroot/ltprelease
-    ./runltplite.sh -p -q  -l /local/hguo/nfsroot/ltpresult/resultlog.$ltp_kernelbuild -d /local/hguo/nfsroot/ltpresult
-    echo "done" >/local/hguo/nfsroot/ltpresult/done
+    d=`diff /home/work/run.sh $ltp_runsh`
+    [ "$d" != "" ] && (cp -f $ltp_runsh /home/work/run.sh;sync;echo "$ltp_runsh updated";)
+    mkdir -p $ltp_result
+    echo $THISIP >$ltp_clientip
+    rm -f $ltp_doneflag
+    cd $ltp_release
+    ./$ltp_testcmd -p -q  -l $ltp_result/resultlog.$ltp_kernelbuild -d $ltp_result
+    echo "done" > $ltp_doneflag
 }
 
 ltp_test

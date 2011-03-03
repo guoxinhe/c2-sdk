@@ -16,12 +16,15 @@ ltp_kernelarch=jazz2
 ltp_gccversion=4.0.3
 ltp_gccbuild=100101
 ltp_clientname=c2
-ltp_clientip=10.16.11.66
 ltp_hostname=`hostname`
 ltp_hostip=$(/sbin/ifconfig eth0|sed -n 's/.*inet addr:\([^ ]*\).*/\1/p')
+ltp_runsh=/local/c2/ltp-run.sh
+ltp_testcmd=runltplite.sh
 ltp_kernel=$nfsroot/boot/vmlinux.bin
 ltp_release=$nfsroot/ltprelease
 ltp_result=$nfsroot/ltpresult
+ltp_clientip=$nfsroot/ltpresult/clientip
+ltp_doneflag=$nfsroot/ltpresult/done
 ltp_nrtested=0
 ltp_status=null
 
@@ -63,7 +66,7 @@ ltp_check_running()
         echo_duration $ltp_tidstart "Building $ltp_kernelbuild run too long time, should stop "
         done=1
     fi
-    if [ -f $ltp_result/done ]; then
+    if [ -f $ltp_doneflag ]; then
         echo_duration $ltp_tidstart "Building $ltp_kernelbuild run finished "
         done=1
     fi
@@ -119,7 +122,7 @@ ltp_check()
     echo "Now tid is: $nowtid"
     echo_duration $ltp_tidstart "From last running:"
     echo_duration $ltp_tiddone  "From last stop:   "
-    echo "Target board's IP is:" `cat $ltp_result/clientip`
+    echo "Target board's IP is:" `cat $ltp_clientip`
     echo "Target board's result folder is: $ltp_result"
 }
 this_help()
@@ -176,8 +179,6 @@ cat <<ENDOFOUT >$ltpstatus
 # auto created file, do not edit
 # last update on `date`, by $USER, on `hostname`
 
-ltp_gccversion=$ltp_gccversion
-ltp_gccbuild=$ltp_gccbuild
 ltp_datestart=$ltp_datestart
 ltp_timestart=$ltp_timestart
 ltp_datedone=$ltp_datedone
@@ -191,13 +192,16 @@ ltp_kernelarch=$ltp_kernelarch
 ltp_gccversion=$ltp_gccversion
 ltp_gccbuild=$ltp_gccbuild
 ltp_clientname=$ltp_clientname
-ltp_clientip=$ltp_clientip
 ltp_hostname=$ltp_hostname
 ltp_hostip=$ltp_hostip
+ltp_runsh=$ltp_runsh
+ltp_testcmd=$ltp_testcmd
 ltp_kernel=$ltp_kernel
 ltp_release=$ltp_release
 ltp_result=$ltp_result
-ltp_nrtested=$((ltp_nrtested+1))
+ltp_clientip=$ltp_clientip
+ltp_doneflag=$ltp_doneflag
+ltp_nrtested=$ltp_nrtested
 ltp_status=$ltp_status
 
 ENDOFOUT
