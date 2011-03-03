@@ -50,6 +50,7 @@ ltp_check_running()
     nowdate=$(date +%y%m%d)
     nowtime=$(date +%H%M%S)
     nowtid=$(date +%s)
+    done=0
 
     [ $CONFIG_DEBUG ] && (
     echo ltp_check_running
@@ -60,13 +61,20 @@ ltp_check_running()
 
     if [ $duration -gt $ltp_maxduration ];then
         echo_duration $ltp_tidstart "Building $ltp_kernelbuild run too long time, should stop "
+        done=1
+    fi
+    if [ -f $ltp_result/done ]; then
+        echo_duration $ltp_tidstart "Building $ltp_kernelbuild run finished "
+        done=1
+    fi
+    if [ $done -eq 1 ];then
         ltp_status=done
         ltp_datedone=$nowdate
         ltp_timedone=$nowtime
         ltp_tiddone=$(date +%s)
-    else
-        echo_duration $ltp_tidstart "Building $ltp_kernelbuild is runnging "
+        return 0
     fi
+    echo_duration $ltp_tidstart "Building $ltp_kernelbuild is runnging "
 }
 ltp_check_newkernel()
 {
