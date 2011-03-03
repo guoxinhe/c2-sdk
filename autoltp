@@ -7,6 +7,9 @@ ltp_datestart=100101
 ltp_timestart=120000
 ltp_datedone=100101
 ltp_timedone=130000
+ltp_tidstart=0
+ltp_tiddone=0
+ltp_maxduration=300000
 ltp_kernelversion=2.6.23
 ltp_kernelbuild=100101
 ltp_kernelarch=jazz2
@@ -29,31 +32,40 @@ else
     touch $ltpstatus
 fi
 
+echo_duration()
+{
+    tm_b=`date +%s`
+    tm_c=$((tm_b-$1))
+    tm_h=$((tm_c/3600))
+    tm_m=$((tm_c/60))
+    tm_m=$((tm_m%60))
+    tm_s=$((tm_c%60))
+    tm_d=$((tm_h/24))
+    [ $tm_d -gt 0 ] && tm_h=$((tm_h%24))
+    shift
+    echo "$@" "$tm_c seconds / $tm_d(days) $tm_h:$tm_m:$tm_s consumed."
+}
 ltp_check_running()
 {
     nowdate=$(date +%y%m%d)
     nowtime=$(date +%H%M%S)
-    forcestop=0
+    nowtid=$(date +%s)
+
+    [ $CONFIG_DEBUG ] && (
     echo ltp_check_running
     echo ltp_datestart=$ltp_datestart , now $nowdate
-    echo ltp_timestart=$ltp_timestart , now $nowtime
-    [ $nowdate -lt $ltp_datestart ] && forcestop=$((forcestop+1))
+    echo ltp_timestart=$ltp_timestart , now $nowtime )
 
-    duration=$((nowdate-ltp_datestart))
-    [ $duration -ge 3 ] && forcestop=$((forcestop+1))
+    duration=$((nowtid-ltp_tidstart))
 
-    duration=$((duration*86400))   #to seconds
-    duration=$((duration+nowtime))
-    duration=$((duration-ltp_timestart))
-    [ $duration -ge 60 ] && forcestop=$((forcestop+1))
-
-    if [ $forcestop -gt 0 ];then
-        echo Already running $duration seconds, should stop.
+    if [ $duration -gt $ltp_maxduration ];then
+        echo_duration $ltp_tidstart "Building $ltp_kernelbuild run too long time, should stop "
         ltp_status=done
         ltp_datedone=$nowdate
         ltp_timedone=$nowtime
+        ltp_tiddone=$(date +%s)
     else
-        echo Building $ltp_kernelbuild is runnging for $duration seconds
+        echo_duration $ltp_tidstart "Building $ltp_kernelbuild is runnging "
     fi
 }
 ltp_check_newkernel()
@@ -64,21 +76,49 @@ ltp_check_newkernel()
 
     for i in $allv ;do
         [ $i -gt $new_kernelbuild ] && new_kernelbuild=$i
-        #case $i in
-        #[\d][\d][\d][\d][\d][\d])
-        #  [ $i -gt $new_kernelbuild ] && new_kernelbuild=$i
-        #  ;;
-        #*)echo unknown format of $i 
-        #  ;;
-        #esac
     done
     [ $CONFIG_DEBUG ] && echo find new kernel version is: $new_kernelbuild
 }
-
+ltp_load_newkernel()
+{
+    kernelnand=/sdk/jazz2/dev/weekly/$ltp_kernelbuild/c2-jazz2-sdk-$ltp_kernelbuild-kernel-nand-bin.tar.gz
+    if [ ! -f $kernelnand ]; then
+        echo "Can not find kernel $kernelnand, exit"
+        exit 0
+    fi
+    mkdir -p $nfsroot/boot
+    rm -rf $nfsroot/boot/*
+    tar xzf $kernelnand -C $nfsroot/boot
+    ln -s $kernelnand $nfsroot/boot/kernel-nand-bin.tar.gz
+    ln -s sw/kernel/rootfs.image $nfsroot/boot/rootfs.image
+    ln -s sw/kernel/linux-2.6/zvmlinux.bin $nfsroot/boot/zvmlinux.bin
+    ln -s ../../logo.bmp $nfsroot/boot/logo.bmp
+    echo "ls -l $nfsroot/boot"
+    ls -l $nfsroot/boot
+}
+jtag_reset_board()
+{
+    if [ $UID -eq 0 ]; then
+        echo "c2 chip_reset" | jtag
+    else
+        echo "This feature need root uid"
+    fi
+}
+ltp_check()
+{
+    cat $ltpstatus
+    nowtid=$(date +%s)
+    echo "Now tid is: $nowtid"
+    echo_duration $ltp_tidstart "From last running:"
+    echo_duration $ltp_tiddone  "From last stop:   "
+    echo "Target board's IP is:" `cat $ltp_result/clientip`
+    echo "Target board's result folder is: $ltp_result"
+}
 this_help()
 {
 cat <<TEXTEND
     Usage $0  [ --debug ] [ --help ]
+    config file now is hard coded.
     example $0 
 TEXTEND
 }
@@ -86,11 +126,14 @@ TEXTEND
 while [ $# -gt 0 ] ; do
     case $1 in
     --help|-h|\?|-\?)  this_help; shift; exit 0;;
+    --check)  ltp_check; shift; exit 0;;
+    --reset | --restart | --start)  jtag_reset_board;shift; exit 0;;
     --debug) CONFIG_DEBUG=y; shift;;
     *) break;
     esac
 done
 
+[ $CONFIG_DEBUG ] && ltp_maxduration=60
 [ $CONFIG_DEBUG ] && (
 echo nfsroot=$nfsroot
 echo ltpstatus=$ltpstatus
@@ -105,9 +148,12 @@ case $ltp_status in
         if [ $ltp_kernelbuild -lt $new_kernelbuild ];then
             echo Find a new kernel build $new_kernelbuild, start it
             ltp_kernelbuild=$new_kernelbuild
+            ltp_load_newkernel
+            jtag_reset_board
             ltp_status=running
             ltp_datestart=$(date +%y%m%d)
             ltp_timestart=$(date +%H%M%S)
+            ltp_tidstart=$(date +%s)
         else 
             echo Last build $ltp_kernelbuild already tested.
         fi
@@ -128,6 +174,9 @@ ltp_datestart=$ltp_datestart
 ltp_timestart=$ltp_timestart
 ltp_datedone=$ltp_datedone
 ltp_timedone=$ltp_timedone
+ltp_tidstart=$ltp_tidstart
+ltp_tiddone=$ltp_tiddone
+ltp_maxduration=$ltp_maxduration
 ltp_kernelversion=$ltp_kernelversion
 ltp_kernelbuild=$ltp_kernelbuild
 ltp_kernelarch=$ltp_kernelarch
