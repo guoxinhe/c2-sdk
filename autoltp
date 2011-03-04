@@ -1,5 +1,6 @@
 #!/bin/sh
 
+#this need export your $nfsroot
 nfsroot=/local/hguo/nfsroot
 ltpstatus=$nfsroot/autoltp/ltpstatus
 THISIP=`/sbin/ifconfig eth0 | grep 'inet addr' | sed 's/.*addr:\(.*\)\(  Bcast.*\)/\1/'`
