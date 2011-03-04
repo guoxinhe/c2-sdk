@@ -303,11 +303,11 @@ cat <<TEXTEND
 
     resource listed:
     1. nfs service $nfsroot
-    2. kernel package $ltp_kernelpath
-    3. ltprelease $ltp_release
-    4. crontab service
-    5. jtag service
-    6. email service 
+    2. crontab service
+    3. kernel package $ltp_kernelpath
+    4. ltprelease $ltp_release, get a copy from /c2/local/c2/daily-jazz2/testsuite/
+    5. jtag  utility
+    6. email utility 
     example $0 
 TEXTEND
 }
@@ -326,12 +326,6 @@ while [ $# -gt 0 ] ; do
     *) break;
     esac
 done
-
-[ $CONFIG_DEBUG ] && ltp_maxduration=60
-[ $CONFIG_DEBUG ] && (
-recho nfsroot=$nfsroot
-recho ltpstatus=$ltpstatus
-)
 
 
 nowtid=$(date +%s)
