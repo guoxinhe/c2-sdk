@@ -218,34 +218,13 @@ jtag_reset_board()
 }
 ltp_check()
 {
-    cat $ltpstatus
-    nowtid=$(date +%s)
-    recho "Now tid is: $nowtid"
+    recho "$ltp_kernelarch Kernel-$ltp_kernelversion build $ltp_kernelbuild ltp test report"
+    recho "Status : $ltp_status"
     recho_duration $ltp_tidstart "From last running:"
     recho_duration $ltp_tiddone  "From last stop:   "
     recho "Target board's IP is: `cat $ltp_clientip`"
     recho "Target board's result folder is: $ltp_result"
-
-
-    #test code
-    echo "" 
-    echo "Email body ------------------------------------------------------"
-    mail_title="$ltp_kernelarch Kernel-$ltp_kernelversion build $ltp_kernelbuild ltp test report"
-    (
-        echo "$mail_title"
-        echo "This email is created by kernel ltp auto test crontab item, see below"
-	cat $ltpstatus
-        echo "" 
-        echo "Report from file: $ltp_result/resultlog.$ltp_kernelbuild"
-        if [ -f $ltp_result/resultlog.$ltp_kernelbuild ]; then
-            cat $ltp_result/resultlog.$ltp_kernelbuild
-        else
-            echo "Error: Result file $ltp_result/resultlog.$ltp_kernelbuild lost"
-        fi
-        echo "" 
-        echo "Regards,"
-        echo "$USER@`hostname`.c2micro.com"
-    )
+    cat $ltpstatus
 }
 start_new_ltp_mission()
 {
