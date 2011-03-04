@@ -196,6 +196,12 @@ send_email_report()
         echo "Regards,"
         echo "$USER@`hostname`.c2micro.com"
     ) 2>&1 | mail -s"$mail_title" $SENDTO
+
+}
+send_webpage_report()
+{
+    [ -d /var/www/html/ltp ] || (mkdir -p /var/www/html/ltp; chmod 777 /var/www/html/ltp;)
+    cp -f $ltp_resultlog /var/www/html/ltp/
 }
 ltp_check_running()
 {
@@ -226,6 +232,7 @@ ltp_check_running()
         ltp_tiddone=$(date +%s)
         update_ltpstatus_profile
         send_email_report
+        send_webpage_report
         return 0
     fi
     recho_duration $ltp_tidstart "Building $ltp_kernelbuild is runnging "
