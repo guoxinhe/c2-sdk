@@ -17,6 +17,7 @@ ltp_kernelversion=2.6.23
 ltp_kernelbuild=100101
 ltp_kernelarch=jazz2
 ltp_kernelpackage=
+ltp_kernelpath=/sdk/$ltp_kernelarch/dev/weekly
 ltp_gccversion=4.0.3
 ltp_gccbuild=100101
 ltp_clientname=c2
@@ -53,6 +54,7 @@ ltp_kernelversion=$ltp_kernelversion
 ltp_kernelbuild=$ltp_kernelbuild
 ltp_kernelarch=$ltp_kernelarch
 ltp_kernelpackage=$ltp_kernelpackage
+ltp_kernelpath=$ltp_kernelpath
 ltp_gccversion=$ltp_gccversion
 ltp_gccbuild=$ltp_gccbuild
 ltp_clientname=$ltp_clientname
@@ -267,6 +269,9 @@ jtag_reset_board()
 }
 ltp_check()
 {
+    [ -d $nfsroot        ] || echo "No $nfsroot"
+    [ -d $ltp_kernelpath ] || echo "No $ltp_kernelpath"
+    [ -d $ltp_release    ] || echo "No $ltp_release"
     recho "$ltp_kernelarch Kernel-$ltp_kernelversion build $ltp_kernelbuild ltp test report"
     recho "Status : $ltp_status"
     recho_duration $ltp_tidstart "From last running:"
@@ -290,8 +295,19 @@ start_new_ltp_mission()
 this_help()
 {
 cat <<TEXTEND
-    Usage $0  [ --debug ] [ --help ]
-    config file now is hard coded.
+    Usage $0  [ --debug ] [ --help ] [ --check ] [ --init ]
+    --init   init resource files in $nfsroot/autoltp/
+    --check  check the system resources
+    --help   this help
+    --debug  script debug
+
+    resource listed:
+    1. nfs service $nfsroot
+    2. kernel package $ltp_kernelpath
+    3. ltprelease $ltp_release
+    4. crontab service
+    5. jtag service
+    6. email service 
     example $0 
 TEXTEND
 }
