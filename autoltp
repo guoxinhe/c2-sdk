@@ -104,16 +104,10 @@ recho_duration()
     tm_d=$((tm_h/24))
     [ $tm_d -gt 0 ] && tm_h=$((tm_h%24))
     shift
-    recho "$@" "$tm_c seconds / $tm_d(days) $tm_h:$tm_m:$tm_s consumed."
+    recho "$@" " $tm_c seconds / $tm_d(days) $tm_h:$tm_m:$tm_s"
 }
-
-check_host_resource()
+create_runsh()
 {
-if [ ! -f $nfsroot/autoltp/${0##*/} ];then
-    #copy itself as a backup version
-    cp $0 $nfsroot/autoltp/${0##*/}
-fi
-if [ ! -f $ltp_runsh ];then
 cat <<TEXTEND >$ltp_runsh
 #!/bin/sh
 THISIP=\`/sbin/ifconfig eth0 | grep 'inet addr' | sed 's/.*addr:\(.*\)\(  Bcast.*\)/\1/'\`
@@ -128,13 +122,23 @@ d=\`diff /home/work/run.sh \$ltp_runsh\`
 mkdir -p \$ltp_result
 echo \$THISIP >\$ltp_clientip
 rm -f \$ltp_doneflag
+tm_start=\`date +%s\`
 cd \$ltp_release
 ./\$ltp_testcmd -p -q  -l \$ltp_resultlog -d \$ltp_result
+tm_done=\`date +%s\`
 echo "done" > \$ltp_doneflag
+echo \$((tm_done-tm_start)) seconds used >\$ltp_doneflag.duration
+#wait host delete the flag file, then reboot system for next loop test.
+while [ -f \$ltp_doneflag ]; do
+    sleep 10
+done
+reboot
+
 TEXTEND
     chmod 755 $ltp_runsh
-fi
-if [ ! -f $ltp_ubootpro ];then
+}
+create_ubootpro()
+{
 cat <<TEXTEND >$ltp_ubootpro
 setenv ipaddr   10.16.88.88
 setenv serverip $THISIP
@@ -145,7 +149,19 @@ setenv nfs_rzvmlinux 'mw.b 0xa0000000 0xff 0x2000000;nfs'
 setenv bootcmd 'run nfs_rzvmlinux;go'
 setenv 
 TEXTEND
-fi
+}
+check_host_resource()
+{
+    if [ ! -f $nfsroot/autoltp/${0##*/} ];then
+        #copy itself as a backup version
+        cp $0 $nfsroot/autoltp/${0##*/}
+    fi
+    if [ ! -f $ltp_runsh ];then
+        create_runsh
+    fi
+    if [ ! -f $ltp_ubootpro ];then
+        create_ubootpro
+    fi
 }
 addto_send()
 {
@@ -286,6 +302,8 @@ ltp_check()
     recho "Target board's IP is: `cat $ltp_clientip`"
     recho "Target board's result folder is: $ltp_result"
     cat $ltpstatus
+    echo log file size in bytes: `stat -c %s $ltp_resultlog`
+    recho_duration `stat -c %Y $ltp_resultlog` "Modify age: "
 }
 start_new_ltp_mission()
 {
@@ -302,11 +320,16 @@ start_new_ltp_mission()
 this_help()
 {
 cat <<TEXTEND
-    Usage $0  [ --debug ] [ --help ] [ --check ] [ --init ]
+    Usage $0  [ --debug ] [ --help ] [ --check ] [ --init ] [ ... ]
     --init   init resource files in $nfsroot/autoltp/
     --check  check the system resources
     --help   this help
     --debug  script debug
+    --restart restart the last test
+    --start   restart the last test
+    --reset   restart the last test
+    --uboot file   create uboot guide to file
+    --runsh file   create run.sh to file
 
     resource listed:
     1. nfs service $nfsroot
@@ -319,34 +342,37 @@ cat <<TEXTEND
 TEXTEND
 }
 
-check_host_resource
-
 while [ $# -gt 0 ] ; do
     case $1 in
     --help|-h|\?|-\?)  this_help; shift; exit 0;;
     --check)  ltp_check; shift; exit 0;;
     --reset | --restart | --start)  
+	ltp_check_newkernel
         start_new_ltp_mission
         shift; exit 0;;
     --init) rm -rf $nfsroot/autoltp/*;check_host_resource;shift; exit 0;;
+    --uboot) ltp_ubootpro=$2; create_ubootpro; shift 2; exit 0;; 
+    --runsh) ltp_runsh=$2;    create_runsh;    shift 2; exit 0;;
     --debug) CONFIG_DEBUG=y; shift;;
     *) break;
     esac
 done
 
+check_host_resource
 
 nowtid=$(date +%s)
-if [ $((nowtid-ltp_lastchecktid)) -lt 10 ]; then
+if [ $((nowtid-ltp_lastchecktid)) -lt 30 ]; then
     recho_duration $ltp_lastchecktid  "Just now checked "
     exit 0
 fi
+recho "Start checking ... "
 ltp_lastchecktid=$(date +%s)
+ltp_check_newkernel
 case $ltp_status in
     running)
         ltp_check_running
         ;;
     null | none | done ) 
-        ltp_check_newkernel
         if [ $ltp_kernelbuild -lt $new_kernelbuild ];then
             recho Find a new kernel build $new_kernelbuild, start it
             start_new_ltp_mission

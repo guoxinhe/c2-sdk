@@ -25,7 +25,7 @@ fi
 # PATH is defined in the head file
 
 func_help_this(){
-    echo usage: $THISCMD [-config] [-install] [-copy] [-clean]
+    echo usage: $THISCMD [-config] [-nand ] [-copy] [-clean]
     echo "    auto compile kernel"
     echo "    path=$PATH"
     echo "    pwd=`pwd`, kernel at=$THISPROOT"

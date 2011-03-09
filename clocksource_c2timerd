@@ -1,0 +1,54 @@
+Index: linux-2.6/kernel/time/timekeeping.c
+===================================================================
+--- linux-2.6.orig/kernel/time/timekeeping.c
++++ linux-2.6/kernel/time/timekeeping.c
+@@ -136,10 +136,21 @@ EXPORT_SYMBOL(getnstimeofday);
+ void do_gettimeofday(struct timeval *tv)
+ {
+ 	struct timespec now;
++	static struct timeval old={0,0};
+ 
+ 	__get_realtime_clock_ts(&now);
+ 	tv->tv_sec = now.tv_sec;
+ 	tv->tv_usec = now.tv_nsec/1000;
++	if(tv->tv_sec<old.tv_sec || (tv->tv_sec==old.tv_sec && tv->tv_usec<old.tv_usec)) {
++	//still not find the really reason of this bug #14385, but the work arround works perfect.
++		*tv=old;
++		tv->tv_usec++;
++		while(tv->tv_usec > 999999) {
++			tv->tv_usec-=1000000;
++			tv->tv_sec++;
++		}
++	}
++	old=*tv;
+ }
+ 
+ EXPORT_SYMBOL(do_gettimeofday);
+Index: linux-2.6/arch/c2/kernel/timer.c
+===================================================================
+--- linux-2.6.orig/arch/c2/kernel/timer.c
++++ linux-2.6/arch/c2/kernel/timer.c
+@@ -597,3 +597,23 @@ static int __init announce_jtag_sysrq_ad
+ }
+ __initcall(announce_jtag_sysrq_address);
+ #endif // CONFIG_MAGIC_SYSRQ
++
++#include <linux/clocksource.h>
++//copy from kernel/time/jiffies.c
++static cycle_t c2timerd_read(void)
++{
++	return (cycle_t) C2_READ(C2_LB_SYS_TMR_D_ADDR);
++}
++struct clocksource clocksource_c2timerd = {
++	.name		= "c2timerd",
++	.rating		= 10, /* 0: jiffies, lowest valid rating*/
++	.read		= c2timerd_read,
++	.mask		= 0xffffffff, /*32bits*/
++	.mult		= ((NSEC_PER_SEC/SYS_CLK_DIV16_TIMER_COMPARE_VAL)*HZ)<<8,
++	.shift		= 8,
++};
++static int __init init_c2timerd_clocksource(void)
++{
++	return clocksource_register(&clocksource_c2timerd);
++}
++core_initcall(init_c2timerd_clocksource);
