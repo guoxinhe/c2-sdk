@@ -44,7 +44,7 @@ Index: linux-2.6/arch/c2/kernel/timer.c
 +	.rating		= 10, /* 0: jiffies, lowest valid rating*/
 +	.read		= c2timerd_read,
 +	.mask		= 0xffffffff, /*32bits*/
-+	.mult		= ((NSEC_PER_SEC/SYS_CLK_DIV16_TIMER_COMPARE_VAL)*HZ)<<8,
++	.mult		= (NSEC_PER_SEC/(SYS_CLK_DIV16_TIMER_COMPARE_VAL*HZ))<<8,
 +	.shift		= 8,
 +};
 +static int __init init_c2timerd_clocksource(void)
