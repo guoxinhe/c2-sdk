@@ -1,0 +1,15 @@
+#!/bin/sh
+
+[ -d .git ] && exit 0
+
+[ -f .gitignore ] || (
+    echo "#autocreated file on `hostname` by `whoami`, `date`"
+    echo "*.o"
+    echo "*.d"
+    echo ".#*"
+    echo "CVS"
+) >.gitignore
+git init
+git add .
+git commit -m "git init repo on `hostname` by `whoami`, `date`"
+

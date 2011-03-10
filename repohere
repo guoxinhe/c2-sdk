@@ -1,0 +1,43 @@
+#!/bin/sh
+
+top=`pwd`
+script=`pwd`/pm/scripts
+host=`hostname`
+server=$host.bj.c2micro.com
+remote=c2git
+
+if [ ! -f $top/manifests/default.xml ]; then
+    mkdir -p  manifests
+    cat <<EOTEXT >manifests/default.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <remote  name="$remote" 
+           fetch="ssh://${server}${top}" />
+  <default revision="master" remote="$remote" />
+
+  <project path="pm" name="pm"  />
+
+</manifest>
+EOTEXT
+fi
+
+cat <<EOTEXT >$script/repoclone
+#!/bin/sh
+repo init -u ssh://${server}${top}/manifests.git 
+repo sync
+repo start --all master
+EOTEXT
+
+cd manifests
+$script/githere
+cd $top
+
+cd pm
+$script/githere
+cd $top
+
+git clone --bare manifests
+git clone --bare pm
+cat $script/repoclone
+
+rm -rf manifests pm
