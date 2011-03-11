@@ -1,0 +1,20 @@
+#!/bin/sh
+
+BRANCH_NAME=jazz2-SDK-1_0-1_Branch
+CVS_TAG=jazz2-SDK-1_0-1-14
+
+list="
+pvr/misc/run.sh.c2box 
+tools/updateProcess/c2Update.cpp 
+pvr/filemanager/core/firmwareUpdate.cpp
+pvr/filemanager/ui/firmwareUpdateDialog.cpp
+pvr/filemanager/playback/ui/filelist.cpp
+"
+
+for i in $list;do
+    cvs co -r $BRANCH_NAME $i
+    cvs -q tag -R -F $SDK_TAG $i
+done
+
+
+
