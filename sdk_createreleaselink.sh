@@ -18,10 +18,9 @@ S200_DIR=/sdk/$SDK_TARGET_ARCH/rel/candidate/c2-$SDK_TARGET_ARCH-sdk-${MAJOR}.${
 dirsdk=c2-$SDK_TARGET_ARCH-sdk-${MAJOR}.${MINOR}-${BRANCH}
 dirc2box=C2Box-${MAJOR}.${MINOR}-${BRANCH}
 }
-update_envs
-
-if [ $# -eq 0 ] ; then
-cat <<HELPTEXT
+this_help()
+{
+    cat <<HELPTEXT
     usage ${0##*/} [-top target-folder ] [ -arch=jazz2 ] [ -major=1 ] [ -minor=0 ] [ -branch=1 ] [ -tagver=8 ]
     example for "Create SDK release link for $S200_DIR"
         $0 -top `pwd`/test -arch=$SDK_TARGET_ARCH -major=$MAJOR -minor=$MINOR -branch=$BRANCH -tagver=$TAGVER
@@ -65,9 +64,14 @@ cat <<HELPTEXT
     More refs: https://access.c2micro.com/index.php/Media_Software_SDK#SDK_Release_packages
 
 HELPTEXT
+}
+update_envs
+
+if [ $# -eq 0 ] ; then
+    this_help
     exit 0
 fi
-CONFIG_FULL=y
+CONFIG_FULL=
 while [ $# -gt 0 ];do
     case $1 in
     -top)         TOP=$2;        shift 2;;
@@ -76,6 +80,7 @@ while [ $# -gt 0 ];do
     -minor=*)  MINOR=${1#-minor=}; shift;;
     -branch=*) BRANCH=${1#-branch=}; shift;;
     -tagver=*) TAGVER=${1#-tagver=}; shift;;
+    -h|--help|-\?|\?) this_help;exit 0;shift;;
     --full)    CONFIG_FULL=y; shift;;
     --brief)   CONFIG_FULL= ; shift;;
     --tree)    CONFIG_TREE=y; shift;;
@@ -134,7 +139,7 @@ for i in $flist ; do
 
     *)
         case $rname  in
-        *sw_media-src-all.tar.gz | *spi_rom* | *diag_rom* |\
+        *sw_media-src-all* | *sw_c2apps-src* | *spi_rom* | *diag_rom* | *QA* | *test* | \
         Makefile* | rlog* | log* | *.sh | *.txt)
             echo does not link $i
 	    ;;
@@ -171,4 +176,5 @@ if [ $CONFIG_TREE ];then
 fi
 popd
 echo "Create SDK release link for $S200_DIR"  : done
+[ $CONFIG_TREE ] && echo "files are listed in $TOP/filelist.txt"
 echo "Please check $TOP before release"

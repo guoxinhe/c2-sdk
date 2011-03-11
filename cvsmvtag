@@ -3,6 +3,17 @@
 BRANCH_NAME=jazz2-SDK-1_0-1_Branch
 CVS_TAG=jazz2-SDK-1_0-1-14
 
+if [ -f CVS/Tag ];then
+tag=`cat CVS/Tag`
+case $tag in
+    T*) BRANCH_NAME=${tag#T};;
+    *) ;;
+esac
+fi
+
+[ $BRANCH_NAME ] || BRANCH_NAME=jazz2-SDK-1_0-1_Branch
+
+
 list="
 pvr/misc/run.sh.c2box 
 tools/updateProcess/c2Update.cpp 
@@ -12,7 +23,7 @@ pvr/filemanager/playback/ui/filelist.cpp
 "
 
 for i in $list;do
-    #cvs up -CAPd -r $BRANCH_NAME $i
+    cvs up -CAPd -r $BRANCH_NAME $i
     cvs -q tag -R -F $CVS_TAG $i
 done
 

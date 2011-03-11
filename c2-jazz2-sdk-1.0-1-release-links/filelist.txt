@@ -1,0 +1,86 @@
+.
+|-- C2Box-1.0-1
+|   |-- Basic
+|   |   |-- c2-jazz2-sdk-1.0-1-c2box-bin.tar.gz
+|   |   `-- c2-jazz2-sdk-1.0-1-c2box-src.tar.gz
+|   `-- Premium
+|       |-- c2-jazz2-sdk-1.0-1-browser-src.tar.gz
+|       |-- c2-jazz2-sdk-1.0-1-c2box-src-all.tar.gz
+|       |-- c2-jazz2-sdk-1.0-1-flash-src.tar.gz
+|       |-- c2-jazz2-sdk-1.0-1-ipcam-src.tar.gz
+|       |-- c2-jazz2-sdk-1.0-1-jvm-src.tar.gz
+|       |-- c2-jazz2-sdk-1.0-1-karaoke-src.tar.gz
+|       |-- c2-jazz2-sdk-1.0-1-minibd-src.tar.gz
+|       |-- c2-jazz2-sdk-1.0-1-mvphone-src.tar.gz
+|       |-- c2-jazz2-sdk-1.0-1-recording-src.tar.gz
+|       |-- c2-jazz2-sdk-1.0-1-sohu-src.tar.gz
+|       |-- c2-jazz2-sdk-1.0-1-thunderkk-src.tar.gz
+|       `-- c2-jazz2-sdk-1.0-1-videochat-src.tar.gz
+`-- c2-jazz2-sdk-1.0-1
+    |-- Advance
+    |   |-- c2-jazz2-sdk-1.0-1-gfx_2d-src.tar.gz
+    |   |-- c2-jazz2-sdk-1.0-1-hdmi-src.tar.gz
+    |   `-- plugins
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-bin-real.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-midi-soundfont.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-aac-dec.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-aac-enc.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-ac3-dec.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-adpcm-dec.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-adpcm-enc.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-alac-dec.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-amrnb-dec.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-ape-dec.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-atrac3-dec.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-avs-dec.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-dts-dec.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-eac3-dec.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-flac-dec.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-g726-dec.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-g726-enc.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-g729ab-dec.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-g729ab-enc.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-h264-dec.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-h264-enc.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-ilbc-dec.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-ilbc-enc.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-midi-dec.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-mlp-dec.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-mp2a-dec.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-mp2a-enc.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-mp2v-dec.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-mp4v-dec.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-mp4v-enc.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-real.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-vc1-dec.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-vc1-enc.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-vorbis-dec.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-vp6-dec.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-wavpack-dec.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-wma10-dec.tar.gz
+    |       |-- c2-jazz2-sdk-1.0-1-sw_media-src-wma8-dec.tar.gz
+    |       `-- c2-jazz2-sdk-1.0-1-sw_media-src-wma8-enc.tar.gz
+    |-- Basic
+    |   |-- c2-jazz2-sdk-1.0-1-c2_goodies-bin.tar.gz
+    |   |-- c2-jazz2-sdk-1.0-1-c2_goodies-src.tar.gz
+    |   |-- c2-jazz2-sdk-1.0-1-devtools-bin.tar.gz
+    |   |-- c2-jazz2-sdk-1.0-1-devtools-src.tar.gz
+    |   |-- c2-jazz2-sdk-1.0-1-docs-basic.tar.gz
+    |   |-- c2-jazz2-sdk-1.0-1-factory-udisk-cn.tar.gz
+    |   |-- c2-jazz2-sdk-1.0-1-factory-udisk-en.tar.gz
+    |   |-- c2-jazz2-sdk-1.0-1-gfx_2d-bin.tar.gz
+    |   |-- c2-jazz2-sdk-1.0-1-hdmi-bin.tar.gz
+    |   |-- c2-jazz2-sdk-1.0-1-jtag-bin.tar.gz
+    |   |-- c2-jazz2-sdk-1.0-1-jtag-src.tar.gz
+    |   |-- c2-jazz2-sdk-1.0-1-kernel-bin.tar.gz
+    |   |-- c2-jazz2-sdk-1.0-1-kernel-nand-bin.tar.gz
+    |   |-- c2-jazz2-sdk-1.0-1-kernel-src.tar.gz
+    |   |-- c2-jazz2-sdk-1.0-1-qt-4.7.0-src.tar.gz
+    |   |-- c2-jazz2-sdk-1.0-1-sw_media-bin.tar.gz
+    |   |-- c2-jazz2-sdk-1.0-1-u-boot-bin.tar.gz
+    |   |-- c2-jazz2-sdk-1.0-1-u-boot-src.tar.gz
+    |   `-- c2_update.tar
+    `-- Premium
+        `-- c2-jazz2-sdk-1.0-1-sw_media-src.tar.gz
+
+8 directories, 75 files

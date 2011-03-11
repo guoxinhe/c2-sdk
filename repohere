@@ -16,6 +16,7 @@ if [ ! -f $top/manifests/default.xml ]; then
   <default revision="master" remote="$remote" />
 
   <project path="pm" name="pm"  />
+  <project path="manifests" name="manifests"  />
 
 </manifest>
 EOTEXT
@@ -38,6 +39,9 @@ cd $top
 
 git clone --bare manifests
 git clone --bare pm
+#let group can access it
+chmod -R g+w manifests.git pm.git
+
 cat $script/repoclone
 
 rm -rf manifests pm
