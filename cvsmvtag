@@ -12,7 +12,7 @@ pvr/filemanager/playback/ui/filelist.cpp
 "
 
 for i in $list;do
-    cvs co -r $BRANCH_NAME $i
+    cvs up -CAPd -r $BRANCH_NAME $i
     cvs -q tag -R -F $SDK_TAG $i
 done
 
