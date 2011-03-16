@@ -3,12 +3,31 @@
 [ -d .git ] && exit 0
 
 [ -f .gitignore ] || (
-    echo "#autocreated file on `hostname` by `whoami`, `date`"
-    echo "*.o"
-    echo "*.d"
-    echo ".#*"
-    echo "CVS"
-) >.gitignore
+cat <<endofcat  >.gitignore
+#autocreated file on `hostname` by `whoami`, `date`"
+*.o
+*.d
+*.out
+*.map
+*.cmd
+*.bin
+.#*
+.tmp*
+.config*
+..tmp*
+cscope*
+CVS
+.version
+vmlinux*
+zvmlinux*
+.pc
+GPATH
+GRTAGS
+GSYMS
+GTAGS
+patches
+endofcat
+) 
 git init
 git add .
 git commit -m "git init repo on `hostname` by `whoami`, `date`"

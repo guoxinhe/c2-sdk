@@ -112,9 +112,8 @@ fi
 mkdir -p   $dirsdk/Advance/plugins
 mkdir -p   $dirsdk/Basic
 mkdir -p   $dirsdk/Premium
-mkdir -p $dirc2box/Basic
-mkdir -p $dirc2box/Premium
 
+treef=/tmp/tree$$.txt
 flist=`find $S200_DIR -type f `
 for i in $flist ; do
     pname=${i##*/}
@@ -123,43 +122,65 @@ for i in $flist ; do
     #echo $i
     case $i in
     *\/plugins\/*)
-        softlink $i $dirsdk/Advance/plugins/$rname
+        case $rname  in   #//there are in OpenSource/GPL 
+            *midi-soundfont*.tar.gz |\
+            *aac-dec*.tar.gz        |\
+            *aac-enc*.tar.gz        |\
+            *ac3-dec*.tar.gz        |\
+            *atrac3-dec*.tar.gz     |\
+            *alac-dec*.tar.gz       |\
+            *ape-dec*.tar.gz        |\
+            *dts-dec*.tar.gz        |\
+            *flac-dec*.tar.gz       |\
+            *ilbc-dec*.tar.gz       |\
+            *midi-dec*.tar.gz       |\
+            *mlp-dec*.tar.gz        |\
+            *vorbis-dec*.tar.gz     )
+            softlink $i $dirsdk/Advance/plugins/$rname
+            ;;
+        *)
+            echo does not link $i >>$treef
+            ;;
+        esac
 	;;
 
     *\/c2box\/*)
         case $rname  in
-        *c2box-src.tar.gz | *c2box-bin.tar.gz)
-            softlink $i $dirc2box/Basic/$rname  
-            [ $CONFIG_FULL ] && softlink $i $dirc2box/Premium/$rname
+        *c2box-src.tar.gz | *c2box-bin.tar.gz | *ipcam-src.tar.gz | *recording-src.tar.gz )
+            softlink $i $dirsdk/Basic/$rname  
+            [ $CONFIG_FULL ] && softlink $i $dirsdk/Premium/$rname
             ;;
-        *)  softlink $i $dirc2box/Premium/$rname
+        *)  #softlink $i $dirc2box/Premium/$rname
+            echo does not link $i >>$treef
             ;;
         esac
 	;;
 
     *)
         case $rname  in
-        *sw_media-src-all* | *sw_c2apps-src* | *spi_rom* | *diag_rom* | *QA* | *test* | \
-        Makefile* | rlog* | log* | *.sh | *.txt)
-            echo does not link $i
-	    ;;
-        *sw_media-bin.tar.gz)
+        *sw_media-bin.tar.gz | \
+	*-gfx_2d-bin.tar.gz | *jtag-bin* | *diag_rom*)
             softlink $i $dirsdk/Basic/$rname
             [ $CONFIG_FULL ] && softlink $i $dirsdk/Premium/$rname
             [ $CONFIG_FULL ] && softlink $i $dirsdk/Advance/$rname
 	    ;;
-        *-gfx_2d-bin.tar.gz)
-            softlink $i $dirsdk/Basic/$rname
-            [ $CONFIG_FULL ] && softlink $i $dirsdk/Premium/$rname
-            [ $CONFIG_FULL ] && softlink $i $dirsdk/Advance/$rname
-            ;;
         *sw_media-src.tar.gz  | *sw_media-doc.tar.gz)
             softlink $i $dirsdk/Premium/$rname
             [ $CONFIG_FULL ] && softlink $i $dirsdk/Advance/$rname
 	    ;;
-        *-dv-docs.tar.gz | *-encoder-docs.tar.gz | *-gfx_2d-src.tar.gz | *-hdmi-src.tar.gz | *-Karaoke-Widget-docs.tar.gz)
+        *-dv-docs.tar.gz | *-encoder-docs.tar.gz | *-Karaoke-Widget-docs.tar.gz |\
+        *jtag-src*)
             softlink $i $dirsdk/Advance/$rname
             ;;
+        *-gfx_2d-test-src.tar.gz)
+            softlink $i $dirsdk/Advance/$rname
+            ;;
+        *-gfx_2d-src.tar.gz | *-hdmi-src.tar.gz | \
+        Makefile* | rlog* | log* | *.sh | *.txt | \
+        *sw_media-src-all* | *sw_c2apps-src* |    \
+        *spi_rom* | *QA* | *test*)
+            echo does not link $i >>$treef
+	    ;;
         *)
             softlink $i $dirsdk/Basic/$rname
             [ $CONFIG_FULL ] && softlink $i $dirsdk/Premium/$rname
@@ -169,12 +190,16 @@ for i in $flist ; do
 	;;
     esac
 done
+
+tree >>$treef
+sed -i 's/ -> .*//g'  $treef
+
 if [ $CONFIG_TREE ];then
-    tree >/tmp/tree$$.txt
-    mv /tmp/tree$$.txt filelist.txt
-    sed -i 's/ -> .*//g' filelist.txt
+    cp $treef filelist.txt
 fi
+echo "See not link list in $treef"
 popd
 echo "Create SDK release link for $S200_DIR"  : done
 [ $CONFIG_TREE ] && echo "files are listed in $TOP/filelist.txt"
 echo "Please check $TOP before release"
+
