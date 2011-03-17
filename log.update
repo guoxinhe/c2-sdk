@@ -1,1 +1,3 @@
 Update git on projects/sw/devtools/buildroot
+projects/sw/devtools/3rdParty : git is clean, does not push.
+Update git on projects/sw/devtools/binutils/binutils
