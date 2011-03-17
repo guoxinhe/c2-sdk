@@ -1,4 +1,0 @@
-#!/bin/sh
-repo init -u ssh://Delllinux/home/hguo/sdk/manifests.git 
-repo sync
-repo start --all master
