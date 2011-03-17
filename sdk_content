@@ -14,6 +14,7 @@ projects/sw/prom/diag
 projects/sw/prom/u-boot-1.3.0
 projects/sw/jtag
 projects/sw/Qt/qt-everywhere-opensource-src-4.6.1
+projects/sw/Qt/qt-everywhere-opensource-src-4.7.0
 projects/sw/kernel
 projects/sw/bsp/vivante
 projects/sw/bsp/hdmi

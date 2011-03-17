@@ -1,0 +1,46 @@
+#!/bin/sh
+
+list="
+sw_c2apps 
+sw_media
+sw/Qt/qt-everywhere-opensource-src-4.6.1
+sw/Qt/qt-everywhere-opensource-src-4.7.0
+sw/kernel
+projects/sw/devtools
+projects/sw/sdk
+projects/alg
+"
+
+if [ -f sdk_content ];then
+    list="`cat sdk_content`"
+fi
+logupd=`pwd`/foreachgit.update
+lognew=`pwd`/foreachgit.new
+>$logupd
+>$lognew
+for i in $list;do
+    echo "Checkout $i"
+    cvs -q co $i 
+    pushd $i
+    if [ -d .git ];then 
+        clean=$(git status | grep "nothing to commit (working directory clean)")
+        if [ "$clean" == "" ]; then
+	    echo "Update git on $i" >>$logupd
+            echo "add these to git"
+            git status  
+            git add .
+            git commit -m "commit at $(date)"
+        else
+            echo "$i : git is clean, does not push."
+            echo "$i : git is clean, does not push." >>$logupd
+        fi	
+    else
+	echo "Create git on $i" >>$lognew
+	githere
+    fi
+    rm -f $lognew $logupd 
+    popd
+done
+
+cat $lognew >>foreachgit.log
+cat $logupd >>foreachgit.log
