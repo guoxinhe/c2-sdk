@@ -2,10 +2,12 @@
 
 top=`pwd`
 host=`hostname`
-server=$host.bj.c2micro.com
+server=$host
 remote=c2git
 manifest=$top/manifests/default.xml
-    
+  
+[ -d manifests.git ] && exit 0
+  
 mkdir -p  manifests
 cat <<EOTEXT >manifests/default.xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -40,6 +42,6 @@ git clone --bare manifests
 #let group can access it
 chmod -R g+w manifests.git
 
-cat $top/manifests/README
+cp $top/manifests/README README.repo
 
 rm -rf manifests 

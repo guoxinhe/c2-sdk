@@ -53,3 +53,4 @@ cat $logupd >>$logall
 echo "Done on `date`" >>$logall
 echo "Done on `date`" >>$lognew
 echo "Done on `date`" >>$logupd
+repohere
