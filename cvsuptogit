@@ -1,31 +1,27 @@
 #!/bin/sh
 
 list="
-sw_c2apps 
-sw_media
-sw/Qt/qt-everywhere-opensource-src-4.6.1
-sw/Qt/qt-everywhere-opensource-src-4.7.0
-sw/kernel
-projects/sw/devtools
-projects/sw/sdk
-projects/alg
+projects/sw/sdk/configs
+projects/sw/sdk/automation
 "
 
-mkdir -p $HOME/maintreetag
-cd $HOME/maintreetag
-
-
 [ $CVSROOT ] || export CVSROOT=/db/cvsroot
-
+REPODIR=$HOME/maintreetag
+CVSDIR=$HOME/maintreetag/cvs
+mkdir -p $REPODIR $CVSDIR
+cd $REPODIR
 if [ -f sdk_content ];then
     list="`cat sdk_content`"
 fi
 logupd=`pwd`/log.update
 logcvs=`pwd`/log.cvs
 lognew=`pwd`/log.new
+logall=`pwd`/log.log
 >$logupd
 >$lognew
 for i in $list;do
+    idotgit=$REPODIR/${i##*/}.git
+    pushd $CVSDIR
     echo "Checkout $i"
     cvs -q co $i >>$logcvs
     pushd $i
@@ -37,6 +33,7 @@ for i in $list;do
             git status  
             git add .
             git commit -m "commit at $(date)"
+            git push $idotgit
         else
             echo "$i : git is clean, does not push."
             echo "$i : git is clean, does not push." >>$logupd
@@ -45,10 +42,14 @@ for i in $list;do
 	echo "Create git on $i" >>$lognew
 	githere
     fi
-    rm -f $lognew $logupd 
     popd
+    popd
+    if [ ! -d $idotgit ];then
+        git clone --bare $CVSDIR/$i
+    fi
 done
+cat $lognew >>$logall
+cat $logupd >>$logall
+echo "Done on `date`" >>$logall
 echo "Done on `date`" >>$lognew
 echo "Done on `date`" >>$logupd
-cat $lognew >>log.log
-cat $logupd >>log.log
