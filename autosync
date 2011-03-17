@@ -127,7 +127,7 @@ for i in $servers; do
     recho "----------------    >>>>    ----------------"
     $SETCOLOR_NORMAL
     if [ $CONFIG_USEGIT ]; then
-        git push $i:$THISPATH
+        git push ssh://${i}$THISPATH
     else
         ssh $i mkdir -p $THISPATH
         if [ $# -lt 1 ]; then
