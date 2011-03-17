@@ -15,10 +15,10 @@ cd $REPODIR
 if [ -f sdk_content ];then
     list="`cat sdk_content`"
 fi
-logupd=`pwd`/log.update
-logcvs=`pwd`/log.cvs
-lognew=`pwd`/log.new
-logall=`pwd`/log.log
+logupd=$REPODIR/log.update
+logcvs=$REPODIR/log.cvs
+lognew=$REPODIR/log.new
+logall=$REPODIR/log.log
 >$logupd
 >$lognew
 for i in $list;do
@@ -52,6 +52,8 @@ for i in $list;do
             mv ${i##*/} $idotgit
         fi
 	echo "Create bare git on $idotgit" >>$lognew
+    else
+        echo "found bare git $idotgit for $i" >>$lognew
     fi
 done
 cat $lognew >>$logall
