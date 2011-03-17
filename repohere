@@ -22,7 +22,8 @@ EOTEXT
 
 searchgit=`find . -maxdepth 1 -name \*.git -type d`
 for i in $searchgit;do
-    echo "  <project path=\"${i##*/}\" name=\"${i##*/}\" />" >>$manifest
+    idotgit=${i##*/}
+    echo "  <project path=\"${idotgit%.git}\" name=\"${idotgit%.git}\" />" >>$manifest
 done
 echo "" >>$manifest
 echo "</manifest>" >>$manifest

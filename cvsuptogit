@@ -48,6 +48,9 @@ for i in $list;do
     popd
     if [ ! -d $idotgit ];then
         git clone --bare $CVSDIR/$i
+        if [ ! -d  $idotgit -a -d ${i##*/} ];then
+            mv ${i##*/} $idotgit
+        fi
     fi
 done
 cat $lognew >>$logall
