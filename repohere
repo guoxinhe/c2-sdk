@@ -43,6 +43,9 @@ git clone --bare manifests
 #let group can access it
 chmod -R g+w manifests.git
 
+if [ -t 1 -o -t 2 ];then
+    cat $top/manifests/README
+fi
 cp $top/manifests/README README.repo
 
 rm -rf manifests 
