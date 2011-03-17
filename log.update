@@ -3,3 +3,5 @@ projects/sw/devtools/3rdParty : git is clean, does not push.
 Update git on projects/sw/devtools/binutils/binutils
 projects/sw/devtools/gcc/gcc : git is clean, does not push.
 Update git on projects/sw/devtools/uClibc
+projects/sw/devtools/alsa : git is clean, does not push.
+Update git on projects/sw/strace

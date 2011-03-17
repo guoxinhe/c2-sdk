@@ -10,6 +10,7 @@ projects/sw/sdk/automation
 REPODIR=${1:-$HOME/maintreetag}
 CVSDIR=$REPODIR/cvs
 mkdir -p $REPODIR $CVSDIR
+[ -d $REPODIR ] || exit 0
 cd $REPODIR
 if [ -f sdk_content ];then
     list="`cat sdk_content`"
