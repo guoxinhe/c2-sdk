@@ -11,16 +11,23 @@ projects/sw/sdk
 projects/alg
 "
 
+mkdir -p $HOME/maintreetag
+cd $HOME/maintreetag
+
+
+[ $CVSROOT ] || export CVSROOT=/db/cvsroot
+
 if [ -f sdk_content ];then
     list="`cat sdk_content`"
 fi
-logupd=`pwd`/foreachgit.update
-lognew=`pwd`/foreachgit.new
+logupd=`pwd`/log.update
+logcvs=`pwd`/log.cvs
+lognew=`pwd`/log.new
 >$logupd
 >$lognew
 for i in $list;do
     echo "Checkout $i"
-    cvs -q co $i 
+    cvs -q co $i >>$logcvs
     pushd $i
     if [ -d .git ];then 
         clean=$(git status | grep "nothing to commit (working directory clean)")
@@ -41,6 +48,7 @@ for i in $list;do
     rm -f $lognew $logupd 
     popd
 done
-
-cat $lognew >>foreachgit.log
-cat $logupd >>foreachgit.log
+echo "Done on `date`" >>$lognew
+echo "Done on `date`" >>$logupd
+cat $lognew >>log.log
+cat $logupd >>log.log
