@@ -1,13 +1,70 @@
 #!/bin/sh
 
+export MISSION=${0##*/}
+export rlog=$HOME/rlog/rlog.$MISSION
+mkdir -p $HOME/rlog
+recho()
+{
+    #progress echo, for debug during run as the crontab task.
+    if [ ! -z "$rlog" ] ; then
+    echo `date +"%Y-%m-%d %H:%M:%S"` " $@" >>$rlog.log.txt
+    fi
+    echo `date +"%Y-%m-%d %H:%M:%S"` " $@"
+}
+recho_time_consumed()
+{
+    tm_b=`date +%s`
+    tm_c=$((tm_b-$1))
+    tm_h=$((tm_c/3600))
+    tm_m=$((tm_c/60))
+    tm_m=$((tm_m%60))
+    tm_s=$((tm_c%60))
+    shift
+    recho "$@" "$tm_c seconds / $tm_h:$tm_m:$tm_s consumed."
+}
+
+help()
+{
+    cat <<-EOF >&2
+
+    usage: ./${0##*/} [ repodir [ cvs module name ]]
+    --help this help
+
+    example: ${0##*/} . projects/sw/sdk/configs
+
+	EOF
+}
+
+while [ $# -gt 0 ]; do
+    case $1 in
+    -h | --help)
+	help
+        exit 0;;
+    *)
+        break;
+        ;;
+    esac
+done
+
 list="
 projects/sw/sdk/configs
 projects/sw/sdk/automation
 "
 
+THISIP=`/sbin/ifconfig eth0 | grep 'inet addr' | sed 's/.*addr:\(.*\)\(  Bcast.*\)/\1/'`
 
-[ $CVSROOT ] || export CVSROOT=/db/cvsroot
-REPODIR=${1:-$HOME/maintreetag}
+if [ -z $CVSROOT ];then
+    recho "Please set CVSROOT first, suggest to use command:"
+    recho "$ export CVSROOT=:pserver:$USER@cvs.c2micro.com:/cvsroot"
+    recho "$ cvs login"
+    #exit 0
+    if [ "${THISIP:0:6}" == "10.16." ];then #Beijing's server
+        export CVSROOT=:pserver:$USER@cvs.c2micro.com:/cvsroot
+    else  #Suppose to San Jose's server
+        export CVSROOT=/db/cvsroot
+    fi
+fi
+REPODIR=$(readlink -f ${1:-$HOME/maintreetag})
 CVSDIR=$REPODIR/cvs
 mkdir -p $REPODIR $CVSDIR
 [ -d $REPODIR ] || exit 0
@@ -15,12 +72,11 @@ cd $REPODIR
 if [ -f sdk_content ];then
     list="`cat sdk_content`"
 fi
-logupd=$REPODIR/log.update
+if [ $2 ]; then
+    list="$2"
+fi
+
 logcvs=$REPODIR/log.cvs
-lognew=$REPODIR/log.new
-logall=$REPODIR/log.log
->$logupd
->$lognew
 for i in $list;do
     idotgit=$REPODIR/${i##*/}.git
     pushd $CVSDIR
@@ -37,11 +93,10 @@ for i in $list;do
             git commit -m "commit at $(date)"
             git push $idotgit
         else
-            echo "$i : git is clean, does not push."
-            echo "$i : git is clean, does not push." >>$logupd
+            recho "$i : git is clean, does not push."
         fi	
     else
-	echo "Create git on $i" >>$lognew
+	recho "Create git on $i" >>$lognew
 	githere
     fi
     popd
@@ -51,14 +106,10 @@ for i in $list;do
         if [ ! -d  $idotgit -a -d ${i##*/} ];then
             mv ${i##*/} $idotgit
         fi
-	echo "Create bare git on $idotgit" >>$lognew
+	recho "Create bare git on $idotgit" 
     else
-        echo "found bare git $idotgit for $i" >>$lognew
+        recho "found bare git $idotgit for $i"
     fi
 done
-cat $lognew >>$logall
-cat $logupd >>$logall
-echo "Done on `date`" >>$logall
-echo "Done on `date`" >>$lognew
-echo "Done on `date`" >>$logupd
+recho "Done on `date`" >>$logupd
 repohere
