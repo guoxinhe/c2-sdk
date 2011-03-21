@@ -86,7 +86,7 @@ for i in $list;do
     if [ -d .git ];then 
         clean=$(git status | grep "nothing to commit (working directory clean)")
         if [ "$clean" == "" ]; then
-	    echo "Update git on $i" >>$logupd
+	    echo "Update git on $i" 
             echo "add these to git"
             git status  
             git add .
@@ -96,7 +96,7 @@ for i in $list;do
             recho "$i : git is clean, does not push."
         fi	
     else
-	recho "Create git on $i" >>$lognew
+	recho "Create git on $i"
 	githere
     fi
     popd
