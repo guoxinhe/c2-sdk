@@ -35,11 +35,11 @@ help()
 	EOF
 }
 
+[ $# -lt 1 ] && help && exit 0
 while [ $# -gt 0 ]; do
     case $1 in
-    -h | --help)
-	help
-        exit 0;;
+    -nocvs | nocvs) CONFIG_NOCVS=y; shift ;;
+    -h | --help) 	help        exit 0;;
     *)
         break;
         ;;
@@ -65,7 +65,7 @@ if [ -z $CVSROOT ];then
     fi
 fi
 REPODIR=$(readlink -f ${1:-$HOME/maintreetag})
-CVSDIR=$REPODIR/cvs
+CVSDIR=$REPODIR
 mkdir -p $REPODIR $CVSDIR
 [ -d $REPODIR ] || exit 0
 cd $REPODIR
@@ -81,7 +81,7 @@ for i in $list;do
     idotgit=$REPODIR/${i##*/}.git
     pushd $CVSDIR
     echo "Checkout $i"
-    cvs -q co $i >>$logcvs
+    [ -z $CONFIG_NOCVS ] && cvs -q co $i >>$logcvs
     pushd $i
     if [ -d .git ];then 
         clean=$(git status | grep "nothing to commit (working directory clean)")
@@ -111,5 +111,5 @@ for i in $list;do
         recho "found bare git $idotgit for $i"
     fi
 done
-recho "Done on `date`" >>$logupd
+recho "Done on `date`"
 repohere
