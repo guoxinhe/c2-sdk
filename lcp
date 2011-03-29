@@ -1,0 +1,35 @@
+#!/bin/sh
+
+help()
+{
+    cat <<-EOF >&2
+
+    usage: ./${0##*/} src_folder dst_folder
+
+    example: sudo ./${0##*/} /boot .
+
+	EOF
+}
+
+while [ $# -gt 0 ]; do
+    case $1 in
+    -h | --help) help; exit 0;;
+    *)   break      ;;
+    esac
+done
+
+src=${1-/sdk/jazz2/dev/weekly/110322}
+dst=${2-`pwd`}
+
+src=`readlink -f $src`
+dst=`readlink -f $dst`
+
+mkdir -p $dst
+cd $dst
+list=`find $src`
+for i in $list;do
+    j=${i#$src/}
+    [ "$j" == "$src" ] && continue
+    [ -d $i ] && mkdir -p $j
+    [ -f $i -a ! -h $j ] && ln -s $i $j
+done

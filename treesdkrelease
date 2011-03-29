@@ -1,0 +1,66 @@
+#!/bin/sh
+
+if [ "$THISIP" = "10.16.13.200" ]; then
+    psdk=/sdk
+else
+    psdk=`cat /etc/mtab | grep 10.16.13.200:/sdk | sed 's:.*sdk \(.*\)\( nfs.*\):\1:'`
+fi
+
+
+sdk=$psdk/jazz2/rel/official/c2-jazz2-sdk-1.0-1/Basic
+list=/sdk/jazz2/rel/official/c2-jazz2-sdk-1.0-1/Basic/c2-jazz2-sdk-1.0-1-devtools-src.tar.gz
+out=/p/out
+tmp=/tmp/shit
+level=4
+
+help()
+{
+    cat <<-EOF >&2
+
+    usage: ./${0##*/} [ opt ]
+    -r) cfg_rm=y; shift ;;
+    -f) cfg_file=y; shift ;;
+    -d) cfg_dir=y; shift ;;
+    -x) cfg_tar=y; shift ;;
+    -h | --help ) help; exit 0; shift ;;
+    *) list=\$1 ;shift ;;
+
+	EOF
+}
+
+while [ $# -gt 0 ]; do
+    case $1 in
+    -r) cfg_rm=y; shift ;;
+    -f) cfg_file=y; shift ;;
+    -d) cfg_dir=y; shift ;;
+    -x) cfg_tar=y; shift ;;
+    -l) level=$2; shift 2;;
+    -h | --help ) help; exit 0; shift ;;
+    *) list=$sdk/$1 ;shift ;;
+    esac
+done
+
+mkdir -p $out $tmp
+
+for i in $list;do
+    xls=${i##*/}
+    xls=${xls%%.tar.gz}
+    xls=$out/$xls.txt
+
+    echo ${i##*/} >$xls
+    [ $cfg_rm ] && rm -rf $tmp/*
+    [ $cfg_tar ] && tar xzf $i -C $tmp
+    pushd $tmp
+        [ $cfg_dir ]  && tree -dif  -L $level --noreport >>$xls
+        [ $cfg_file ] && tree -i -f -L $level --noreport >>$xls
+    popd
+    if [ -f $xls ];then
+        echo create $xls
+        sed -i -e 's,\./,\t,g' $xls
+        #sed -i '/^\./ d'  $xls
+        sed -i '2 d'  $xls
+    fi
+done
+
+
+
