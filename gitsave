@@ -1,0 +1,7 @@
+#!/bin/sh
+
+[ ! -d .git ] && exit 0
+
+git add .
+git commit -m "git auto commit on `hostname` by `whoami`, `date`"
+
