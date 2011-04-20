@@ -516,6 +516,7 @@ generate_atag_email()
 	esac
 
 	echo $LOGEND
+	nr_sendmail_jump_request=$((nr_sendmail_jump_request+1))
 }
 
 #
@@ -638,6 +639,9 @@ show_new_revisions()
 
 send_mail()
 {
+	if [ $nr_sendmail_jump_request -gt 0 ]; then
+            return 0
+        fi
 	if [ -n "$envelopesender" ]; then
 		/usr/sbin/sendmail -t -f "$envelopesender"
 	else
@@ -647,6 +651,7 @@ send_mail()
 
 # ---------------------------- main()
 
+nr_sendmail_jump_request=0
 # --- Constants
 LOGBEGIN="- Log -----------------------------------------------------------------"
 LOGEND="-----------------------------------------------------------------------"
