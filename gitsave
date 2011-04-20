@@ -1,7 +1,13 @@
 #!/bin/sh
 
+
 [ ! -d .git ] && exit 0
 
+if [ $# -gt 0 ]; then
+    comments="$@"
+else
+    comments="git auto commit on `hostname` by `whoami`, `date`"
+fi
 git add .
-git commit -m "git auto commit on `hostname` by `whoami`, `date`"
+git commit -m "$comments"
 
