@@ -109,32 +109,26 @@ while [ $# -gt 0 ] ; do
 done
 
 repodir=/mentor-mirror/build
-tmpfile=/tmp/rp-whatsnew-$$
+tmpfile=/tmp/${0##*/}-$$
 nrupdate=0
 tm_a=`date +%s`
 lines=`sed -n '$=' $rlog.log.txt`
 if [ $? -gt 0 ]; then 
     lines=0
 fi
-recho "Start repo sync on $repodir
-    This will do 'repo sync', then foreach git do git log check,
-    find the updated modules for repo rebase
-    updated modules are listed, need do 'repo rebase' manually."
 
 recho "Checking repositories $repodir ..."
 cd $repodir
-recho "repo sync"
-repo sync  | tee $tmpfile
-rsize=$(stat -c%s $tmpfile)
-if [ $rsize -le 2 ]; then
-    echo "    nothing new found" | tee $tmpfile
-else
-    nrupdate=$((nrupdate+1))
-fi
-cat $tmpfile >>$rlog.log.txt
 
-recho "Wha's new for all modules..." 
-repo forall -p -c "git log --oneline --exit-code c2micro-froyo --not devel"  | tee $tmpfile
+b1=devel
+b2=BR_0.1.0
+branch_diff()
+{
+echo ""
+recho ""
+recho "Wha's in $1 but not in $2" 
+recho "---------------------------------------"
+repo forall -p -c "git log --oneline --exit-code $1 --not $2"  | tee $tmpfile
 rsize=$(stat -c%s $tmpfile)
 if [ $rsize -le 2 ]; then
     echo "    nothing new found" | tee $tmpfile
@@ -142,17 +136,10 @@ else
     nrupdate=$((nrupdate+1))
 fi
 cat $tmpfile >>$rlog.log.txt
+}
 
-cd kernel.git
-recho "Wha's new for kernel..."
-git log --oneline --exit-code master --not devel  | tee $tmpfile
-rsize=$(stat -c%s $tmpfile)
-if [ $rsize -le 2 ]; then
-    echo "    nothing new found" | tee $tmpfile
-else
-    nrupdate=$((nrupdate+1))
-fi
-cat $tmpfile >>$rlog.log.txt
+branch_diff $b1 $b2
+branch_diff $b2 $b1
 
 if [ $nrupdate -gt 0 ];then
     echo "" >>$rlog.log.txt

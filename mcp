@@ -1,5 +1,8 @@
 #!/bin/sh
 
+#!/bin/sh
+
+
 if [ $# -lt 3 ]; then
 cat <<ENDOFHELP
     multi source to multi destination copy
