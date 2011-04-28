@@ -14,27 +14,23 @@ daily-jazz2t
 daily-mips32
 "
 
-today=
-yesday=
-alldates=`ls -d [[:digit:]]*`
+cd /c2/local/c2/
 
-for d in $alldates; do
-    yesday=$today
-    today=$d
-done
-
-if [ -t 1 -o -t 2 ];then
-echo today=$today
-echo yesterday=$yesday
-fi
+alldates=`ls -rd [[:digit:]]*`
+#if [ -t 1 -o -t 2 ];then fi
 
 for i in $alllinks; do
-    [ -d $i ] && continue;
+    [ -d $i -a -x $i/bin/c2-linux-uclibc-gcc ] && continue;
+
     link=`readlink -f $i`
-    yesd=$yesday/${link##*/}
-    if [ -d $yesd ]; then
+    echo "Found bad link $i -> $link"
+    for yesday in $alldates; do
+      yesd=$yesday/${link##*/}
+      if [ -d $yesd -a -x $yesd/bin/c2-linux-uclibc-gcc  ]; then
         rm $i
         ln -s $yesd $i
         echo "relink $i -> $yesd"
-    fi
+        break;
+      fi
+    done
 done
