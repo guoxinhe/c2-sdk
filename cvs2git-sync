@@ -3,7 +3,7 @@
 #yum install cvsps first.
 
 c2sdk=/home/hguo/cvs2git
-jobtimeout=86400
+jobtimeout=300000 
 
 cd ${c2sdk}
 #checklock
@@ -29,7 +29,7 @@ CVSROOT=:pserver:hguo@cvs.c2micro.com:/cvsroot
 sdklist_devtools="
 projects/sw/devtools/3rdParty  
 projects/sw/devtools/GNU  
-projects/sw/devtools/alsa  binutils
+projects/sw/devtools/binutils
 projects/sw/devtools/buildroot  
 projects/sw/devtools/gcc  
 projects/sw/devtools/gcc-4.3.5  
@@ -62,6 +62,12 @@ for i in $sdklist; do
     echo "`date` Sync " $i  >>$logp 2>&1
     echo "`date` Sync " $i  >>$log  2>&1
     git cvsimport -v -d $CVSROOT -C ${i##*/} $i >>$log 2>&1
+
+    if [ ! -d ${i##*/}.git ]; then
+    if [ "`git --version`" == "git version 1.7.4.1" ]; then
+        git clone --bare ${i##*/}
+    fi
+    fi
 done
 
 echo "`date` Sync " all done. >>$logp 2>&1
