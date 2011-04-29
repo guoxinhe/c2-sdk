@@ -2,8 +2,8 @@
 
 #yum install cvsps first.
 
-c2sdk=${1:-`pwd`}
-jobtimeout=${2:-864000}
+c2sdk=/home/hguo/cvs2git
+jobtimeout=86400
 
 cd ${c2sdk}
 #checklock
