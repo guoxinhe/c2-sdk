@@ -25,12 +25,36 @@ fi
 echo "`readlink -f $0` on $(whoami)@$(hostname) `date`" >$lock
 
 CVSROOT=:pserver:hguo@cvs.c2micro.com:/cvsroot
-sdklist="
+
+sdklist_devtools="
+projects/sw/devtools/3rdParty  
+projects/sw/devtools/GNU  
+projects/sw/devtools/alsa  binutils
+projects/sw/devtools/buildroot  
+projects/sw/devtools/gcc  
+projects/sw/devtools/gcc-4.3.5  
+projects/sw/devtools/gdb  
+projects/sw/devtools/glibc  
+projects/sw/devtools/grouper  
+projects/sw/devtools/spimprof  
+projects/sw/devtools/termcap  
+projects/sw/devtools/uClibc  
+projects/sw/devtools/uClibc-0.9.28
+projects/sw/cmd/busybox-1.5.1
+projects/sw/cmd/busybox-1.13.3
+projects/sw/cmd/i2c-tools 
+projects/sw/oprofile
+projects/sw/directfb/DirectFB-1.4.5
+"
+
+sdklist_kernel="
 projects/sw/sdk
 projects/sw/kernel
 projects/sw/prom/u-boot-1.3.0
 "
 
+sdklist="$sdklist_devtools
+"
 log=`pwd`/log
 logp=`pwd`/log.progress
 
