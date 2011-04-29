@@ -13,7 +13,7 @@ daily-jazz2l
 daily-jazz2t
 daily-mips32
 "
-
+log=~/c2localc2.log
 cd /c2/local/c2/
 
 alldates=`ls -rd [[:digit:]]*`
@@ -27,13 +27,15 @@ for i in $alllinks; do
 
     link=`ls -l $i | sed 's,.* -> [[:digit:]]*/\(.*\),\1,g'`
     ldir=`ls -l $i | sed 's,.* -> \([[:digit:]]*\)/.*,\1,g'`
-    echo "Found bad link $i -> $ldir/$link"
+    [ -t 1 -o -t 2 ] && echo "Found bad link $i -> $ldir/$link"
+    [ -t 1 -o -t 2 ] || echo "`date` Found bad link $i -> $ldir/$link" >>$log
     for yesday in $alldates; do
       yesd=$yesday/${link}
       if [ -d $yesd -a -x $yesd/bin/c2-linux-uclibc-gcc  ]; then
         rm $i
         ln -s $yesd $i
-        echo "relink $i -> $yesd"
+        [ -t 1 -o -t 2 ] && echo "relink $i -> $yesd"
+        [ -t 1 -o -t 2 ] || echo "`date` relink $i -> $yesd" >>$log
         break;
       fi
     done
