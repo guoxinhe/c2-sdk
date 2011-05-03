@@ -1,53 +1,99 @@
 #!/bin/bash
 
-[ -z "$MISSION" ] && export MISSION=run
-[ -z "$rlog" ] && export rlog=$HOME/rlog/rlog.$MISSION
+export MISSION=${0##*/}
+export rlog=$HOME/rlog/rlog.$MISSION
 recho()
 {
     #progress echo, for debug during run as the crontab task.
     if [ ! -z "$rlog" ] ; then
-    echo -en `date +"%Y-%m-%d %H:%M:%S"` " " >>$rlog.log.txt
-    echo "$@" >>$rlog.log.txt
+    echo `date +"%Y-%m-%d %H:%M:%S"` " $@" >>$rlog.log.txt
     fi
-    echo "$@"
-}
-echo_time_used()
-{
-    tm_start=$1
-    tm_stop=$2
-    shift 2
-    tm_c=$(($tm_stop-$tm_start))
-    tm_h=$(($tm_c/3600))
-    tm_m=$(($tm_c/60))
-    tm_m=$(($tm_m%60))
-    tm_s=$(($tm_c%60))
-    echo "$@" "$tm_c seconds / $tm_h:$tm_m:$tm_s consumed."
+    if [ -t 1 -o -t 2 ];then
+    echo `date +"%Y-%m-%d %H:%M:%S"` " $@"
+    fi
 }
 tm_a=`date +%s`
 recho_time_consumed()
 {
     tm_b=`date +%s`
-    tm_c=$(($tm_b-$tm_a))
-    tm_h=$(($tm_c/3600))
-    tm_m=$(($tm_c/60))
-    tm_m=$(($tm_m%60))
-    tm_s=$(($tm_c%60))
+    tm_c=$((tm_b-$1))
+    tm_h=$((tm_c/3600))
+    tm_m=$((tm_c/60))
+    tm_m=$((tm_m%60))
+    tm_s=$((tm_c%60))
+    shift
     recho "$@" "$tm_c seconds / $tm_h:$tm_m:$tm_s consumed."
+}
+
+addto_send()
+{
+    while [ $# -gt 0 ] ; do
+        email=$1
+        x=`echo $1 | grep "@"`
+        if [ $? -ne 0 ]; then
+            email=${email}@c2micro.com
+        fi
+        if [ "$SENDTO" = "" ]; then
+            SENDTO=$email ;
+        else
+          r=`echo $SENDTO | grep $email`
+          if [ "$r" = "" ]; then
+            SENDTO=$SENDTO,$email ;
+          fi
+        fi
+        shift
+    done
+    export SENDTO
 }
 addto_cc()
 {
     while [ $# -gt 0 ] ; do
-        if [ "$CCTO" = "" ]; then 
-            CCTO=$1 ; 
+        email=$1
+        x=`echo $1 | grep "@"`
+        if [ $? -ne 0 ]; then
+            email=${email}@c2micro.com
+        fi
+        if [ "$CCTO" = "" ]; then
+            CCTO=$email ;
         else
-          r=`echo $CCTO | grep $1`
-          if [ "$r" = "" ]; then 
-            CCTO=$CCTO,$1 ; 
+          r=`echo $CCTO | grep $email`
+          if [ "$r" = "" ]; then
+            CCTO=$CCTO,$email ;
           fi
         fi
         shift
     done
     export CCTO
+}
+addto_fail()
+{
+    while [ $# -gt 0 ] ; do
+        if [ "$FAILLIST" = "" ]; then
+            FAILLIST=$1 ;
+        else
+          r=`echo $FAILLIST | grep $1`
+          if [ "$r" = "" ]; then
+            FAILLIST=$FAILLIST,$1 ;
+          fi
+        fi
+        shift
+    done
+    export FAILLIST
+}
+addto_reportedfail()
+{
+    while [ $# -gt 0 ] ; do
+        if [ "$REPORTEDFAILLIST" = "" ]; then
+            REPORTEDFAILLIST=$1 ;
+        else
+          r=`echo $REPORTEDFAILLIST | grep $1`
+          if [ "$r" = "" ]; then
+            REPORTEDFAILLIST=$REPORTEDFAILLIST,$1 ;
+          fi
+        fi
+        shift
+    done
+    export REPORTEDFAILLIST
 }
 
 mkdir -p $HOME/rlog
@@ -61,7 +107,7 @@ examplecode(){
         recho "Usage: "
         recho "  brach_build.sh <product> <product> ..."
         recho "  Supported product: pvr, nmp"
-        recho_time_consumed
+        recho_time_consumed $rm_a
         exit 1
     fi
 mkdir -p $HOME/public_html
