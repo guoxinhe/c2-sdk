@@ -5,6 +5,7 @@
 #export MISSION=`echo $0 | sed 's:.*/\(.*\):\1:'`
 export MISSION=${0##*/}
 export rlog=$HOME/rlog/rlog.$MISSION
+mkdir -p $HOME/rlog/
 touch $rlog.log.txt
 loglines=`sed -n '$=' $rlog.log.txt`
 recho()
