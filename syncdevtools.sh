@@ -121,6 +121,7 @@ sync_link daily-jazz1
 sync_link daily-jazz2
 sync_link daily-jazz2l
 sync_link daily-jazz2t
+sync_link daily-mips32
 
 recho_time_consumed $tm_a  "All done"
 addto_send hguo wdina neowang
