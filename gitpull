@@ -7,7 +7,7 @@ echo Git at $remote  $branch
 
 if [ "$remote" != "" ];then
 if [ "$branch" != "" ];then
-    echo git pull $remote $branch
+    git pull $remote $branch
     pulled=1
 fi
 fi
