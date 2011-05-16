@@ -12,6 +12,8 @@ daily-jazz2
 daily-jazz2l
 daily-jazz2t
 daily-mips32
+daily-jazz2-32
+daily-jazz2l-32
 "
 log=~/c2localc2.log
 cd /c2/local/c2/
