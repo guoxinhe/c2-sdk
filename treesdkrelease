@@ -23,6 +23,7 @@ help()
     -d) cfg_dir=y; shift ;;
     -x) cfg_tar=y; shift ;;
     -h | --help ) help; exit 0; shift ;;
+    --find) list=\`find \$2 -iname \*.gz\`;  shift 2;;
     *) list=\$1 ;shift ;;
 
 	EOF
@@ -36,6 +37,7 @@ while [ $# -gt 0 ]; do
     -x) cfg_tar=y; shift ;;
     -l) level=$2; shift 2;;
     -h | --help ) help; exit 0; shift ;;
+    --find ) list=`find $2 -iname \*.gz`;  shift 2;;
     *) list=$sdk/$1 ;shift ;;
     esac
 done
@@ -43,9 +45,14 @@ done
 mkdir -p $out $tmp
 
 for i in $list;do
+    basic=;premium=;advance=;
+    [ `echo $i | grep Basic` ] && basic=Basic
+    [ `echo $i | grep Premium` ] && premium=Premium
+    [ `echo $i | grep Advance` ] && advance=Advance
     xls=${i##*/}
     xls=${xls%%.tar.gz}
-    xls=$out/$xls.txt
+    xls=$out/$basic$premium$advance-$xls.txt
+    echo Create $xls;
 
     echo ${i##*/} >$xls
     [ $cfg_rm ] && rm -rf $tmp/*

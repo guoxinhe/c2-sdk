@@ -6,10 +6,10 @@ if [ -z $1 ] ; then
     echo 
     echo Please give module as \$1
     echo 
-    echo This wil git clone ssh://git.bj.c2micro.com/mentor-mirror/build/\$1
+    echo This wil git clone ssh://git.bj.c2micro.com/mentor-mirror/build/\$1 $2
     echo 
     exit 0
 fi
 
-git clone ssh://git.bj.c2micro.com/mentor-mirror/build/$1
+git clone ssh://git.bj.c2micro.com/mentor-mirror/build/$1 $2
 

@@ -56,19 +56,21 @@ addto_send()
 
 ## sync from San Jose to Beijing
 
-today=`date +%y%m%d`
-yesterday=`date -d yesterday +%y%m%d`
+#remote=blackhole
+remote=saturn
+dst=/c2/server/c2
+src=/c2/local/c2
 
+today=`ssh $remote date +%y%m%d`
+yesterday=`ssh $remote date -d yesterday +%y%m%d`
 
-remote=blackhole
-#remote=saturn
 
 sync_folder()
 {
     recho rsync -avzHS --stats --delete --delete-after --bwlimit=256 $3 $4 $5 $6 $7 $8 $9  \
-        $remote:/c2/local/c2/$1 /group/shared/tools_bj/c2/$2
+        $remote:$src/$1 $dst/$2
     rsync -avzHS --stats --delete --delete-after --bwlimit=256 $3 $4 $5 $6 $7 $8 $9  \
-        $remote:/c2/local/c2/$1 /group/shared/tools_bj/c2/$2
+        $remote:$src/$1 $dst/$2
     ret=$?
     if [ $ret -eq 0 ]; then
         recho "    Operate success"
@@ -79,9 +81,9 @@ sync_folder()
 sync_c2localc2()
 {
     recho rsync -avzHS --stats --delete --delete-after --bwlimit=256 --exclude=sw_media \
-        blackhole:/c2/local/c2/ /group/shared/tools_bj/c2/
+        blackhole:$src/ $dst/
     rsync -avzHS --stats --delete --delete-after --bwlimit=256 --exclude=sw_media \
-        blackhole:/c2/local/c2/ /group/shared/tools_bj/c2/
+        blackhole:$src/ $dst/
     ret=$?
     if [ $ret -eq 0 ]; then
         recho "    Operate success"
@@ -91,19 +93,19 @@ sync_c2localc2()
 }
 sync_link()
 {
-    link=`ssh $remote ls -l /c2/local/c2/$1`
+    link=`ssh $remote ls -l $src/$1`
     recho "Check link " $link
     lval=`echo "$link" | sed "s,.* -> \(.*\),\1,g"`
-    recho "  Check local link /c2/local/c2/$lval"
-    if [ -x /c2/local/c2/$lval/bin/c2-linux-uclibc-gcc ] ; then
+    recho "  Check local link $dst/$lval"
+    if [ -x $dst/$lval/bin/c2-linux-uclibc-gcc ] ; then
         recho "    Ready for rsync"
     else
         recho "    Target does not exist yet"
         return 1
     fi
 
-    recho "  "rsync -avzHS $remote:/c2/local/c2/$1 /group/shared/tools_bj/c2/
-    rsync -avzHS $remote:/c2/local/c2/$1 /group/shared/tools_bj/c2/
+    recho "  "rsync -avzHS $remote:$src/$1 $dst/
+    rsync -avzHS $remote:$src/$1 $dst/
     ret=$?
     if [ $ret -eq 0 ]; then
         recho "    Operate success"
@@ -113,9 +115,7 @@ sync_link()
 }
 
 
-sync_folder $yesterday/ $yesterday/  --copy-dest=/group/shared/tools_bj/c2/$yesterday/ 
-sync_folder kernel/ kernel/ 
-#sync_c2localc2()
+sync_folder $today/ $today/  --copy-dest=$dst/$yesterday/ 
 
 sync_link daily
 sync_link daily-jazz1
@@ -124,11 +124,14 @@ sync_link daily-jazz2l
 sync_link daily-jazz2t
 sync_link daily-mips32
 
+sync_folder kernel/ kernel/ 
+sync_c2localc2()
+
 recho_time_consumed $tm_a  "All done"
-addto_send hguo wdina neowang
+addto_send hguo 
 loglastlines=`sed -n '$=' $rlog.log.txt`
 lines=$((loglines-loglastlines))
-title="on dante, sync dante:/group/shared/tools_bj/c2/$today is done"
+title="on dante, sync dante:$dst/$today is done"
 (
     echo "this is auto generated email form crontab script"
     echo "  "
