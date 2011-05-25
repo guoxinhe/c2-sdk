@@ -1,0 +1,128 @@
+       1. Install packages. Code: sudo apt-get install x11vnc vnc-java
+       2. Set up a password for clients. Code: x11vnc -storepasswd
+       3. Open up ports 5800 and 5900 on your firewall
+       4. Run the terminal command: x11vnc -forever -usepw -httpdir /usr/share/vnc-java/ -httpport 5800 and add it for auto-starting in future sessions
+
+nstructions
+
+   1.
+          * 1
+
+            Open a Terminal window. The Terminal window can be found under "Start" > "Utilities."
+          * 2
+
+            Download vnc4server and xinetd:
+
+            sudo apt-get install vnc4server xinetd
+          * 3
+
+            Start the vnc4server:
+
+            vnc4server
+
+            You will be prompted for a password. This password will be used to log into the VNC session.
+
+            After providing a password, you will get output that looks like:
+
+            New 'laptop:3 (laptop)' desktop is laptop:3
+
+            Take notice of the number after the colon (:), in this case it is "3."
+
+            Starting the vnc4server will cause a .vnc directory to be placed in your home directory.
+          * 4
+
+            Stop the vnc4server
+
+            vnc4server -kill :3
+
+            Replace the number "3" with the number from Step 3.
+          * 5
+
+            Open the .vnc/xstartup file for editing:
+
+            gedit ~/.vnc/xstartup
+
+            The file will look like:
+
+            #!/bin/sh
+
+            # Uncomment the following two lines for normal desktop:
+
+            #unset SESSION_MANAGER
+
+            #exec /etc/X11/xinit/xinitrc
+
+            [ -x /etc/vnc/xstartup ] && exec /etc/vnc/xstartup
+
+            [ -r $HOME/.Xresources ] && xrdb $HOME/.Xresources
+
+            xsetroot -solid grey
+
+            vncconfig -iconic &
+
+            xterm -geometry 80x24+10+10 -ls -title "$VNCDESKTOP Desktop" &
+
+            twm &
+          * 6
+
+            Change the .vnc/xstartup file and save it.
+
+            Uncomment the lines that start with unset and exec. Comment out the lines that start with xsetroot, vncconfig, xterm and twm.
+
+            The final file should look like:
+
+            #!/bin/sh
+
+            # Uncomment the following two lines for normal desktop:
+
+            unset SESSION_MANAGER
+
+            exec /etc/X11/xinit/xinitrc
+
+            [ -x /etc/vnc/xstartup ] && exec /etc/vnc/xstartup
+
+            [ -r $HOME/.Xresources ] && xrdb $HOME/.Xresources
+
+            #xsetroot -solid grey
+
+            #vncconfig -iconic &
+
+            #xterm -geometry 80x24+10+10 -ls -title "$VNCDESKTOP Desktop" &
+
+            #twm &
+          * 7
+
+            Change the permissions on the /etc/X11/xinit/xinitrc file to make it executable:
+
+            sudo chmod 755 /etc/X11/xinit/xinitrc
+          * 8
+
+            Start the vnc4server:
+
+            vnc4server
+
+            Again, remember the number after the colon (:).
+          * 9
+
+            Log into your remote desktop to check the configuration:
+
+            vncviewer localhost:3
+
+            Provide the password that you chose in Step 3.
+
+    * Secure UK Internet Accessmy-private-network.co.uk
+
+      British Internet Access for Expats! Just like you're at home.
+    * WMS Specialistswww.longbowadvantage.com
+
+      Leading brand expertise. Implementation, integration, more.
+    * Files & Folders Backupwww.AllwaySync.com
+
+      Sync Home & Office PCs In 1 Step. UI In 30 Languages. Download Now!
+    * Free DNS Hostingdns.he.net
+
+      Dual Stack: IPv6 and IPv4 Includes Dynamic DNS Support
+
+Ads by Google
+References
+
