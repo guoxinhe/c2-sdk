@@ -24,7 +24,8 @@ if [ -f $lock ]; then
 fi
 echo "`readlink -f $0` on $(whoami)@$(hostname) `date`" >$lock
 
-CVSROOT=:pserver:hguo@cvs.c2micro.com:/cvsroot
+#CVSROOT=:pserver:hguo@cvs.c2micro.com:/cvsroot
+CVSROOT=/db/cvsroot
 
 #log=`pwd`/log#-`date +%Y%m%d%H%M%S`
 log=`pwd`/log
@@ -34,34 +35,65 @@ cvs2git_module()
 {
     #$1 is cvs module name
     #$2 is git module name
-    echo "`date` Scan cvs module $1 to git $2"  >>$logp 2>&1
+    echo "`date` Scan cvs module $1 to git $2"
     echo "`date` Scan cvs module $1 to git $2"  >>$log  2>&1
+    echo "`date` Scan cvs module $1 to git $2"  >>$logp 2>&1
 
     UPDATE_FLAGS=
+    #GITCMD="git cvsimport -v -a -k -d $CVSROOT $UPDATE_FLAGS -C $2 $1";
     GITCMD="git cvsimport -v -a -k -d $CVSROOT $UPDATE_FLAGS -C $2 $1";
-    echo "`date` $GITCMD"   >>$log 2>&1;
+    echo "`date` $GITCMD"
+    echo "`date` $GITCMD"   >>$log  2>&1;
+    echo "`date` $GITCMD"   >>$logp 2>&1;
     $GITCMD >>$log 2>&1
 
-    echo "`date` Scan cvs module $1 to git $2 done."  >>$logp 2>&1
+    echo "`date` Scan cvs module $1 to git $2 done." 
     echo "`date` Scan cvs module $1 to git $2 done."  >>$log  2>&1
+    echo "`date` Scan cvs module $1 to git $2 done."  >>$logp 2>&1
 }
 
 #manually clean(rm -rf) the target folder first
 
-kernel_parts="
-1gb.part  4gb.part  8gb.part           initramfs_files      loadk_proto.scr  merge-tools  nmp-nand.mk
-2gb.part  512.part  configs   hd.part  initramfs_source.in  Makefile         nmp1.mk      nmp-spi.mk
-"
-for i in $kernel_parts ; do
-    cvs2git_module    projects/sw/kernel/$i  kernel-misc
-done
+cvs2git_kernel_misc()
+{
+  kernel_parts="
+  1gb.part  4gb.part  8gb.part           initramfs_files      loadk_proto.scr  merge-tools  nmp-nand.mk
+  2gb.part  512.part  configs   hd.part  initramfs_source.in  Makefile         nmp1.mk      nmp-spi.mk
+  "
+  for i in $kernel_parts ; do
+    mkdir -p kernel-misc
+    pushd kernel-misc
+    cvs2git_module    projects/sw/kernel/$i  $i
+    popd
+  done
+}
 
-cvs2git_module    projects/sw/kernel/linux-2.6     linux-2.6.23
-#cvs2git_module    projects/sw/kernel/linux-2.6.14  linux-2.6.14
+#cvs2git_module    projects/sw/kernel/linux-2.6     linux-2.6.23
 #cvs2git_module    projects/sw/kernel/linux-2.6.29  linux-2.6.29
 #cvs2git_module    projects/sw/kernel/linux-2.6.32  linux-2.6.32
+cvs2git_module    projects/sw/kernel/linux-2.6.14  linux-2.6.14
 
 echo "`date` Sync " all done. >>$logp 2>&1
 echo "`date` Sync " all done. >>$log  2>&1
 
 rm -rf $lock
+
+
+#some logs:
+#Wed May 25 01:30:01 PDT 2011 Scan cvs module projects/sw/kernel/linux-2.6 to git linux-2.6.23
+#Wed May 25 01:30:01 PDT 2011 git cvsimport -v -a -k -d /db/cvsroot  -C linux-2.6.23 projects/sw/kernel/linux-2.6
+#Wed May 25 05:16:46 PDT 2011 Scan cvs module projects/sw/kernel/linux-2.6 to git linux-2.6.23 done.
+#Wed May 25 05:16:46 PDT 2011 Scan cvs module projects/sw/kernel/linux-2.6.29 to git linux-2.6.29
+#Wed May 25 05:16:47 PDT 2011 git cvsimport -v -a -k -d /db/cvsroot  -C linux-2.6.29 projects/sw/kernel/linux-2.6.29
+#Wed May 25 05:20:45 PDT 2011 Scan cvs module projects/sw/kernel/linux-2.6.29 to git linux-2.6.29 done.
+#Wed May 25 05:20:45 PDT 2011 Scan cvs module projects/sw/kernel/linux-2.6.32 to git linux-2.6.32
+#Wed May 25 05:20:45 PDT 2011 git cvsimport -v -a -k -d /db/cvsroot  -C linux-2.6.32 projects/sw/kernel/linux-2.6.32
+#Wed May 25 19:55:27 PDT 2011 Scan cvs module projects/sw/kernel/linux-2.6.32 to git linux-2.6.32 done.
+#Wed May 25 19:55:27 PDT 2011 Scan cvs module projects/sw/kernel/linux-2.6.14 to git linux-2.6.14
+#Wed May 25 19:55:27 PDT 2011 git cvsimport -v -a -k -d /db/cvsroot  -C linux-2.6.14 projects/sw/kernel/linux-2.6.14
+#Wed May 25 23:30:43 PDT 2011 Scan cvs module projects/sw/kernel/linux-2.6.14 to git linux-2.6.14 done.
+#Wed May 25 23:30:43 PDT 2011 Sync  all done.
+#Thu May 26 04:10:02 PDT 2011 Scan cvs module projects/sw/kernel/linux-2.6.14 to git linux-2.6.14
+#Thu May 26 04:10:02 PDT 2011 git cvsimport -v -a -k -d /db/cvsroot  -C linux-2.6.14 projects/sw/kernel/linux-2.6.14
+#Thu May 26 05:22:19 PDT 2011 Scan cvs module projects/sw/kernel/linux-2.6.14 to git linux-2.6.14 done.
+#Thu May 26 05:22:19 PDT 2011 Sync  all done.
