@@ -1,0 +1,12 @@
+#!/bin/sh
+
+
+fpn=`readlink -f $0`
+pth=${fpn%/*}
+clc=`pwd`
+echo $fpn
+echo $pth
+echo $clc
+cd $pth
+ls
+
