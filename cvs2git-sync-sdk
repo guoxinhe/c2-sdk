@@ -11,9 +11,16 @@ if [ ! -d ${c2sdk} ]; then
     exit 1;
 fi
 cd ${c2sdk}
-#checklock
+top=`pwd`
+#CVSROOT=:pserver:hguo@cvs.c2micro.com:/cvsroot
+CVSROOT=/db/cvsroot
+wrap=sdk
+#log=`pwd`/log#-`date +%Y%m%d%H%M%S`
+log=`pwd`/log${wrap}
+logp=$log.progress
+lock=job${wrap}.lock
 
-lock=job.lock
+#checklock
 if [ -f $lock ]; then
     burn=`stat -c%Z $lock`
     now=`date +%s`
@@ -28,13 +35,6 @@ if [ -f $lock ]; then
     fi
 fi
 echo "`readlink -f $0` on $(whoami)@$(hostname) `date`" >$lock
-
-#CVSROOT=:pserver:hguo@cvs.c2micro.com:/cvsroot
-CVSROOT=/db/cvsroot
-
-#log=`pwd`/log#-`date +%Y%m%d%H%M%S`
-log=`pwd`/log
-logp=$log.progress
 
 cvs2git_module()
 {
@@ -76,67 +76,91 @@ cvs2git_kernel_misc()
   done
 }
 
+#cvs2git_kernel_misc
 #cvs2git_module    projects/sw/kernel/linux-2.6     linux-2.6.23
 #cvs2git_module    projects/sw/kernel/linux-2.6.29  linux-2.6.29
 #cvs2git_module    projects/sw/kernel/linux-2.6.14  linux-2.6.14
-#cvs2git_kernel_misc
-#cvs2git_module     projects/sw/prom/u-boot-1.3.0    u-boot-1.3.0
+#cvs2git_module    projects/sw/prom/u-boot-1.3.0    u-boot-1.3.0
 
 todolist="
-projects/sw/bsp/hdmi/ad9889/ad9889_drv
-projects/sw/bsp/hdmi/anx8770/anx8770_drv
-projects/sw/bsp/hdmi/anx9030/anx9030_drv
-projects/sw/bsp/hdmi/cec/jazz2l_cec_drv
-projects/sw/bsp/hdmi/jazz2hdmi/jazz2hdmi_drv
-projects/sw/bsp/vivante/VIVANTE_GAL2D_Unified
-projects/sw/bsp/vivante/VIVANTE_GAL2D_Unified_20100203
-projects/sw/directfb/DirectFB-1.4.0
-projects/sw/directfb/DirectFB-1.4.5
-projects/sw/jtag
-projects/sw/prom/diag
-projects/sw/prom/spirom
-projects/sw/strace
-projects/sw/oprofile
-projects/sw/cmd/busybox
-projects/sw/cmd/busybox-1.5.0
-projects/sw/cmd/busybox-1.5.1
-projects/sw/cmd/busybox-1.12.2
-projects/sw/cmd/busybox-1.13.3
-projects/sw/cmd/busybox-1.13.3
-projects/sw/cmd/hdmi_NDA
-projects/sw/cmd/i2c-tools
-projects/sw/cmd/kaffe
-projects/sw/cmd/lirc
-projects/sw/cmd/lm_sensors
-projects/sw/cmd/module-init-tools
-projects/sw/cmd/pppoe
-projects/sw/cmd/snoopy
-projects/sw/Qt/qt-everywhere-opensource-src-4.6.1
-projects/sw/Qt/qt-everywhere-opensource-src-4.7.0
-projects/csim                     
-projects/sw/build                 
-projects/sw/sw_arch_defs          
-projects/sw/intrinsics            
-projects/sw/doc                   
-projects/sw/media                 
-projects/sw/sw_media/application  
-projects/sw/sw_media/scripts      
-projects/sw/win32                 
-projects/sw/sdk
-projects/alg/sdk-doc
-projects/sw/c2apps
+#projects/sw/kernel/initramfs_files
+#projects/sw/kernel/merge-tools
+#projects/sw/kernel/configs
+#projects/sw/kernel/linux-2.6     
+#projects/sw/kernel/linux-2.6.29  
+#projects/sw/kernel/linux-2.6.14  
+#projects/sw/prom/u-boot-1.3.0    
+#projects/sw/bsp/hdmi/ad9889/ad9889_drv
+#projects/sw/bsp/hdmi/anx8770/anx8770_drv
+#projects/sw/bsp/hdmi/anx9030/anx9030_drv
+#projects/sw/bsp/hdmi/cec/jazz2l_cec_drv
+#projects/sw/bsp/hdmi/jazz2hdmi/jazz2hdmi_drv
+#projects/sw/bsp/vivante/VIVANTE_GAL2D_Unified
+#projects/sw/bsp/vivante/VIVANTE_GAL2D_Unified_20100203
+#projects/sw/directfb/DirectFB-1.4.0
+#projects/sw/directfb/DirectFB-1.4.5
+#projects/sw/jtag
+#projects/sw/prom/diag
+#projects/sw/prom/spirom
+#projects/sw/strace
+#projects/sw/oprofile
+#projects/sw/cmd/busybox
+#projects/sw/cmd/busybox-1.5.0
+#projects/sw/cmd/busybox-1.5.1
+#projects/sw/cmd/busybox-1.12.2
+#projects/sw/cmd/busybox-1.13.3
+#projects/sw/cmd/busybox-1.13.3
+#projects/sw/cmd/hdmi_NDA
+#projects/sw/cmd/i2c-tools
+#projects/sw/cmd/kaffe
+#projects/sw/cmd/lirc
+#projects/sw/cmd/lm_sensors
+#projects/sw/cmd/module-init-tools
+#projects/sw/cmd/pppoe
+#projects/sw/cmd/snoopy
+#projects/sw/c2apps
+#projects/sw/Qt/qt-everywhere-opensource-src-4.6.1
+#projects/sw/Qt/qt-everywhere-opensource-src-4.7.0
+#projects/csim                     
+#projects/sw/build                 
+#projects/sw/sw_arch_defs          
+#projects/sw/intrinsics            
+#projects/sw/doc                   
+#projects/sw/media                 
+#projects/sw/sw_media/application  
+#projects/sw/sw_media/scripts      
+#projects/sw/win32                 
+#projects/sw/sdk
+#projects/alg/sdk-doc
 "
-
+fresh_screen()
+{
+    start=`date`
+    while [ -f $lock ]; do
+    clear
+    echo "$start     `date`"
+    tail $lock $logp $log
+    sleep 10
+    done
+}
+fresh_screen &
+donelist=
 for i in $todolist; do
-    mkdir -p sdk
-    pushd sdk
+    if [ "${i:0:1}" == "#" ]; then
+        echo $i jumped
+        continue
+    fi
+    mkdir -p $wrap
+    pushd $wrap
     echo "cvs2git_module  ${i}  ${i##*/}"
     cvs2git_module  ${i}  ${i##*/}
     popd
+    donelist="$donelist $i"
 done
 echo "`date` Sync " all done. >>$logp 2>&1
 echo "`date` Sync " all done. >>$log  2>&1
 (
+    echo "donelist : $donelist"
     tail $logp
     echo "    "
     echo "Regards,"
