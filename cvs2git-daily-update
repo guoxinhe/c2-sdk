@@ -1,0 +1,64 @@
+#!/bin/sh
+
+#this is a big-job + small-daily-update-job mode
+#step 1: scan cvs and create a git on San Jose server 'calypso'(10.0.5.193)
+#        git cvsimport -v -a -k -d $CVSROOT -C csim  projects/csim
+#step 2: on calypso, copy this csim AS IS to git server
+#        tar czf csim.tar.gz csim
+#        scp csim.tar.gz git.bj.c2micro.com:$HOME
+#step 3: on git server, extract the csim to get the AS IS copy
+#        cd $HOME; tar xzf csim.tar.gz
+#step 4: on git server, call this script to update csim
+#        cvsps -d "today's yyyy/mm/dd 00:00:00" -d "tomorrow's yyyy/mm/dd 00:00:00" projects/csim  >$cvsps
+#        git cvsimport -v -a -k -d $CVSROOT -P $cvsps -C csim projects/csim
+#step 5: create csim.git point to csim/.git for repo's management
+#        ln -s $HOME/csim/.git what-ever-you-like/csim.git
+
+export CVSROOT=:pserver:hguo@cvs.c2micro.com:/cvsroot
+#git cvsimport -v -a -k -d $CVSROOT -C $2 $1
+log=log
+cvsmodule=projects/sw/sdk/configs
+gitmodule=configs
+
+git_scan_append_between_dates()
+{
+    cvsmodule=$1
+    gitmodule=$2
+    datestart="$3"
+    datestop="$4"
+    log=$2.log
+    cvsps=$log/$gitmodule-`echo $datestart-$datestop|sed -e 's,/,_,g' -e 's, ,_,g' -e 's,:,_,g'`.ps
+
+    mkdir -p $log $gitmodule ${cvsps%/*}
+
+    if [ "$datestart" == "`date +%Y/%m/%d` 00:00:00" ]; then
+        #today's, rescan
+        rm -rf $cvsps
+    fi
+
+    if [ ! -f $cvsps ]; then
+        cvsps -d "$datestart" -d "$datestop" $cvsmodule >$cvsps
+        size=`stat -c %s $cvsps`
+
+        if [ $size -gt 0 ]; then
+            echo cvsps -d "$datestart" -d "$datestop" $cvsmodule
+            echo "" >>$log/$gitmodule.log
+            date >>$log/$gitmodule.log
+            echo "git cvsimport -v -a -k -d $CVSROOT -P $cvsps -C $gitmodule $cvsmodule"  >>$log/$gitmodule.log
+            git cvsimport -v -a -k -d $CVSROOT -P $cvsps -C $gitmodule $cvsmodule  >>$log/$gitmodule.log 2>&1
+        fi
+    fi
+}
+
+days=0
+while [ $days -ge 0 ]; do
+    d1=`date -d "$days days ago" +%Y/%m/%d`
+    d2=`date -d "$((days-1)) days ago" +%Y/%m/%d`
+    #echo $days $((days-1))  $d1 $d2
+    #git_scan_append_between_dates projects/sw/sdk/configs    configs "$d1 00:00:00" "$d2 00:00:00"
+    #git_scan_append_between_dates projects/sw/sdk/automation automa "$d1 00:00:00" "$d2 00:00:00"
+    git_scan_append_between_dates projects/csim csim "$d1 00:00:00" "$d2 00:00:00"
+    days=$((days-1))
+done
+
+
