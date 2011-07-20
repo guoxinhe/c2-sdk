@@ -1,5 +1,28 @@
 #!/bin/sh
 
+#this is a crontab used script, do not delete it!
+
+#cd /home-localuser/hguo
+#cd /home/hguo/cvs2git/cvsps
+cd /home/hguo/cvs2git/manual
+jobtimeout=6000
+lock=`pwd`/${0##*/}.lock
+if [ -f $lock ]; then
+    burn=`stat -c%Z $lock`
+    now=`date +%s`
+    age=$((now-burn))
+
+    #24 Hour = 86400 seconds = 24 * 60 * 60 seconds.
+    if [ $age -gt $jobtimeout ]; then
+        rm -rf $lock
+    else
+        echo "An active task is running for $age seconds: `cat $lock`"
+	echo "close it before restart: $lock"
+        exit 1
+    fi
+fi
+echo "`date` $(whoami)@$(hostname) `readlink -f $0` tid:$$ " >$lock
+
 #this is a big-job + small-daily-update-job mode
 #step 1: scan cvs and create a git on San Jose server 'calypso'(10.0.5.193)
 #        git cvsimport -v -a -k -d $CVSROOT -C csim  projects/csim
@@ -14,7 +37,8 @@
 #step 5: create csim.git point to csim/.git for repo's management
 #        ln -s $HOME/csim/.git what-ever-you-like/csim.git
 
-export CVSROOT=:pserver:hguo@cvs.c2micro.com:/cvsroot
+#export CVSROOT=:pserver:hguo@cvs.c2micro.com:/cvsroot
+export CVSROOT=/db/cvsroot
 #git cvsimport -v -a -k -d $CVSROOT -C $2 $1
 log=log
 cvsmodule=projects/sw/sdk/configs
@@ -31,34 +55,75 @@ git_scan_append_between_dates()
 
     mkdir -p $log $gitmodule ${cvsps%/*}
 
-    if [ "$datestart" == "`date +%Y/%m/%d` 00:00:00" ]; then
-        #today's, rescan
+    if [ "$datestart" = "`date +%Y/%m/%d` 00:00:00" ]; then
+        echo "today's , rescan" 
         rm -rf $cvsps
     fi
 
     if [ ! -f $cvsps ]; then
-        cvsps -d "$datestart" -d "$datestop" $cvsmodule >$cvsps
+        #echo cvsps -d "$datestart" -d "$datestop" $cvsmodule ">" $cvsps 
+        cvsps -d "$datestart" -d "$datestop" $cvsmodule >$cvsps  2>>$log/$gitmodule.log
         size=`stat -c %s $cvsps`
 
         if [ $size -gt 0 ]; then
-            echo cvsps -d "$datestart" -d "$datestop" $cvsmodule
+            echo cvsps -d "$datestart" -d "$datestop" $cvsmodule ">" $cvsps
             echo "" >>$log/$gitmodule.log
             date >>$log/$gitmodule.log
             echo "git cvsimport -v -a -k -d $CVSROOT -P $cvsps -C $gitmodule $cvsmodule"  >>$log/$gitmodule.log
             git cvsimport -v -a -k -d $CVSROOT -P $cvsps -C $gitmodule $cvsmodule  >>$log/$gitmodule.log 2>&1
+	    sleep 2
         fi
     fi
 }
+if test -f asdfjasdjfasdkfjasjafsfasdfasfa; then
+for year in 2005 2006 2007 2008 2009 2010 2011; do
+for month in 1 2 3 4 5 6 7 8 9 10 11; do
+    #sw/media created on 2005/01/28
+    thism=$month
+    [ $thism -lt 10 ] && thism=0$thism
+    nextm=$((month+1))
+    [ $nextm -lt 10 ] && nextm=0$nextm
+    git_scan_append_between_dates projects/sw/media media "$year/$thism/01 00:00:00" "$year/$nextm/01 00:00:00"
 
-days=0
+    [ $year -eq 2011 -a $month -eq 7 ] && break;
+done
+    [ $year -eq 2011 -a $month -eq 7 ] && break;
+    git_scan_append_between_dates projects/sw/media media "$year/12/01 00:00:00" "$((year+1))/01/01 00:00:00"
+
+done
+
+days=1
 while [ $days -ge 0 ]; do
     d1=`date -d "$days days ago" +%Y/%m/%d`
     d2=`date -d "$((days-1)) days ago" +%Y/%m/%d`
     #echo $days $((days-1))  $d1 $d2
     #git_scan_append_between_dates projects/sw/sdk/configs    configs "$d1 00:00:00" "$d2 00:00:00"
     #git_scan_append_between_dates projects/sw/sdk/automation automa "$d1 00:00:00" "$d2 00:00:00"
-    git_scan_append_between_dates projects/csim csim "$d1 00:00:00" "$d2 00:00:00"
+    #git_scan_append_between_dates projects/csim            csim "$d1 00:00:00" "$d2 00:00:00"
+    #git_scan_append_between_dates projects/sw/sw_arch_defs arch "$d1 00:00:00" "$d2 00:00:00"
+    git_scan_append_between_dates projects/sw/media media "$d1 00:00:00" "$d2 00:00:00"
     days=$((days-1))
 done
+fi
+year=2011
+month=1
+for year in 2005 2006 2007 2008 2009 2010 2011; do
+#for month in 1 2 3 4 5 6 7 8 9 10 11; do
+    #sw/media created on 2005/01/28
+    #thism=$month
+    #[ $thism -lt 10 ] && thism=0$thism
+    #nextm=$((month+1))
+    #[ $nextm -lt 10 ] && nextm=0$nextm
+    #git cvsimport -v -a -k -d $CVSROOT -p -d,"$year/$thism/01 00:00:00",-d,"$year/$nextm/01 00:00:00", -C media-$year-$thism projects/sw/media
 
+    #[ $year -eq 2011 -a $month -eq 7 ] && break;
+#done
+#    [ $year -eq 2011 -a $month -eq 7 ] && break;
+#    month=12
+#    thism=12
+#    git cvsimport -v -a -k -d $CVSROOT -p -d,"$year/12/01 00:00:00",-d,"$((year+1))/01/01 00:00:00", -C media-$year-$thism projects/sw/media
 
+    git cvsimport -v -a -k -d $CVSROOT -p -d,"$year/01/01 00:00:00",-d,"$((year+1))/01/01 00:00:00", -C media-$year projects/sw/media >media-$year.log 2>&1
+done
+
+rm -rf $lock
