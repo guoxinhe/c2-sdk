@@ -75,25 +75,56 @@ git_scan_append_between_dates()
         fi
     fi
 }
-if test -f asdfjasdjfasdkfjasjafsfasdfasfa; then
-for year in 2005 2006 2007 2008 2009 2010 2011; do
-for month in 1 2 3 4 5 6 7 8 9 10 11; do
+
+if [ ! -d media ]; then
+    git cvsimport -v -a -k -d $CVSROOT -p -b,HEAD \
+	-C media projects/sw/media >media.log 2>&1
+fi
+
+for year in 2011 2010 2009 2008 2007 2006 2005 ; do
+    if [ ! -f $lock ]; then
+	break;
+    fi
+    if [ -d media-$year ]; then
+        continue;
+    fi
+    git cvsimport -v -a -k -d $CVSROOT -p -d,"$year/01/01 00:00:00",-d,"$((year+1))/01/01 00:00:00",-b,HEAD \
+	-C media-$year projects/sw/media >media-$year.log 2>&1
+done
+
+for year in 2011 2010 2009 2008 ; do
+for month in 12 11 10 9 8 7 6 5 4 3 2 1 ; do
+    if [ ! -f $lock ]; then
+	break;
+    fi
+    if [ $year -eq 2011 -a $month -gt 7 ] ; then
+        continue;
+    fi
+
     #sw/media created on 2005/01/28
     thism=$month
     [ $thism -lt 10 ] && thism=0$thism
     nextm=$((month+1))
     [ $nextm -lt 10 ] && nextm=0$nextm
-    git_scan_append_between_dates projects/sw/media media "$year/$thism/01 00:00:00" "$year/$nextm/01 00:00:00"
 
-    [ $year -eq 2011 -a $month -eq 7 ] && break;
+    if [ -d media-$year-$thism ]; then
+        continue;
+    fi
+    if [ $month -lt 12 ]; then
+    git cvsimport -v -a -k -d $CVSROOT -p -d,"$year/$thism/01 00:00:00",-d,"$year/$nextm/01 00:00:00",-b,HEAD \
+	-C media-$year-$thism projects/sw/media >media-$year-$thism.log 2>&1
+    else
+    git cvsimport -v -a -k -d $CVSROOT -p -d,"$year/12/01 00:00:00",-d,"$((year+1))/01/01 00:00:00",-b,HEAD \
+	-C media-$year-$thism projects/sw/media >media-$year-$thism.log 2>&1
+    fi
 done
-    [ $year -eq 2011 -a $month -eq 7 ] && break;
-    git_scan_append_between_dates projects/sw/media media "$year/12/01 00:00:00" "$((year+1))/01/01 00:00:00"
-
 done
 
-days=1
+days=-1
 while [ $days -ge 0 ]; do
+    if [ ! -f $lock ]; then
+	break;
+    fi
     d1=`date -d "$days days ago" +%Y/%m/%d`
     d2=`date -d "$((days-1)) days ago" +%Y/%m/%d`
     #echo $days $((days-1))  $d1 $d2
@@ -101,29 +132,8 @@ while [ $days -ge 0 ]; do
     #git_scan_append_between_dates projects/sw/sdk/automation automa "$d1 00:00:00" "$d2 00:00:00"
     #git_scan_append_between_dates projects/csim            csim "$d1 00:00:00" "$d2 00:00:00"
     #git_scan_append_between_dates projects/sw/sw_arch_defs arch "$d1 00:00:00" "$d2 00:00:00"
-    git_scan_append_between_dates projects/sw/media media "$d1 00:00:00" "$d2 00:00:00"
+    git_scan_append_between_dates projects/sw/media media-daily "$d1 00:00:00" "$d2 00:00:00"
     days=$((days-1))
-done
-fi
-year=2011
-month=1
-for year in 2005 2006 2007 2008 2009 2010 2011; do
-#for month in 1 2 3 4 5 6 7 8 9 10 11; do
-    #sw/media created on 2005/01/28
-    #thism=$month
-    #[ $thism -lt 10 ] && thism=0$thism
-    #nextm=$((month+1))
-    #[ $nextm -lt 10 ] && nextm=0$nextm
-    #git cvsimport -v -a -k -d $CVSROOT -p -d,"$year/$thism/01 00:00:00",-d,"$year/$nextm/01 00:00:00", -C media-$year-$thism projects/sw/media
-
-    #[ $year -eq 2011 -a $month -eq 7 ] && break;
-#done
-#    [ $year -eq 2011 -a $month -eq 7 ] && break;
-#    month=12
-#    thism=12
-#    git cvsimport -v -a -k -d $CVSROOT -p -d,"$year/12/01 00:00:00",-d,"$((year+1))/01/01 00:00:00", -C media-$year-$thism projects/sw/media
-
-    git cvsimport -v -a -k -d $CVSROOT -p -d,"$year/01/01 00:00:00",-d,"$((year+1))/01/01 00:00:00", -C media-$year projects/sw/media >media-$year.log 2>&1
 done
 
 rm -rf $lock
