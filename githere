@@ -17,6 +17,12 @@ cat <<endofcat  >.gitignore
 ..tmp*
 cscope*
 CVS
+CVSROOT
+Entries  
+Entries.Log  
+Repository  
+Root
+Tag
 .version
 vmlinux*
 zvmlinux*
