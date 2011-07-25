@@ -1,6 +1,6 @@
 #!/bin/sh
 
-top=/c2-mirror/c2sdk
+top=/local/c2sdk
 mkdir -p $top
 cd $top
 
@@ -25,7 +25,7 @@ repo sync
 
 
 
-top=/c2-mirror/android
+top=/local/android
 mkdir -p $top
 cd $top
 
