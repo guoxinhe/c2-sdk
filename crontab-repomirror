@@ -1,0 +1,52 @@
+#!/bin/sh
+
+top=/c2-mirror/c2sdk
+mkdir -p $top
+cd $top
+
+if [ ! -d .repo/repo ]; then
+    #this will create .repo/repo
+    mkdir -p .repo;
+    pushd .repo;
+    #official url:  git://android.git.kernel.org/tools/repo.git
+    git clone ssh://git.bj.c2micro.com/c2sdk/repo.git;
+    popd;
+fi
+
+if [ ! -d .repo/manifests ]; then
+    #this will create in .repo/ manifest.xml  manifests  manifests.git 
+    # -b mybranch will checkout with branch, default to master
+    #repo init -u ssh://git.bj.c2micro.com/c2sdk/manifests.git 
+    # -m myproj.xml will checkout with alt xml file
+    #repo init -u ssh://git.bj.c2micro.com/c2sdk/manifests.git -m allgits.xml
+    repo init --mirror -u ssh://git.bj.c2micro.com/c2sdk/manifests.git -m allgits.xml
+fi
+repo sync
+
+
+
+top=/c2-mirror/android
+mkdir -p $top
+cd $top
+
+if [ ! -d .repo/repo ]; then
+    #this will create .repo/repo
+    mkdir -p .repo;
+    pushd .repo;
+    #official url:  git://android.git.kernel.org/tools/repo.git
+    git clone ssh://git.bj.c2micro.com/mentor-mirror/build/repo.git;
+    popd;
+fi
+
+if [ ! -d .repo/manifests ]; then
+    #this will create in .repo/ manifest.xml  manifests  manifests.git 
+    # -b mybranch will checkout with branch, default to master
+    #repo init -u ssh://git.bj.c2micro.com/c2sdk/manifests.git 
+    # -m myproj.xml will checkout with alt xml file
+    #repo init -u ssh://git.bj.c2micro.com/c2sdk/manifests.git -m allgits.xml
+    repo init --mirror -u ssh://git.bj.c2micro.com/mentor-mirror/build/manifests.git -b devel
+fi
+repo sync
+
+
+
