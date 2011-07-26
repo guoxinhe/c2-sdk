@@ -1,52 +1,47 @@
 #!/bin/sh
-
-top=/local/c2sdk
+tm_startdate=`date`
+tm_start=`date +%s`
+top=/c2-mirror/c2sdk
 mkdir -p $top
 cd $top
 
 if [ ! -d .repo/repo ]; then
-    #this will create .repo/repo
     mkdir -p .repo;
-    pushd .repo;
-    #official url:  git://android.git.kernel.org/tools/repo.git
+    cd .repo;
     git clone ssh://git.bj.c2micro.com/c2sdk/repo.git;
-    popd;
+    cd ..;
 fi
 
 if [ ! -d .repo/manifests ]; then
-    #this will create in .repo/ manifest.xml  manifests  manifests.git 
-    # -b mybranch will checkout with branch, default to master
-    #repo init -u ssh://git.bj.c2micro.com/c2sdk/manifests.git 
-    # -m myproj.xml will checkout with alt xml file
-    #repo init -u ssh://git.bj.c2micro.com/c2sdk/manifests.git -m allgits.xml
     repo init --mirror -u ssh://git.bj.c2micro.com/c2sdk/manifests.git -m allgits.xml
+else
+    repo sync >>mirror-sync.log 2>&1
 fi
-repo sync
 
-
-
-top=/local/android
+top=/c2-mirror/android
 mkdir -p $top
 cd $top
 
 if [ ! -d .repo/repo ]; then
-    #this will create .repo/repo
     mkdir -p .repo;
-    pushd .repo;
-    #official url:  git://android.git.kernel.org/tools/repo.git
+    cd .repo;
     git clone ssh://git.bj.c2micro.com/mentor-mirror/build/repo.git;
-    popd;
+    cd ..;
 fi
 
 if [ ! -d .repo/manifests ]; then
-    #this will create in .repo/ manifest.xml  manifests  manifests.git 
-    # -b mybranch will checkout with branch, default to master
-    #repo init -u ssh://git.bj.c2micro.com/c2sdk/manifests.git 
-    # -m myproj.xml will checkout with alt xml file
-    #repo init -u ssh://git.bj.c2micro.com/c2sdk/manifests.git -m allgits.xml
     repo init --mirror -u ssh://git.bj.c2micro.com/mentor-mirror/build/manifests.git -b devel
+else
+    repo sync  >>mirror-sync.log 2>&1
 fi
-repo sync
 
 
+cd /c2-mirror
+tm_done=`date +%s`
+echo "$tm_startdate  ==> `date` : mirror sync c2sdk, android $((tm_done-tm_start)) seconds consumed." >>mirror-sync.log
 
+n=`sed -n $= mirror-sync.log`
+if [ $n -gt 20000 ];then
+  t=$((n-10000))
+  sed -i "1,$t d" mirror-sync.log
+fi
