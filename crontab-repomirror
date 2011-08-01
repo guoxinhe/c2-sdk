@@ -1,52 +1,55 @@
 #!/bin/sh
 
-top=/c2-mirror/c2sdk
+. ~/.bash_profile
+
+tm_startdate=`date`
+tm_start=`date +%s`
+export PATH=~/ymir/bin:$PATH
+
+log=/db/cvsroot/c2-mirror/mirror-sync.log
+echo `date` Start $script >>$log
+
+top=/db/cvsroot/c2-mirror/c2sdk
 mkdir -p $top
 cd $top
 
 if [ ! -d .repo/repo ]; then
-    #this will create .repo/repo
     mkdir -p .repo;
-    pushd .repo;
-    #official url:  git://android.git.kernel.org/tools/repo.git
+    cd .repo;
     git clone ssh://git.bj.c2micro.com/c2sdk/repo.git;
-    popd;
+    cd ..;
 fi
 
 if [ ! -d .repo/manifests ]; then
-    #this will create in .repo/ manifest.xml  manifests  manifests.git 
-    # -b mybranch will checkout with branch, default to master
-    #repo init -u ssh://git.bj.c2micro.com/c2sdk/manifests.git 
-    # -m myproj.xml will checkout with alt xml file
-    #repo init -u ssh://git.bj.c2micro.com/c2sdk/manifests.git -m allgits.xml
-    repo init --mirror -u ssh://git.bj.c2micro.com/c2sdk/manifests.git -m allgits.xml
+    .repo/repo/repo init --mirror -u ssh://git.bj.c2micro.com/c2sdk/manifests.git -m allgits.xml
+else
+    .repo/repo/repo sync >>$log 2>&1
 fi
-repo sync
 
-
-
-top=/c2-mirror/android
+top=/db/cvsroot/c2-mirror/android
 mkdir -p $top
 cd $top
 
 if [ ! -d .repo/repo ]; then
-    #this will create .repo/repo
     mkdir -p .repo;
-    pushd .repo;
-    #official url:  git://android.git.kernel.org/tools/repo.git
+    cd .repo;
     git clone ssh://git.bj.c2micro.com/mentor-mirror/build/repo.git;
-    popd;
+    cd ..;
 fi
 
 if [ ! -d .repo/manifests ]; then
-    #this will create in .repo/ manifest.xml  manifests  manifests.git 
-    # -b mybranch will checkout with branch, default to master
-    #repo init -u ssh://git.bj.c2micro.com/c2sdk/manifests.git 
-    # -m myproj.xml will checkout with alt xml file
-    #repo init -u ssh://git.bj.c2micro.com/c2sdk/manifests.git -m allgits.xml
-    repo init --mirror -u ssh://git.bj.c2micro.com/mentor-mirror/build/manifests.git -b devel
+    .repo/repo/repo init --mirror -u ssh://git.bj.c2micro.com/mentor-mirror/build/manifests.git -b devel
+else
+    .repo/repo/repo sync  >>$log 2>&1
 fi
-repo sync
 
 
-
+cd /db/cvsroot/c2-mirror
+tm_done=`date +%s`
+echo "$tm_startdate  ==> `date` : mirror sync c2sdk, android $((tm_done-tm_start)) seconds consumed." >>$log
+echo `whoami` on `hostname`, script `readlink -f $0` >>$log
+n=`sed -n $= $log`
+if [ $n -gt 20000 ];then
+  t=$((n-10000))
+  sed -i "1,$t d" $log
+fi
