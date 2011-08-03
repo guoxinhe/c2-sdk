@@ -1,0 +1,52 @@
+#!/bin/sh
+
+
+subbr=jazz2t-Android-0_2-1_Branch
+#curbr=master
+curbr=`git branch | grep ^\* |sed 's,\* \(.*\),\1,g'`
+index=0
+
+if [ "$curbr" = "$subbr" ]; then
+    case $curbr in
+    master);;
+    devel);;
+    *)  subbr=master;;
+    esac
+fi
+
+p=
+b="--oneline"
+
+
+while [ $# -gt 0 ] ; do
+    case $1 in
+    x) x=y;              shift;;
+    X) x=;               shift;;
+    p) p="-p";           shift;;
+    P) p=;               shift;;
+    b) b="--oneline";    shift;;
+    B) b=;               shift;;
+    *) 
+       case $index in
+       0)  subbr=$1; index=1; shift;;
+       1)  curbr=$1; index=2; shift;;
+       *)  echo bad parameter $1; exit 0; shift;;
+       esac
+       break;;
+    esac
+done
+
+b1=$curbr
+b2=$subbr
+if [ $x ]; then
+  b1=$subbr
+  b2=$curbr
+fi
+
+if [ "$b1" = "$b2" ]; then
+    echo 2 compared branch are same: $b1 $b2, do nothing.
+    exit 0
+fi
+echo "commit that in $b1, not $b2"
+
+git log $b $p --exit-code $b1 --not $b2
