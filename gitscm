@@ -1,0 +1,6 @@
+#!/bin/sh
+
+
+if [ ! -d scm/.git ]; then
+    git clone ssh://git.bj.c2micro.com/c2sdk/build/scm.git
+fi
