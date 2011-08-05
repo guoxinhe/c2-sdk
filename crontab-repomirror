@@ -2,17 +2,23 @@
 
 . ~/.bash_profile
 
-tm_startdate=`date`
-tm_start=`date +%s`
-export PATH=~/ymir/bin:$PATH
-
-log=/db/cvsroot/c2-mirror/mirror-sync.log
-echo `date` Start $script >>$log
-
-top=/db/cvsroot/c2-mirror/c2sdk
-mkdir -p $top
+CONFIG_SCRIPT=`readlink -f $0`
+top=${CONFIG_SCRIPT%/*}
+if [ -t 1 -o -t 2 ]; then
+CONFIG_TTY=y
+#[ "${0:0:2}" = "./" ] && top=`pwd`
+fi
 cd $top
 
+[ -d ~/ymir/bin ] && export PATH=~/ymir/bin:$PATH
+log=$top/mirror-sync.log
+
+tm_startdate=`date`
+tm_start=`date +%s`
+
+echo `date` start $top/c2sdk >>$log
+mkdir -p $top/c2sdk
+cd $top/c2sdk
 if [ ! -d .repo/repo ]; then
     mkdir -p .repo;
     cd .repo;
@@ -26,10 +32,9 @@ else
     .repo/repo/repo sync >>$log 2>&1
 fi
 
-top=/db/cvsroot/c2-mirror/android
-mkdir -p $top
-cd $top
-
+echo `date` start $top/android >>$log
+mkdir -p $top/android
+cd $top/android
 if [ ! -d .repo/repo ]; then
     mkdir -p .repo;
     cd .repo;
@@ -44,9 +49,9 @@ else
 fi
 
 
-cd /db/cvsroot/c2-mirror
+cd $top
 tm_done=`date +%s`
-echo "$tm_startdate  ==> `date` : mirror sync c2sdk, android $((tm_done-tm_start)) seconds consumed." >>$log
+echo "`date` mirror sync c2sdk, android $((tm_done-tm_start)) seconds consumed." >>$log
 echo "`whoami`@`hostname`:`readlink -f $0`" >>$log
 echo "" >>$log
 echo "" >>$log
