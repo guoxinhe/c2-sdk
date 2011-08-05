@@ -16,6 +16,8 @@ log=$top/mirror-sync.log
 tm_startdate=`date`
 tm_start=`date +%s`
 
+echo "" >>$log
+echo "" >>$log
 echo `date` start $top/c2sdk >>$log
 mkdir -p $top/c2sdk
 cd $top/c2sdk
@@ -53,8 +55,6 @@ cd $top
 tm_done=`date +%s`
 echo "`date` mirror sync c2sdk, android $((tm_done-tm_start)) seconds consumed." >>$log
 echo "`whoami`@`hostname`:`readlink -f $0`" >>$log
-echo "" >>$log
-echo "" >>$log
 n=`sed -n $= $log`
 if [ $n -gt 20000 ];then
   t=$((n-10000))
