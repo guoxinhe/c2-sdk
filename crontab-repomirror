@@ -43,14 +43,13 @@ else
     .repo/repo/repo sync  >>$log 2>&1
 fi
 
-cd /c2-mirror
-tm_done=`date +%s`
-echo "$tm_startdate  ==> `date` : mirror sync c2sdk, android $((tm_done-tm_start)) seconds consumed." >>mirror-sync.log
 
 cd /db/cvsroot/c2-mirror
 tm_done=`date +%s`
 echo "$tm_startdate  ==> `date` : mirror sync c2sdk, android $((tm_done-tm_start)) seconds consumed." >>$log
-echo `whoami` on `hostname`, script `readlink -f $0` >>$log
+echo "`whoami`@`hostname`:`readlink -f $0`" >>$log
+echo "" >>$log
+echo "" >>$log
 n=`sed -n $= $log`
 if [ $n -gt 20000 ];then
   t=$((n-10000))
