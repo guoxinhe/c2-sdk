@@ -59,6 +59,9 @@ nand_write_from_nfs()
     # $2 nand size
     # $3 ram  address
     # $4 src url
+    # $5 using nandfw
+    using_nandfw=$5
+
     if [ ! -f $4 -a $detectsize -eq 1 ]; then
         echo can not find file $4
         return 1;
@@ -76,6 +79,7 @@ nand_write_from_nfs()
       echo ""
       echo "file $4 $size bytes(use $sizeM MB, $sizeMB bytes, $sizeHex)."
     fi
+if [ "$using_nandfw" = "" ]; then
     if [ $brief -eq 1 ]; then
 cat <<BECODE
 mw.b $3 0xff $sizeHex;set bootfile $4;nfs;
@@ -87,6 +91,19 @@ set loadaddr $3;mw.b $3 0xff $sizeHex;set bootfile $4;nfs;
 nand device 0;nand erase $1 $sizeHex;nand $cmd $3 $1 $sizeHex;
 ECODE
     fi
+else
+    if [ $brief -eq 1 ]; then
+cat <<BECODE
+mw.b $3 0xff $sizeHex;set bootfile $4;nfs;
+nandfw mem,0:0 $1 ${4##*/} $6;
+BECODE
+    else
+cat <<ECODE
+set loadaddr $3;mw.b $3 0xff $sizeHex;set bootfile $4;nfs;
+nand device 0;nand erase $1 $sizeHex;nandfw mem,0:0 $1 ${4##*/} $6;
+ECODE
+    fi
+fi
 }
 
 cat <<EBASE
@@ -113,4 +130,10 @@ nand_write_from_nfs  0x1000000 0x5800000 $loadaddr $nfsroot/root.image
 nand_write_from_nfs  0x7000000 0xB000000 $loadaddr $nfsroot/system.image
 nand_write_from_nfs 0x17000000  0xC00000 $loadaddr $nfsroot/data.image
 
+echo ""
+echo "security level burn"
+nand_write_from_nfs   0x100000  0x900000 $loadaddr $nfsroot/kernel.img  nandfw
+nand_write_from_nfs  0x1000000 0x5800000 $loadaddr $nfsroot/root.img    nandfw 1
+nand_write_from_nfs  0x7000000 0xB000000 $loadaddr $nfsroot/system.img  nandfw 1
+nand_write_from_nfs 0x17000000  0xC00000 $loadaddr $nfsroot/data.img    nandfw 1
 echo ""
