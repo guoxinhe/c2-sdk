@@ -87,3 +87,7 @@ in pc side,
 
 setenv sddroid     'sdload vmlinux.bin; setenv bootargs mem=384m,128m console=ttyS0 debug video=c2fb:cpst,ntsc,60,fbcm:16M root=/dev/mmcblk0p5 rw ip=dhcp init=/init androidboot.console=ttyS0; go'
 setenv bootcmd     'run sddroid'
+
+# loopback 2 command for test some special case: #bug 15631.
+setenv b 'setenv bootcmd run r; save; nfs;nand device 0;nand erase 0x100000 0x700000;nand write 0xa0000000 0x100000 0x700000; reset'
+setenv r 'setenv bootcmd run b; save; nand device 0;nand read 0xa0000000 0x00100000 0x900000;go'
