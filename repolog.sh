@@ -24,6 +24,9 @@ to=${2:-0}
 [ $to   -gt 0 ] && before="--before='$to days ago'"
 
 #repo forall -c "git log -n 3 --after='$after' >$x; if [ \`stat -c %s $x\` -gt 0 ];then pwd;cat $x;echo;fi"
+if [ -d .git ]; then
+    git log "$before" "$after" $p -b -w ;
+else
 sep="--------------------------------------------------------------------------"
 repo forall -c "git log $before $after >$x; 
 if [ \`stat -c %s $x\` -gt 0 ];then 
@@ -35,5 +38,6 @@ if [ \`stat -c %s $x\` -gt 0 ];then
     echo;
 fi" 
 rm $x
+fi
 
 

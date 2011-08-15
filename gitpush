@@ -1,6 +1,6 @@
 #!/bin/sh
 
-remote=`git remote`
+remote=`git remote | xargs | awk '{print $1;}'`
 branch=`git branch | grep ^\* |sed 's,\* \(.*\),\1,g'`
 pulled=
 echo Git at $remote  $branch
