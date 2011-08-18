@@ -30,10 +30,11 @@ our %actions = (
 	"checkin"  => \&html_login,
         "taskstat" => \&output_tasks,
         "rebuild"  => \&rebuild_project,
+        "stopbuild"  => \&stopbuild_project,
 );
 our %known_tasks = (
 	'proj1' => {
-		'script'  => '/local/android/jazz2t-c2sdk_android/build-jazz2t-sw_media-android-devel.sh',
+		'script'  => '/build2/android/jazz2t-c2sdk_android/build-jazz2t-sw_media-android-devel.sh',
                 'hostip'  => '10.16.13.195',
 		},
 	'proj2' => {
@@ -41,7 +42,7 @@ our %known_tasks = (
                 'hostip'  => '10.16.13.195',
 		},
 	'proj3' => {
-		'script'  => '/local/android/jazz2-c2sdk_android/build-jazz2-sw_media-android-devel.sh',
+		'script'  => '/build2/android/jazz2-c2sdk_android/build-jazz2-sw_media-android-devel.sh',
                 'hostip'  => '10.16.13.195',
 		},
 	'proj4' => {
@@ -107,7 +108,6 @@ our $cgi=new CGI;
 &parseform;
 &html_head;
 &html_debug;
-#&output_tasks;
 &dispatch;
 &html_tail;
 exit; 
@@ -238,17 +238,36 @@ sub output_tasks {
         my $scr=$known_tasks{$tskid}{'script' };
         my $hip=$known_tasks{$tskid}{'hostip' };
         if ( -x $scr ) {
-        print "<br>$tskid: $scr <a href=$home_link?op=rebuild&h=$hip&s=$scr>rebuild</a><br>\n";
-        print "hostip: $hip <br>\n";
-        my $top= `dirname $scr`;
-        chomp($top);
-	unlink("/var/www/html/build/link/$tskid");
-        symlink("$top/build_result", "/var/www/html/build/link/$tskid");
-	&print_top_results("$top/build_result","link/$tskid");
+            print "<br>$tskid: $scr<br>\n";
+            print "hostip: $hip ";
+            if ( -e "$scr.lock" ) {
+                print ",status: <font color=red><b>running</b></font>. <a href=$home_link?op=stopbuild&h=$hip&s=$scr>stop build</a><br>";
+            } else {
+                print ",status: inactive. <a href=$home_link?op=rebuild&h=$hip&s=$scr>rebuild</a><br>";
+            }
+            my $top= `dirname $scr`;
+            chomp($top);
+	    unlink("/var/www/html/build/link/$tskid");
+            symlink("$top/build_result", "/var/www/html/build/link/$tskid");
+	    &print_top_results("$top/build_result","link/$tskid");
         }
     }
 }
 
+sub stopbuild_project {
+    my ($hostip, $script)=($input_params{'h'},$input_params{'s'});
+    print "still not implement this feature for stopping $hostip:$script<br>\n";
+
+    if ( $thisip eq $hostip ) {
+    print "<pre>";
+    system "pwd; uptime";
+    print "</pre>";
+    } else {
+    print "<pre>";
+    system "pwd; uptime";
+    print "</pre>";
+    }
+}
 sub rebuild_project {
     my ($hostip, $script)=($input_params{'h'},$input_params{'s'});
     print "still not implement this feature for running $hostip:$script<br>\n";
