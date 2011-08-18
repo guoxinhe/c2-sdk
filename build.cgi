@@ -28,7 +28,7 @@ chomp($thisip);
 our $action;
 our %actions = (
 	"checkin"  => \&html_login,
-        "taskstat" => \&output_tasks,
+        "taskstat" => \&manage_tasks,
         "rebuild"  => \&rebuild_project,
         "stopbuild"  => \&stopbuild_project,
 );
@@ -134,8 +134,8 @@ sub html_debug {
 sub dispatch {
         our $action;
 	if (!defined $action) {
-                #print "not defined action , default to 'checkin'<br>\n";
-		$action = 'checkin';
+                #print "not defined action , default to 'taskstat'<br>\n";
+		$action = 'taskstat';
 	}
         #print "Dispatch action |$action|";
 	if (!defined($actions{$action})) {
@@ -232,21 +232,23 @@ sub print_top_results {
 
 }
 
-sub output_tasks {
+sub manage_tasks {
     my $tskid;
     foreach $tskid (sort keys %known_tasks) {
         my $scr=$known_tasks{$tskid}{'script' };
         my $hip=$known_tasks{$tskid}{'hostip' };
         if ( -x $scr ) {
+            my $top= `dirname $scr`;
+            chomp($top);
+            my @tlock=<$top/*.lock>;
+            my $nrlock=@tlock;
             print "<br>$tskid: $scr<br>\n";
             print "hostip: $hip ";
-            if ( -e "$scr.lock" ) {
+            if ( -e "$scr.lock" || $nrlock > 0 ) {
                 print ",status: <font color=red><b>running</b></font>. <a href=$home_link?op=stopbuild&h=$hip&s=$scr>stop build</a><br>";
             } else {
                 print ",status: inactive. <a href=$home_link?op=rebuild&h=$hip&s=$scr>rebuild</a><br>";
             }
-            my $top= `dirname $scr`;
-            chomp($top);
 	    unlink("/var/www/html/build/link/$tskid");
             symlink("$top/build_result", "/var/www/html/build/link/$tskid");
 	    &print_top_results("$top/build_result","link/$tskid");
@@ -255,32 +257,44 @@ sub output_tasks {
 }
 
 sub stopbuild_project {
-    my ($hostip, $script)=($input_params{'h'},$input_params{'s'});
-    print "still not implement this feature for stopping $hostip:$script<br>\n";
+    my ($hostip, $scr)=($input_params{'h'},$input_params{'s'});
+    print "<font color=red size=+1><b>still not implement this feature for stopping $hostip:$scr</b></font><br>\n";
+    print "more info about this task:<br>\n";
 
-    if ( $thisip eq $hostip ) {
     print "<pre>";
-    system "pwd; uptime";
+    system "ssh build\@$hostip \"ps aux | grep $scr\" ";
     print "</pre>";
-    } else {
-    print "<pre>";
-    system "pwd; uptime";
-    print "</pre>";
-    }
 }
 sub rebuild_project {
-    my ($hostip, $script)=($input_params{'h'},$input_params{'s'});
-    print "still not implement this feature for running $hostip:$script<br>\n";
+    my ($hostip, $scr)=($input_params{'h'},$input_params{'s'});
+
+    if ( -x $scr ) {
+        my $top= `dirname $scr`;
+        chomp($top);
+        my @tlock=<$top/*.lock>;
+        my $nrlock=@tlock;
+        if ( -e "$scr.lock" || $nrlock > 0 ) {
+            print "task already running or fold is locked by @tlock, can not rebuild<br>\n";
+            return 0;
+        }
+    } else {
+            print "invalid script $scr, can not rebuild<br>\n";
+            return 0;
+    }
+
+    print "<font color=red size=+1><b>Start running $hostip:$scr</b></font><br>\n";
+    print "this may take ours, please hold this page and<br>\n";
+    print "never refresh it, click it or goes back to previous page!<br>\n";
 
     if ( $thisip eq $hostip ) {
     print "<pre>";
-    print "rebuild on local machine, show root instead. local ip $thisip";
-    system "ls -l /";
+    print "rebuild on local machine: local ip $thisip";
+    system "yes \"\" | ssh build\@$hostip $scr & ";
     print "</pre>";
     } else {
     print "<pre>";
-    print "rebuild on remote machine, show cpuinfo instead, local ip $thisip";
-    system "cat /proc/cpuinfo";
+    print "rebuild on remote machine: local ip $thisip";
+    system "yes \"\" | ssh build\@$hostip $scr & ";
     print "</pre>";
     }
     
@@ -339,7 +353,7 @@ td.category {vertical-align:top}
 </head>
 <body>
 C2 Build server ($thisip) monitor page. $theTime
-| <a href=$home_link?op=taskstat> task status </a>
+| <a href=$home_link?op=taskstat> task manage </a>
 | <a href=$home_link?op=checkin> check in </a>
 | <hr>
 HTML
