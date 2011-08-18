@@ -297,7 +297,8 @@ sub manage_tasks {
             print "<br>$tskid:  <font size=+1 color=blue><b>$tit</b></font><br>\n";
             print "script:$hip".'@'."$scr<br>\n";
             print "op : <a href=/build/link/$tskid/l/progress.log>progress</a> | ";
-            print "<a href=/build/link/$tskid/l>all logs</a> ";
+            print "<a href=/build/link/$tskid/l>all logs</a> |";
+            print "<a href=/build/link/$tskid/l/env.log>settings</a> ";
             if ( -e "$scr.lock" || $nrlock > 0 ) {
                 print ",status: <font color=red><b>running</b></font>. ";
                 print "<a href=$home_link?op=stopbuild&h=$hip&s=$scr>stop build</a><br>";
