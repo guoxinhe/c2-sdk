@@ -33,26 +33,17 @@ our %actions = (
 );
 our %known_tasks = (
 	'proj1' => {
-		'arch'    => 'jazz2t',
-		'project' => 'android',
-		'branch'  => 'devel',
-		'script'  => '/build2/android/jazz2t-c2sdk_android/build-jazz2t-sw_media-android-devel.sh',
+		'script'  => '/local/android/jazz2t-c2sdk_android/build-jazz2t-sw_media-android-devel.sh',
                 'hostip'  => '10.16.13.195',
-		'opt'     => ['gzip']},
+		},
 	'proj2' => {
-		'arch'    => 'jazz2t',
-		'project' => 'android',
-		'branch'  => 'br021',
-		'script'  => '/build2/android/jazz2t-c2sdk_android_BR021/build-jazz2t-sw_media-android-br021.sh',
+		'script'  => '/local/android/jazz2t-c2sdk_android_BR021/build-jazz2t-sw_media-android-br021.sh',
                 'hostip'  => '10.16.13.195',
-		'opt'     => ['gzip']},
+		},
 	'proj3' => {
-		'arch'    => 'jazz2',
-		'project' => 'android',
-		'branch'  => 'devel',
-		'script'  => '/build2/android/jazz2-c2sdk_android/build-jazz2-sw_media-android-devel.sh',
+		'script'  => '/local/android/jazz2-c2sdk_android/build-jazz2-sw_media-android-devel.sh',
                 'hostip'  => '10.16.13.195',
-		'opt'     => ['gzip']},
+		},
 	'proj4' => {
 		'script'  => '/build/jazz2/dev-daily/build-jazz2-sdk-maintree.sh',
                 'hostip'  => '10.16.13.196',
@@ -242,19 +233,15 @@ sub print_top_results {
 }
 
 sub output_tasks {
-    while (my ($tskid, $detail) = each %known_tasks) {
-        #my $arc=$known_tasks{$tskid}{'arch'   };
-        #my $pro=$known_tasks{$tskid}{'project'};
-        #my $bra=$known_tasks{$tskid}{'branch' };
+    my $tskid;
+    foreach $tskid (sort keys %known_tasks) {
         my $scr=$known_tasks{$tskid}{'script' };
         my $hip=$known_tasks{$tskid}{'hostip' };
-        #my $opt=$known_tasks{$tskid}{'opt'    };
         if ( -x $scr ) {
-        print "<br>task: $scr <a href=$home_link?op=rebuild&h=$hip&s=$scr>rebuild</a><br>\n";
+        print "<br>$tskid: $scr <a href=$home_link?op=rebuild&h=$hip&s=$scr>rebuild</a><br>\n";
         print "hostip: $hip <br>\n";
         my $top= `dirname $scr`;
         chomp($top);
-        #our $results_dir="$top/build_result";
 	unlink("/var/www/html/build/link/$tskid");
         symlink("$top/build_result", "/var/www/html/build/link/$tskid");
 	&print_top_results("$top/build_result","link/$tskid");
