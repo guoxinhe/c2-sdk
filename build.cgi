@@ -22,12 +22,19 @@ BEGIN {
 $year = 1900 + $yearOffset;
 $theTime = "$hour:$minute:$second $weekDays[$dayOfWeek] $months[$month] $dayOfMonth, $year";
 
+# Used to set the maximum load that we will still respond to gitweb queries.
+# If server load exceed this value then return "503 server busy" error.
+# If gitweb cannot determined server load, it is taken to be 0.
+# Leave it undefined (or set to 'undef') to turn off load checking.
+our $maxload = 5;
+
 our $thisip=`/sbin/ifconfig eth0|sed -n 's/.*inet addr:\\([^ ]*\\).*/\\1/p'`;
 chomp($thisip);
 
 our $action;
 our %actions = (
 	"checkin"  => \&html_login,
+	"admin"  => \&check_loadavg,
         "taskstat" => \&manage_tasks,
         "rebuild"  => \&rebuild_project,
         "stopbuild"  => \&stopbuild_project,
@@ -111,6 +118,54 @@ our $cgi=new CGI;
 &dispatch;
 &html_tail;
 exit; 
+
+# Get loadavg of system, to compare against $maxload.
+# Currently it requires '/proc/loadavg' present to get loadavg;
+# if it is not present it returns 0, which means no load checking.
+sub get_loadavg {
+	if( -e '/proc/loadavg' ){
+		open my $fd, '<', '/proc/loadavg'
+			or return 0;
+		my @load = split(/\s+/, scalar <$fd>);
+		close $fd;
+
+		# The first three columns measure CPU and IO utilization of the last one,
+		# five, and 10 minute periods.  The fourth column shows the number of
+		# currently running processes and the total number of processes in the m/n
+		# format.  The last column displays the last process ID used.
+		return $load[0] || 0;
+	}
+	# additional checks for load average should go here for things that don't export
+	# /proc/loadavg
+
+	return 0;
+}
+sub get_machine_loadavg {
+    my ($usr, $hostip) = ( @_ );
+
+    my $ret=`ssh $usr\@$hostip cat /proc/loadavg`;
+    my @load = split(/\s+/, $ret);
+    return $load[0] || 0;
+    #print "$usr\@$hostip cat /proc/loadavg: $ret ==== $load[0] <br>\n";
+}
+sub check_loadavg {
+	if (defined $maxload && get_loadavg() > $maxload) {
+                my $ret=`cat /proc/loadavg`;
+                my @load = split(/\s+/, $ret);
+                print "$usr\@$hostip cat /proc/loadavg: $ret ==== $load[0] <br>\n";
+            	die "The load average on the server is too high";
+	}
+}
+
+sub check_machine_loadavg {
+	if (defined $maxload && get_machine_loadavg(@_) > $maxload) {
+                my ($usr, $hostip) = ( @_ );
+                my $ret=`ssh $usr\@$hostip cat /proc/loadavg`;
+                my @load = split(/\s+/, $ret);
+                print "machine $hostip load average too high: $load[0] <br>\n";
+		die "The load average on the server is too high";
+	}
+}
 
 sub html_debug {
     my $count=keys %input_params;
@@ -269,6 +324,7 @@ sub rebuild_project {
     my ($hostip, $scr)=($input_params{'h'},$input_params{'s'});
 
     if ( -x $scr ) {
+        &check_machine_loadavg('build',$hostip);
         my $top= `dirname $scr`;
         chomp($top);
         my @tlock=<$top/*.lock>;
@@ -356,6 +412,7 @@ td.category {vertical-align:top}
 | <a href=http://10.16.13.196/build/build.cgi>196</a>
 | C2 Build server ($thisip) monitor page. $theTime
 | <a href=$home_link?op=taskstat> task manage </a>
+| <a href=$home_link?op=admin> admin </a>
 | <a href=$home_link?op=checkin> check in </a>
 | <hr>
 HTML
