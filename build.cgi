@@ -352,7 +352,9 @@ td.category {vertical-align:top}
 </style>
 </head>
 <body>
-C2 Build server ($thisip) monitor page. $theTime
+| <a href=http://10.16.13.195/build/build.cgi>195</a>
+| <a href=http://10.16.13.196/build/build.cgi>196</a>
+| C2 Build server ($thisip) monitor page. $theTime
 | <a href=$home_link?op=taskstat> task manage </a>
 | <a href=$home_link?op=checkin> check in </a>
 | <hr>
