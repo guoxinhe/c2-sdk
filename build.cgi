@@ -38,7 +38,7 @@ our %known_tasks = (
                 'hostip'  => '10.16.13.195',
 		},
 	'proj2' => {
-		'script'  => '/local/android/jazz2t-c2sdk_android_BR021/build-jazz2t-sw_media-android-br021.sh',
+		'script'  => '/build2/android/jazz2t-c2sdk_android_BR021/build-jazz2t-sw_media-android-br021.sh',
                 'hostip'  => '10.16.13.195',
 		},
 	'proj3' => {
@@ -320,7 +320,7 @@ print "Content-type: text/html\n\n";
 print <<HTML;
 <html>
 <head>
-<title>A Simple Perl CGI</title>
+<title>C2 build server runtime monitor</title>
 <style type="text/css">
 <!--/* <![CDATA[ */
 <!--
