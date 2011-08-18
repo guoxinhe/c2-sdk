@@ -319,30 +319,27 @@ td.category {vertical-align:top}
 </style>
 </head>
 <body>
-C2 Build server ($thisip) monitor page. $theTime |
-<a href=$home_link?op=taskstat> task status</a> |
-<a href=$home_link?op=checkin> check in </a> |
-<hr>
+C2 Build server ($thisip) monitor page. $theTime
+| <a href=$home_link?op=taskstat> task status </a>
+| <a href=$home_link?op=checkin> check in </a>
+| <hr>
 HTML
 }
 sub html_tail {
-print "<hr> more webpage(cgi) debug info<br>";
+print "<hr> more webpage(cgi) debug info";
 system "echo '<br>' Servername:; hostname";
-system "echo '<br>' Server info:; uname -a";
-system "echo '<br>' uptime:; uptime";
-system "echo '<br>' script:; readlink -f $0";
 system "echo '<br>' user:; whoami";
-system "echo '<br>' Current path:; pwd";
-my $ls=`ls`;
-print "<br>$ls<br>";
+system "echo '<br>' script:; readlink -f $0";
 print "<br>url: $my_url";
 print "<br>uri: $my_uri";
 print "<br>home_link: $home_link";
 print "<br>path_info: $path_info";
-
+system "echo '<br>' Current path:; pwd";
+system "echo '<br>' Server info:; uname -a";
+system "echo '<br>' uptime:; uptime";
 print <<HTML;
-<p>Build server. $theTime<br>
-</p>
+<br>
+C2 Build server ($thisip) monitor page. $theTime
 </body>
 HTML
 }
