@@ -41,30 +41,37 @@ our %actions = (
 );
 our %known_tasks = (
 	'proj1' => {
+		'title'   => 'jazz2t + android br=devel + sw_media u-boot br=master',
 		'script'  => '/build2/android/jazz2t-c2sdk_android/build-jazz2t-sw_media-android-devel.sh',
                 'hostip'  => '10.16.13.195',
 		},
 	'proj2' => {
+		'title'   => 'jazz2t + android sw_media u-boot br=jazz2t-Android-0_2-1_Branch',
 		'script'  => '/build2/android/jazz2t-c2sdk_android_BR021/build-jazz2t-sw_media-android-br021.sh',
                 'hostip'  => '10.16.13.195',
 		},
 	'proj3' => {
+		'title'   => 'jazz2 + android br=devel + sw_media u-boot br=master',
 		'script'  => '/build2/android/jazz2-c2sdk_android/build-jazz2-sw_media-android-devel.sh',
                 'hostip'  => '10.16.13.195',
 		},
 	'proj4' => {
+		'title'   => 'jazz2 + sdk br=master',
 		'script'  => '/build/jazz2/dev-daily/build-jazz2-sdk-maintree.sh',
                 'hostip'  => '10.16.13.196',
 		},
 	'proj5' => {
+		'title'   => 'jazz2l + sdk br=master',
 		'script'  => '/build/jazz2l/dev-daily/build-jazz2l-sdk-maintree.sh',
                 'hostip'  => '10.16.13.196',
 		},
 	'proj6' => {
+		'title'   => 'jazz2l + android br=devel + sw_media u-boot br=master',
 		'script'  => '/build/jazz2l/android-devel/build-jazz2l-sw_media-android-devel.sh',
                 'hostip'  => '10.16.13.196',
 		},
 	'proj7' => {
+		'title'   => 'jazz2t + sdk br=master',
 		'script'  => '/build/jazz2t/dev-daily/build-jazz2t-sdk-maintree.sh',
                 'hostip'  => '10.16.13.196',
 		},
@@ -75,6 +82,15 @@ our $results_dir;
 #our $cgi=new CGI;
 our %input_params = ();
 our ($my_url, $my_uri, $base_url, $path_info, $home_link);
+our $cgi=new CGI;
+&evaluate_uri;
+&parseform;
+&html_head;
+&html_debug;
+&dispatch;
+&html_tail;
+exit; 
+
 sub evaluate_uri {
         our $cgi;
 
@@ -110,15 +126,6 @@ sub evaluate_uri {
         our $home_link = $my_uri || "/";
 }
 
-our $cgi=new CGI;
-&evaluate_uri;
-&parseform;
-&html_head;
-&html_debug;
-&dispatch;
-&html_tail;
-exit; 
-
 # Get loadavg of system, to compare against $maxload.
 # Currently it requires '/proc/loadavg' present to get loadavg;
 # if it is not present it returns 0, which means no load checking.
@@ -153,12 +160,17 @@ sub check_loadavg {
     my $ret=`ssh $usr\@$hostip cat /proc/loadavg`;
     my @load = split(/\s+/, $ret);
     print "$usr\@$hostip cat /proc/loadavg: $ret ==== $load[0] <br>\n";
+    print "<pre>";
+    system "ssh build\@10.16.13.195 \"crontab -l\" ";
+    print "</pre>";
 
     my ($usr, $hostip) = ('build','10.16.13.196');
     my $ret=`ssh $usr\@$hostip cat /proc/loadavg`;
     my @load = split(/\s+/, $ret);
     print "$usr\@$hostip cat /proc/loadavg: $ret ==== $load[0] <br>\n";
-
+    print "<pre>";
+    system "ssh build\@10.16.13.196 \"crontab -l\" ";
+    print "</pre>";
 	if (defined $maxload && get_loadavg() > $maxload) {
             	die "The load average on the server is too high";
 	}
@@ -206,92 +218,69 @@ sub dispatch {
 	$actions{$action}->();
 }
 sub print_top_results {
-
-  our ($results_dir,$urlpre)=(@_);
-  #$results_dir =~ s, build_result,build_result,;
-  #$results_dir='/local/android/jazz2t-c2sdk_android/build_result';
-  #print "=======$results_dir========<br>\n";
-  #my ($results_dir)=(@_); 
-  #my $urlpre="link";
-  my $num_days = 9;
-
-  #if (defined($ENV{SDK_RESULTS_DIR})) {
-  #  $results_dir = $ENV{SDK_RESULTS_DIR};
-  #}else{
-  #  $results_dir = "$ENV{PWD}/../build_result";
-  #}
-
-  #if (defined($ENV{SDKENV_URLPRE})) {
-  #  $urlpre = $ENV{SDKENV_URLPRE};
-  #}else{
-  #  $urlpre = "http://127.0.0.1"
-  #}
-
-  opendir(DIR, $results_dir) or die "Couldn't open $results_dir: $!\n";
-
-  my $log_num = grep /^(\d{2}[0,1][0-9][0-3][0-9])\.txt$/i, readdir(DIR);
-  if ($log_num<10) {
-    $num_days = $log_num-1;
-  }
-
-  opendir(DIR, $results_dir);
-  my @dates = (sort({ $b cmp $a} grep(s/^(\d{2}[0,1][0-9][0-3][0-9])\.txt$/$1/, readdir(DIR))))[0..$num_days];
-
-  my %results;
-
-  for my $d (@dates) {
-    open (RES, "${results_dir}/$d.txt") or die "Opening $d: $!\n";
-    while (<RES>) {
-      /^.*:.*:.*$/ || next;
-      my ($test, $res, $logfile) = split(/:/);
-      $results{$test}{$d} = [$res, $logfile];
+    our ($results_dir,$urlpre)=(@_);
+    my $num_days = 9;
+  
+    opendir(DIR, $results_dir) or die "Couldn't open $results_dir: $!\n";
+  
+    my $log_num = grep /^(\d{2}[0,1][0-9][0-3][0-9])\.txt$/i, readdir(DIR);
+    if ($log_num<10) {
+        $num_days = $log_num-1;
     }
-  }
-
-  #print "Click on <b>FAIL</b> link to see log of failures<br>";
-
-  print "<table border=1>";
-  print "<tr><th>Category</th><th>" .
-    join ("</th><th>", @dates) . "</th></tr>";
-
+  
+    opendir(DIR, $results_dir);
+    my @dates = (sort({ $b cmp $a} grep(s/^(\d{2}[0,1][0-9][0-3][0-9])\.txt$/$1/, readdir(DIR))))[0..$num_days];
+  
+    my %results;
+  
+    for my $d (@dates) {
+        open (RES, "${results_dir}/$d.txt") or die "Opening $d: $!\n";
+        while (<RES>) {
+            /^.*:.*:.*$/ || next;
+            my ($test, $res, $logfile) = split(/:/);
+            $results{$test}{$d} = [$res, $logfile];
+        }
+    }
+  
+    print "<table border=1>";
+    print "<tr><th>Category</th><th>" .
+       join ("</th><th>", @dates) . "</th></tr>";
+   
     my $newrow = 0;
 
     for my $test (keys (%results)) {
-      print "<tr>" if ($newrow);
-
-      # Make test red if the most recent test failed
-      my $testclass = "na";
-      if (exists($results{$test}{$dates[0]})) {
-        $testclass = $results{$test}{$dates[0]}[0] == 0 ? "pass" : $results{$test}{$dates[0]}[0] == 2 ? "run" : "fail";
-      }
-
-
-      print "<td class=${testclass}>$test</td>";
-
-      for my $d (@dates) {
-        my $class = "na";
-        my $status = "";
-
-        if (exists($results{$test}{$d})) {
-          my ($res, $log) = @{$results{$test}{$d}};
-          $class = $res == 0 ? "pass" : $res == 2 ? "run" : "fail";
-
-          my ($n_warning, $n_error) =(0,0);# check_for_results_string($log);
-
-          $status = ($n_error) ? "${n_warning}/${n_error}" : uc($class);
-
-          $log =~ s-$results_dir-$urlpre-;
-
-          $status = "<a href='$log' title='gettin jiggy'>${status}</a>";
+        print "<tr>" if ($newrow);
+       
+        # Make test red if the most recent test failed
+        my $testclass = "na";
+        if (exists($results{$test}{$dates[0]})) {
+            $testclass = $results{$test}{$dates[0]}[0] == 0 ? "pass" : $results{$test}{$dates[0]}[0] == 2 ? "run" : "fail";
         }
-        print "<td class='${class}'>${status}</td>";
-      }
-      print "</tr>";
-      $newrow = 1;
+       
+        print "<td class=${testclass}>$test</td>";
+       
+        for my $d (@dates) {
+            my $class = "na";
+            my $status = "";
+           
+            if (exists($results{$test}{$d})) {
+                my ($res, $log) = @{$results{$test}{$d}};
+                $class = $res == 0 ? "pass" : $res == 2 ? "run" : "fail";
+               
+                my ($n_warning, $n_error) =(0,0);# check_for_results_string($log);
+               
+                $status = ($n_error) ? "${n_warning}/${n_error}" : uc($class);
+               
+                $log =~ s-$results_dir-$urlpre-;
+               
+                $status = "<a href='$log' title='gettin jiggy'>${status}</a>";
+            }
+            print "<td class='${class}'>${status}</td>";
+        }
+        print "</tr>";
+        $newrow = 1;
     }
-  
-  print "</table>";
-
+    print "</table>";
 }
 
 sub manage_tasks {
@@ -299,15 +288,19 @@ sub manage_tasks {
     foreach $tskid (sort keys %known_tasks) {
         my $scr=$known_tasks{$tskid}{'script' };
         my $hip=$known_tasks{$tskid}{'hostip' };
+        my $tit=$known_tasks{$tskid}{'title' };
         if ( -x $scr ) {
             my $top= `dirname $scr`;
             chomp($top);
             my @tlock=<$top/*.lock>;
             my $nrlock=@tlock;
-            print "<br>$tskid: $scr<br>\n";
-            print "hostip: $hip ";
+            print "<br>$tskid:  <font size=+1 color=blue><b>$tit</b></font><br>\n";
+            print "script:$hip".'@'."$scr<br>\n";
+            print "op : <a href=/build/link/$tskid/l/progress.log>progress</a> | ";
+            print "<a href=/build/link/$tskid/l>all logs</a> ";
             if ( -e "$scr.lock" || $nrlock > 0 ) {
-                print ",status: <font color=red><b>running</b></font>. <a href=$home_link?op=stopbuild&h=$hip&s=$scr>stop build</a><br>";
+                print ",status: <font color=red><b>running</b></font>. ";
+                print "<a href=$home_link?op=stopbuild&h=$hip&s=$scr>stop build</a><br>";
             } else {
                 print ",status: inactive. <a href=$home_link?op=rebuild&h=$hip&s=$scr>rebuild</a><br>";
             }
@@ -348,18 +341,9 @@ sub rebuild_project {
     print "<font color=red size=+1><b>Start running $hostip:$scr</b></font><br>\n";
     print "this may take ours, please hold this page and<br>\n";
     print "never refresh it, click it or goes back to previous page!<br>\n";
-
-    if ( $thisip eq $hostip ) {
     print "<pre>";
-    print "rebuild on local machine: local ip $thisip";
     system "yes \"\" | ssh build\@$hostip $scr & ";
     print "</pre>";
-    } else {
-    print "<pre>";
-    print "rebuild on remote machine: local ip $thisip";
-    system "yes \"\" | ssh build\@$hostip $scr & ";
-    print "</pre>";
-    }
     
 }
 sub html_login {
