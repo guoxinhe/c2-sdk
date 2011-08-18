@@ -34,7 +34,7 @@ chomp($thisip);
 our $action;
 our %actions = (
 	"checkin"  => \&html_login,
-	"admin"  => \&check_loadavg,
+	"loadavg"  => \&check_loadavg,
         "taskstat" => \&manage_tasks,
         "rebuild"  => \&rebuild_project,
         "stopbuild"  => \&stopbuild_project,
@@ -149,10 +149,17 @@ sub get_machine_loadavg {
     #print "$usr\@$hostip cat /proc/loadavg: $ret ==== $load[0] <br>\n";
 }
 sub check_loadavg {
+    my ($usr, $hostip) = ('build','10.16.13.195');
+    my $ret=`ssh $usr\@$hostip cat /proc/loadavg`;
+    my @load = split(/\s+/, $ret);
+    print "$usr\@$hostip cat /proc/loadavg: $ret ==== $load[0] <br>\n";
+
+    my ($usr, $hostip) = ('build','10.16.13.196');
+    my $ret=`ssh $usr\@$hostip cat /proc/loadavg`;
+    my @load = split(/\s+/, $ret);
+    print "$usr\@$hostip cat /proc/loadavg: $ret ==== $load[0] <br>\n";
+
 	if (defined $maxload && get_loadavg() > $maxload) {
-                my $ret=`cat /proc/loadavg`;
-                my @load = split(/\s+/, $ret);
-                print "$usr\@$hostip cat /proc/loadavg: $ret ==== $load[0] <br>\n";
             	die "The load average on the server is too high";
 	}
 }
@@ -412,7 +419,7 @@ td.category {vertical-align:top}
 | <a href=http://10.16.13.196/build/build.cgi>196</a>
 | C2 Build server ($thisip) monitor page. $theTime
 | <a href=$home_link?op=taskstat> task manage </a>
-| <a href=$home_link?op=admin> admin </a>
+| <a href=$home_link?op=loadavg> load average </a>
 | <a href=$home_link?op=checkin> check in </a>
 | <hr>
 HTML
