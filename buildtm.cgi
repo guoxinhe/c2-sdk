@@ -242,9 +242,14 @@ sub print_top_results {
         }
     }
   
+    if ($input_params{'thm'} eq '' ) {
     print "<table border=1>";
     print "<tr><th>Category</th><th>" .
        join ("</th><th>", @dates) . "</th></tr>";
+    } else {
+    print "<table border=0>";
+    print "<tr class=tti ><th>Category</th><th>" . join ("</th><th>", @dates) . "</th></tr>";
+    }
    
     my $newrow = 0;
 
@@ -269,7 +274,11 @@ sub print_top_results {
                
                 my ($n_warning, $n_error) =(0,0);# check_for_results_string($log);
                
+                if ($input_params{'thm'} eq '' ) {
                 $status = ($n_error) ? "${n_warning}/${n_error}" : uc($class);
+                } else {
+                    $status = ($n_error) ? "${n_warning}/${n_error}" : ($class);
+                }
                
                 $log =~ s-$results_dir-$urlpre-;
                
@@ -294,7 +303,11 @@ sub manage_tasks {
             chomp($top);
             my @tlock=<$top/*.lock>;
             my $nrlock=@tlock;
+            if ($input_params{'thm'} eq '' ) {
             print "<br>$tskid:  <font size=+1 color=blue><b>$tit</b></font><br>\n";
+            } else {
+                print "<br>$tskid:  <font size=+1 color=black><b>$tit</b></font><br>\n";
+            }
             print "script:$hip".'@'."$scr<br>\n";
             print "op : <a href=/build/link/$tskid/l/progress.log>progress</a> | ";
             print "<a href=/build/link/$tskid/l>all logs</a> |";
@@ -385,6 +398,9 @@ print <<HTML;
 <title>C2 build server runtime monitor</title>
 <style type="text/css">
 <!--/* <![CDATA[ */
+HTML
+if ($input_params{'thm'} eq '' ) {
+print <<HTML;
 <!--
 td {text-align: center}
 table {background: lightgrey}
@@ -396,6 +412,28 @@ td.category {vertical-align:top}
 .run  {background: #ffff00; font-weight:bold}
 -->
 
+HTML
+} else {
+print <<HTML;
+<!--
+td {text-align: center}
+table {background: grey}
+td.category {vertical-align:top}
+a:link {color:black}
+a:visited {color:black}
+a:hover {color:blue}
+a:active {color:green}
+.tti  {background: #CCCCCC; font-weight:bold}
+.pass {background: #FFFFFF; }
+.fail {background: #AAAAAA; font-weight:bold}
+.na   {background: #FFFFFF}
+.run  {background: #888844; font-weight:bold}
+-->
+
+HTML
+}
+
+print <<HTML;
 /* ]]> */-->
 </style>
 </head>
@@ -407,6 +445,9 @@ td.category {vertical-align:top}
 | <a href=$home_link?op=loadavg> load average </a>
 | <a href=$home_link?op=checkin> check in </a>
 | <hr>
+| <a href=$home_link?thm=bonw>bow</a>
+| <a href=$home_link?thm=>color</a>
+| <a href=$home_link?op=taskstat&flt=fail>fail only</a>
 HTML
 }
 sub html_tail {
@@ -441,4 +482,5 @@ sub parseform  {
     $input_params{'op'} = $cgi->param('op');
     $input_params{'h'} = $cgi->param('h');
     $input_params{'s'} = $cgi->param('s');
+    $input_params{'thm'} = $cgi->param('thm');
 }
