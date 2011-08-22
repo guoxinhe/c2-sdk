@@ -38,6 +38,8 @@ our %actions = (
         "taskstat" => \&manage_tasks,
         "rebuild"  => \&rebuild_project,
         "stopbuild"  => \&stopbuild_project,
+        "cookies"  => \&cookies_test,
+        "buildck"  => \&build_check,
 );
 our %known_tasks = (
 	'proj1' => {
@@ -76,7 +78,111 @@ our %known_tasks = (
                 'hostip'  => '10.16.13.196',
 		},
 );
+our %build_check_tasks = (
+	'proj1' => {
+                'top'     => '/build/build_check/alltheprojects',
+		'project' => 'project name',
+		'branch'  => 'repository branch name',
+                'target'  => 'target name',
+                'build'   => 'build command',
+                'smoke'   => 'smoke test command',
+                'result'  => 'fail',
+                'idfail'  => '12345678',
+                'idpass'  => '23456788',
+                'duration'=> '3days',
+		},
+);
+sub build_check {
+    my $tskid;
+    print "<table border=0>";
+    print "<tr class=tti>\n";
+        #print "<th> 'top'        </th>\n";
+        print "<th> 'project'    </th>\n";
+        print "<th> 'branch'     </th>\n";
+        print "<th> 'target'     </th>\n";
+       # print "<th> 'build'      </th>\n";
+       # print "<th> 'smoke'      </th>\n";
+        print "<th> 'result'     </th>\n";
+        print "<th> 'id'         </th>\n";
+        print "<th> 'duration'   </th>\n";
+        print "<th> 'op'   </th>\n";
+    print "</tr>";
+    foreach $trynu (1..36) {
+    foreach $tskid (sort keys %build_check_tasks) {
+    print "<tr class=pass>\n";
+        my $top=$build_check_tasks{$tskid}{ 'top'     };
+        my $pro=$build_check_tasks{$tskid}{ 'project' };
+        my $bra=$build_check_tasks{$tskid}{ 'branch'  };
+        my $tar=$build_check_tasks{$tskid}{ 'target'  };
+       #my $bui=$build_check_tasks{$tskid}{ 'build'   };
+       #my $smo=$build_check_tasks{$tskid}{ 'smoke'   };
+        my $res=$build_check_tasks{$tskid}{ 'result'  };
+        my $idf=$build_check_tasks{$tskid}{ 'idfail'  };
+        my $idp=$build_check_tasks{$tskid}{ 'idpass'  };
+        my $dur=$build_check_tasks{$tskid}{ 'duration'};
+        #print "<td>  $top  </td>\n";
+        print "<td><a title='rebuild this project' href=$home_link>  $pro  </a></td>\n";
+        print "<td><a title='rebuild this branch'  href=$home_link>  $bra  </a></td>\n";
+        print "<td><a title='rebuild this target'  href=$home_link>  $tar  </a></td>\n";
+       #print "<td><a title='rebuild' href=$home_link>  $bui  </a></td>\n";
+       #print "<td><a title='rebuild' href=$home_link>  $smo  </a></td>\n";
+        print "<td><a title='logs of this build'   href=$home_link>  $res  </a></td>\n";
+        if ( $res eq 'pass' ) {
+        print "<td><a title='rebuild this commit'  href=$home_link>  $idp  </a></td>\n";
+        } else {
+        print "<td><a title='rebuild this commit'  href=$home_link>  $idf  </a></td>\n";
+        }
+        print "<td><a title='all log' href=$home_link>  $dur  </a></td>\n";
+        print "<td><a title='review'  href=$home_link>  Get build configuration</a> | <a href=$home_link>Some other ops</a></td>\n";
+    print "</tr>";
+    }}
+    print "</table>";
+    print "<br>still an empty feature<br>\n";
+}
 
+our %known_cookies = (
+    'cookyspec' => {
+           'domain'  => 'a partial or complete domain name for which the cookie is valid. Like .devdaily.com',
+           'expires' => '(optional) +60s +20m +5h nowimmediately +5M +1y',
+           'name'    => 'the name of the cookie (required)',
+           'path'    => '(optional), default to / ',
+           'secure'  => '(optional)',
+           'value'   => 'required, can be one of $ % @ variable',
+           },
+);
+sub cookies_test {
+    print "<br>\n";
+    print "Cooies test start --------------------<br>\n";
+
+    use CGI;
+    $query = new CGI;
+    $cookie = $query->cookie(-name=>'MY_COOKIE',
+	 -value=>'BEST_COOKIE=chocolatechip',
+	 -expires=>'+4h',
+	 -path=>'/');
+    #print $query->header(-cookie=>$cookie);
+
+    $theCookie = $query->cookie('MY_COOKIE');
+    if ("$theCookie") {
+        print "<BLOCKQUOTE>\n";
+        print "if theCookie exist, will be displayed here---=== [$theCookie] ===---";
+        print "</BLOCKQUOTE>\n";
+    } else {
+       print "Can't find my cookie!<br>\n";
+    }
+
+    print "-+-$ENV{'HTTP_COOKIE'}-+-<br>\n";
+    @pairs = split(/&/, $ENV{'HTTP_COOKIE'});
+    foreach $pair (@pairs){
+        ($name, $value) = split(/=/, $pair);
+        $value =~ tr/+/ /;
+        $value =~ s/%([a-fA-F0-9][a-fA-F0-9])/pack("C", hex($1))/eg;
+        $cookie{$name} = $value;
+        print "Cooies $name = $value --------------------<br>\n";
+    }
+
+    print "Cooies test done --------------------<br>\n";
+}
 
 our $results_dir;
 #our $cgi=new CGI;
@@ -448,6 +554,10 @@ print <<HTML;
 | <a href=$home_link?thm=bonw>bow</a>
 | <a href=$home_link?thm=>color</a>
 | <a href=$home_link?op=taskstat&flt=fail>fail only</a>
+| <a href=$home_link?op=cookies&thm=bonw>cookies</a>
+| <a href=$home_link?op=buildck&thm=bonw>build check</a>
+<br>
+<br>
 HTML
 }
 sub html_tail {
