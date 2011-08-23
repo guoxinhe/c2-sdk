@@ -3,6 +3,7 @@
 SCRIPTPATH=`readlink -f $0`
 SCRIPTPATH=${SCRIPTPATH%/*}
 TOP=${SCRIPTPATH}
+cd $TOP
 PATH=$PATH:$SCRIPTPATH
 
 DEBUG=true #echo #or true or false
@@ -252,12 +253,9 @@ done
 
 if [ $# -gt 0 ] ; then
   pre=$1
-  for ti in $projects; do
-    case $ti in
-    $pre*)  build_project $ti;;
-    *)      $DEBUG found $ti matches $pre ;; #does not match
-    esac
-  done
+  if [ -d $TOP/$pre/source ]; then
+      build_project  $pre
+  fi
 else
   nr=0
   while [ $nr -lt $CONFIG_NRLOOP ]; do
@@ -268,7 +266,7 @@ else
       fi
       if [ "$projects" = "" ]; then
           cd $TOP  #auto detect the project
-          projects="`find . -name build_result -type d | sed -e s,$TOP/,,g -e s,/build_result,,g`"
+          projects="`find $TOP -name build_result -type d | sed -e s,$TOP/,,g -e s,/build_result,,g`"
       fi
       for ti in $projects; do
           build_project $ti
