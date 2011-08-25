@@ -1,6 +1,23 @@
 #!/usr/bin/env python
 
 import sha, time, Cookie, os, cgitb, cgi
+import sys
+import cPickle
+import shutil
+import tempfile
+import re
+import calendar
+import fcntl
+import signal
+import string
+import pprint
+import getopt
+import threading
+import Queue
+import random
+import stat
+import traceback
+import inspect
 
 #get cookie, form post, form get, etc.
 #--------------------------------------------------------------------------
@@ -48,7 +65,8 @@ thm = form.getfirst('thm', 'empty');  thm = cgi.escape(thm);
 
 cookie = Cookie.SimpleCookie()
 string_cookie = os.environ.get('HTTP_COOKIE')
-
+my_error_message = '';
+my_error_number = 0;
 # If new session
 if not string_cookie:
     # The sid will be a hash of the server time
@@ -74,12 +92,22 @@ else:
     pswd= cookie['pswd'].value
     debug=cookie['debug'].value
     if op == 'loginack' and loginuser <> 'empty' and  method == 'post':
-        user=loginuser
-        pswd=loginpswd
-        cookie['user'] = user
-        cookie['pswd'] = pswd
-        cookie['user']['expires'] = 12 * 30 * 24 * 60 * 60
-        cookie['pswd']['expires'] = 12 * 30 * 24 * 60 * 60
+        if loginpswd <> '123456':
+            loginpswd='fail';
+            my_error_number=my_error_number+1;
+            my_error_message=my_error_message+'bad password, always is 123456<br>';
+        if os.path.exists('/home/'+loginuser):
+            pass
+        else:
+            my_error_number=my_error_number+1;
+            my_error_message=my_error_message+'bad user name<br>';
+        if my_error_number == 0:
+            user=loginuser
+            pswd=loginpswd
+            cookie['user'] = user
+            cookie['pswd'] = pswd
+            cookie['user']['expires'] = 12 * 30 * 24 * 60 * 60
+            cookie['pswd']['expires'] = 12 * 30 * 24 * 60 * 60
     elif op == 'logout' :
         user='guest'
         pswd='empty'
@@ -109,6 +137,7 @@ def evalute_action():
 def evalute_theme():
     return 0;
 def create_links():
+    print '|<a href=project.cgi?op=pkg>SDK Package Management</a>';
     print '|<a href=project.cgi?op=get>get test</a>';
     print '|<a href=project.cgi?op=post>post test</a>';
     if user == 'guest':
@@ -153,9 +182,8 @@ def action_debug():
     return 0;
 
 def action_login():
-    if loginuser == 'empty':
-        print "<p>Please login</p>";
-        print """\
+    print "<p>Please login</p>";
+    print """\
 <form method="post" action="project.cgi?op=loginack">
 <input type=hidden name=op value=loginack>
 <input type=hidden name=method value=post>
@@ -168,9 +196,20 @@ Password: <input type="password" name="loginpswd">
         action_debug();
     return 0;
 def action_loginack():
-    if loginuser == 'empty':
+    if my_error_number>0:
+        print my_error_message;
         action_login();
+        return 0;
+    print "Login in correctly!<br>";
+    if debug== 'on':
+        action_debug();
     return 0;
+def action_logout():
+    print "Logout success.<br>";
+    if debug== 'on':
+        action_debug();
+    return 0;
+
 def action_get():
     print """\
 <form method="get" action="project.cgi?op=getack">
@@ -209,6 +248,15 @@ def action_postack():
     if debug== 'on':
         action_debug();
     return 0;
+def action_listsdkpackage():
+    print '<table border=1  bgcolor=white>';
+    print '<tr bgcolor=lightgrey><td>Pkg</td><td>Lic</td><td>package name</td><td>detail</td><td>note</td></tr>';
+    for i in (1,2,3,4,5,6,7,8,9):
+        print '<tr>';
+        for j in (1,2,3,4,5):
+            print '<td><a href=/ title="for test only">',i,j,'</a></td>'
+        print '</tr>';
+    print '</table>';
 
 def dispatch_actions():
     if string_cookie:
@@ -217,30 +265,23 @@ def dispatch_actions():
        create_html_welcome();
 
     if   op ==                'login':
-       action_login();
-       return 0;
+       return action_login();
     elif op ==                'loginack':
-       action_loginack();
-       return 0;
+       return action_loginack();
     elif op ==                'get':
-       action_get();
-       return 0;
+       return action_get();
     elif op ==                'getack':
-       action_getack();
-       return 0;
+       return action_getack();
     elif op ==                'post':
-       action_post();
-       return 0;
+       return action_post();
     elif op ==                'postack':
-       action_postack();
-       return 0;
+       return action_postack();
     elif op ==                'debug':
-       action_debug();
-       return 0;
-    elif op ==                'a':
-       return 0;
-    elif op ==                'b':
-       return 0;
+       return action_debug();
+    elif op ==                'pkg':
+       return action_listsdkpackage();
+    elif op ==                'logout':
+       return action_logout();
     elif op ==                'c':
        return 0;
     elif op ==                'd':
