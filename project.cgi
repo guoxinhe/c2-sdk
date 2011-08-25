@@ -290,43 +290,59 @@ class Build (UserDict):
         return ("%s" % (self['buildcmd']))
 
 def action_listsdkpackage():
-    print '<table border=1  bgcolor=white>';
-    print '<tr bgcolor=lightgrey><td>Pkg</td><td>Lic</td><td>package name</td><td>detail</td><td>note</td></tr>';
-    for i in (1,2):
-        print '<tr>';
-        for j in (1,2,3,4,5):
-            print '<td><a href=/ title="for test only">',i,j,'</a></td>'
-        print '</tr>';
-    print '</table>';
+    if debug== 'on':
+        print '<table border=1  bgcolor=white>';
+        print '<tr bgcolor=lightgrey><td>Pkg</td><td>Lic</td><td>package name</td><td>detail</td><td>note</td></tr>';
+        for i in (1,2):
+            print '<tr>';
+            for j in (1,2,3,4,5):
+                print '<td><a href=/ title="for test only">',i,j,'</a></td>'
+            print '</tr>';
+        print '</table>';
 
     sys.path.append("/home/hguo/build_check_wd")
     conffile='conf/swmconf';
     sys.path.insert(0, "");
-    print 'first system path is:',sys.path[0],'<br';
     try :
         conf = __import__(conffile);
     except:
         print "Error importing", conffile, ":", sys.exc_info()[:2]
         raise
+    del sys.path[0]
     builds = [Build(b) for b in conf.config];
 
 
     build_queue = Queue.Queue(len(builds))
     build_number= len(builds);
-    print 'Debug: total',len(builds), 'items read<br>';
+    print '<br>';
     print 'Debug: total',len(builds), 'items read<br>';
 
     for b in builds:
         build_queue.put(b);
 
     print '<table border=1  bgcolor=white>';
-    print '<tr bgcolor=lightgrey><td>Index</td><td>Full name</td><td>Build Command</td></tr>';
+    print '<tr bgcolor=lightgrey><td>Index</td><td>Full name and detail</td></tr>';
     i=0;
     while i<build_number:
       print '<tr>';
       try:
         b = build_queue.get();
-        print '<td>',i,'</td><td>',b.fullname(),'</td>','<td>',b.buildcmd(),'</td>';
+        print '<td>',i,'</td><td>Full name:',b.fullname();
+        print '<br>Module:', b['cvs module']
+        print '<br>name:',   b['name']
+        print '<br>Cmd:',    b['buildcmd']
+        print '<br>env:',    b['env']
+        print '<br>project:',    b['project']
+        print '<br>repository:',    b['repository']
+        print '<br>execs:<br><font color=green>'
+        try :
+            for test in b['execs'] :
+                print '----name:',test['name'],'<br>'
+                print '----cmd :',test['cmd']
+        except:
+            pass
+        print '</font>';
+        print '</td>';
         print '</tr>';
       except:
         print '</tr>';
