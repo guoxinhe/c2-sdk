@@ -38,45 +38,96 @@ our %actions = (
         "taskstat" => \&manage_tasks,
         "rebuild"  => \&rebuild_project,
         "stopbuild"  => \&stopbuild_project,
+        "cookies"  => \&cookies_test,
 );
 our %known_tasks = (
 	'proj1' => {
 		'title'   => 'jazz2t + android br=devel + sw_media u-boot br=master',
 		'script'  => '/build2/android/jazz2t-c2sdk_android/build-jazz2t-sw_media-android-devel.sh',
                 'hostip'  => '10.16.13.195',
+                'rebuild' => 'on',
 		},
 	'proj2' => {
 		'title'   => 'jazz2t + android sw_media u-boot br=jazz2t-Android-0_2-1_Branch',
 		'script'  => '/build2/android/jazz2t-c2sdk_android_BR021/build-jazz2t-sw_media-android-br021.sh',
                 'hostip'  => '10.16.13.195',
+                'rebuild' => 'on',
 		},
 	'proj3' => {
 		'title'   => 'jazz2 + android br=devel + sw_media u-boot br=master',
 		'script'  => '/build2/android/jazz2-c2sdk_android/build-jazz2-sw_media-android-devel.sh',
                 'hostip'  => '10.16.13.195',
+                'rebuild' => 'on',
 		},
 	'proj4' => {
 		'title'   => 'jazz2 + sdk br=master',
 		'script'  => '/build/jazz2/dev-daily/build-jazz2-sdk-maintree.sh',
                 'hostip'  => '10.16.13.196',
+                'rebuild' => 'on',
 		},
 	'proj5' => {
 		'title'   => 'jazz2l + sdk br=master',
 		'script'  => '/build/jazz2l/dev-daily/build-jazz2l-sdk-maintree.sh',
                 'hostip'  => '10.16.13.196',
+                'rebuild' => 'on',
 		},
 	'proj6' => {
 		'title'   => 'jazz2l + android br=devel + sw_media u-boot br=master',
 		'script'  => '/build/jazz2l/android-devel/build-jazz2l-sw_media-android-devel.sh',
                 'hostip'  => '10.16.13.196',
+                'rebuild' => 'on',
 		},
 	'proj7' => {
 		'title'   => 'jazz2t + sdk br=master',
 		'script'  => '/build/jazz2t/dev-daily/build-jazz2t-sdk-maintree.sh',
                 'hostip'  => '10.16.13.196',
+                'rebuild' => 'on',
 		},
 );
 
+our %known_cookies = (
+    'cookyspec' => {
+           'domain'  => 'a partial or complete domain name for which the cookie is valid. Like .devdaily.com',
+           'expires' => '(optional) +60s +20m +5h nowimmediately +5M +1y',
+           'name'    => 'the name of the cookie (required)',
+           'path'    => '(optional), default to / ',
+           'secure'  => '(optional)',
+           'value'   => 'required, can be one of $ % @ variable',
+           },
+);
+sub cookies_test {
+    print "<br>\n";
+    print "Cooies test start --------------------<br>\n";
+
+    use CGI;
+    $query = new CGI;
+    $cookie = $query->cookie(-name=>'MY_COOKIE',
+	 -value=>'BEST_COOKIE=chocolatechip',
+	 -expires=>'+4h',
+	 -path=>'/');
+    #print $query->header(-cookie=>$cookie);
+
+    $theCookie = $query->cookie('MY_COOKIE');
+    if ("$theCookie") {
+        print "<BLOCKQUOTE>\n";
+        print "if theCookie exist, will be displayed here---=== [$theCookie] ===---";
+        print "</BLOCKQUOTE>\n";
+    } else {
+       print "Can't find my cookie!<br>\n";
+    }
+
+    print "-+-$ENV{'HTTP_COOKIE'}-+-<br>\n";
+    @pairs = split(/&/, $ENV{'HTTP_COOKIE'});
+    foreach $pair (@pairs){
+        ($name, $value) = split(/=/, $pair);
+        $value =~ tr/+/ /;
+        $value =~ s/%([a-fA-F0-9][a-fA-F0-9])/pack("C", hex($1))/eg;
+        $cookie{$name} = $value;
+        print "Cooies $name = $value --------------------<br>\n";
+    }
+
+    print "Cooies test done --------------------<br>\n";
+}
 
 our $results_dir;
 #our $cgi=new CGI;
@@ -242,9 +293,14 @@ sub print_top_results {
         }
     }
   
+    if ($input_params{'thm'} eq '' ) {
     print "<table border=1>";
     print "<tr><th>Category</th><th>" .
        join ("</th><th>", @dates) . "</th></tr>";
+    } else {
+    print "<table border=0>";
+    print "<tr class=tti ><th>Category</th><th>" . join ("</th><th>", @dates) . "</th></tr>";
+    }
    
     my $newrow = 0;
 
@@ -269,7 +325,11 @@ sub print_top_results {
                
                 my ($n_warning, $n_error) =(0,0);# check_for_results_string($log);
                
+                if ($input_params{'thm'} eq '' ) {
                 $status = ($n_error) ? "${n_warning}/${n_error}" : uc($class);
+                } else {
+                    $status = ($n_error) ? "${n_warning}/${n_error}" : ($class);
+                }
                
                 $log =~ s-$results_dir-$urlpre-;
                
@@ -289,12 +349,17 @@ sub manage_tasks {
         my $scr=$known_tasks{$tskid}{'script' };
         my $hip=$known_tasks{$tskid}{'hostip' };
         my $tit=$known_tasks{$tskid}{'title' };
+        my $reb=$known_tasks{$tskid}{'rebuild' };
         if ( -x $scr ) {
             my $top= `dirname $scr`;
             chomp($top);
             my @tlock=<$top/*.lock>;
             my $nrlock=@tlock;
+            if ($input_params{'thm'} eq '' ) {
             print "<br>$tskid:  <font size=+1 color=blue><b>$tit</b></font><br>\n";
+            } else {
+                print "<br>$tskid:  <font size=+1 color=black><b>$tit</b></font><br>\n";
+            }
             print "script:$hip".'@'."$scr<br>\n";
             print "op : <a href=/build/link/$tskid/l/progress.log>progress</a> | ";
             print "<a href=/build/link/$tskid/l>all logs</a> |";
@@ -303,7 +368,11 @@ sub manage_tasks {
                 print ",status: <font color=red><b>running</b></font>. ";
                 print "<a href=$home_link?op=stopbuild&h=$hip&s=$scr>stop build</a><br>";
             } else {
+                if ( $reb eq 'on') {
                 print ",status: inactive. <a href=$home_link?op=rebuild&h=$hip&s=$scr>rebuild</a><br>";
+                } else {
+                print ",status: inactive. rebuild disabled<br>";
+                }
             }
 	    unlink("/var/www/html/build/link/$tskid");
             symlink("$top/build_result", "/var/www/html/build/link/$tskid");
@@ -385,6 +454,9 @@ print <<HTML;
 <title>C2 build server runtime monitor</title>
 <style type="text/css">
 <!--/* <![CDATA[ */
+HTML
+if ($input_params{'thm'} eq '' ) {
+print <<HTML;
 <!--
 td {text-align: center}
 table {background: lightgrey}
@@ -396,18 +468,41 @@ td.category {vertical-align:top}
 .run  {background: #ffff00; font-weight:bold}
 -->
 
+HTML
+} else {
+print <<HTML;
+<!--
+td {text-align: center}
+table {background: grey}
+td.category {vertical-align:top}
+a:link {color:black}
+a:visited {color:black}
+a:hover {color:blue}
+a:active {color:green}
+.tti  {background: #CCCCCC; font-weight:bold}
+.pass {background: #FFFFFF; }
+.fail {background: #AAAAAA; font-weight:bold}
+.na   {background: #FFFFFF}
+.run  {background: #888844; font-weight:bold}
+-->
+
+HTML
+}
+
+print <<HTML;
 /* ]]> */-->
 </style>
 </head>
 <body>
 | <a href=http://10.16.13.195/build/build.cgi>195</a>
 | <a href=http://10.16.13.196/build/build.cgi>196</a>
-| C2 Build server ($thisip) monitor page. $theTime
-| <a href=$home_link?op=taskstat> task manage </a>
-| <a href=$home_link?op=loadavg> load average </a>
-| <a href=$home_link?op=checkin> check in </a>
-| <hr>
+| <a href=$home_link?op=loadavg>C2 Build server ($thisip)</a> 
+  <a href=$home_link?op=taskstat>monitor page</a> $theTime
+| <a href=$home_link?op=taskstat>task manage</a>
+| <a href=$home_link?thm=bonw>grey</a>
+<hr>
 HTML
+#| <a href=$home_link?op=checkin> check in </a>
 }
 sub html_tail {
 print "<hr> more webpage(cgi) debug info";
@@ -441,4 +536,5 @@ sub parseform  {
     $input_params{'op'} = $cgi->param('op');
     $input_params{'h'} = $cgi->param('h');
     $input_params{'s'} = $cgi->param('s');
+    $input_params{'thm'} = $cgi->param('thm');
 }

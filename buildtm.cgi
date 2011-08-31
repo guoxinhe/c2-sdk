@@ -39,106 +39,51 @@ our %actions = (
         "rebuild"  => \&rebuild_project,
         "stopbuild"  => \&stopbuild_project,
         "cookies"  => \&cookies_test,
-        "buildck"  => \&build_check,
 );
 our %known_tasks = (
 	'proj1' => {
 		'title'   => 'jazz2t + android br=devel + sw_media u-boot br=master',
 		'script'  => '/build2/android/jazz2t-c2sdk_android/build-jazz2t-sw_media-android-devel.sh',
                 'hostip'  => '10.16.13.195',
+                'rebuild' => 'on',
 		},
 	'proj2' => {
 		'title'   => 'jazz2t + android sw_media u-boot br=jazz2t-Android-0_2-1_Branch',
 		'script'  => '/build2/android/jazz2t-c2sdk_android_BR021/build-jazz2t-sw_media-android-br021.sh',
                 'hostip'  => '10.16.13.195',
+                'rebuild' => 'on',
 		},
 	'proj3' => {
 		'title'   => 'jazz2 + android br=devel + sw_media u-boot br=master',
 		'script'  => '/build2/android/jazz2-c2sdk_android/build-jazz2-sw_media-android-devel.sh',
                 'hostip'  => '10.16.13.195',
+                'rebuild' => 'on',
 		},
 	'proj4' => {
 		'title'   => 'jazz2 + sdk br=master',
 		'script'  => '/build/jazz2/dev-daily/build-jazz2-sdk-maintree.sh',
                 'hostip'  => '10.16.13.196',
+                'rebuild' => 'on',
 		},
 	'proj5' => {
 		'title'   => 'jazz2l + sdk br=master',
 		'script'  => '/build/jazz2l/dev-daily/build-jazz2l-sdk-maintree.sh',
                 'hostip'  => '10.16.13.196',
+                'rebuild' => 'on',
 		},
 	'proj6' => {
 		'title'   => 'jazz2l + android br=devel + sw_media u-boot br=master',
 		'script'  => '/build/jazz2l/android-devel/build-jazz2l-sw_media-android-devel.sh',
                 'hostip'  => '10.16.13.196',
+                'rebuild' => 'on',
 		},
 	'proj7' => {
 		'title'   => 'jazz2t + sdk br=master',
 		'script'  => '/build/jazz2t/dev-daily/build-jazz2t-sdk-maintree.sh',
                 'hostip'  => '10.16.13.196',
+                'rebuild' => 'on',
 		},
 );
-our %build_check_tasks = (
-	'proj1' => {
-                'top'     => '/build/build_check/alltheprojects',
-		'project' => 'project name',
-		'branch'  => 'repository branch name',
-                'target'  => 'target name',
-                'build'   => 'build command',
-                'smoke'   => 'smoke test command',
-                'result'  => 'fail',
-                'idfail'  => '12345678',
-                'idpass'  => '23456788',
-                'duration'=> '3days',
-		},
-);
-sub build_check {
-    my $tskid;
-    print "<table border=0>";
-    print "<tr class=tti>\n";
-        #print "<th> 'top'        </th>\n";
-        print "<th> 'project'    </th>\n";
-        print "<th> 'branch'     </th>\n";
-        print "<th> 'target'     </th>\n";
-       # print "<th> 'build'      </th>\n";
-       # print "<th> 'smoke'      </th>\n";
-        print "<th> 'result'     </th>\n";
-        print "<th> 'id'         </th>\n";
-        print "<th> 'duration'   </th>\n";
-        print "<th> 'op'   </th>\n";
-    print "</tr>";
-    foreach $trynu (1..36) {
-    foreach $tskid (sort keys %build_check_tasks) {
-    print "<tr class=pass>\n";
-        my $top=$build_check_tasks{$tskid}{ 'top'     };
-        my $pro=$build_check_tasks{$tskid}{ 'project' };
-        my $bra=$build_check_tasks{$tskid}{ 'branch'  };
-        my $tar=$build_check_tasks{$tskid}{ 'target'  };
-       #my $bui=$build_check_tasks{$tskid}{ 'build'   };
-       #my $smo=$build_check_tasks{$tskid}{ 'smoke'   };
-        my $res=$build_check_tasks{$tskid}{ 'result'  };
-        my $idf=$build_check_tasks{$tskid}{ 'idfail'  };
-        my $idp=$build_check_tasks{$tskid}{ 'idpass'  };
-        my $dur=$build_check_tasks{$tskid}{ 'duration'};
-        #print "<td>  $top  </td>\n";
-        print "<td><a title='rebuild this project' href=$home_link>  $pro  </a></td>\n";
-        print "<td><a title='rebuild this branch'  href=$home_link>  $bra  </a></td>\n";
-        print "<td><a title='rebuild this target'  href=$home_link>  $tar  </a></td>\n";
-       #print "<td><a title='rebuild' href=$home_link>  $bui  </a></td>\n";
-       #print "<td><a title='rebuild' href=$home_link>  $smo  </a></td>\n";
-        print "<td><a title='logs of this build'   href=$home_link>  $res  </a></td>\n";
-        if ( $res eq 'pass' ) {
-        print "<td><a title='rebuild this commit'  href=$home_link>  $idp  </a></td>\n";
-        } else {
-        print "<td><a title='rebuild this commit'  href=$home_link>  $idf  </a></td>\n";
-        }
-        print "<td><a title='all log' href=$home_link>  $dur  </a></td>\n";
-        print "<td><a title='review'  href=$home_link>  Get build configuration</a> | <a href=$home_link>Some other ops</a></td>\n";
-    print "</tr>";
-    }}
-    print "</table>";
-    print "<br>still an empty feature<br>\n";
-}
 
 our %known_cookies = (
     'cookyspec' => {
@@ -404,6 +349,7 @@ sub manage_tasks {
         my $scr=$known_tasks{$tskid}{'script' };
         my $hip=$known_tasks{$tskid}{'hostip' };
         my $tit=$known_tasks{$tskid}{'title' };
+        my $reb=$known_tasks{$tskid}{'rebuild' };
         if ( -x $scr ) {
             my $top= `dirname $scr`;
             chomp($top);
@@ -422,7 +368,11 @@ sub manage_tasks {
                 print ",status: <font color=red><b>running</b></font>. ";
                 print "<a href=$home_link?op=stopbuild&h=$hip&s=$scr>stop build</a><br>";
             } else {
+                if ( $reb eq 'on') {
                 print ",status: inactive. <a href=$home_link?op=rebuild&h=$hip&s=$scr>rebuild</a><br>";
+                } else {
+                print ",status: inactive. rebuild disabled<br>";
+                }
             }
 	    unlink("/var/www/html/build/link/$tskid");
             symlink("$top/build_result", "/var/www/html/build/link/$tskid");
@@ -546,19 +496,13 @@ print <<HTML;
 <body>
 | <a href=http://10.16.13.195/build/build.cgi>195</a>
 | <a href=http://10.16.13.196/build/build.cgi>196</a>
-| C2 Build server ($thisip) monitor page. $theTime
-| <a href=$home_link?op=taskstat> task manage </a>
-| <a href=$home_link?op=loadavg> load average </a>
-| <a href=$home_link?op=checkin> check in </a>
-| <hr>
-| <a href=$home_link?thm=bonw>bow</a>
-| <a href=$home_link?thm=>color</a>
-| <a href=$home_link?op=taskstat&flt=fail>fail only</a>
-| <a href=$home_link?op=cookies&thm=bonw>cookies</a>
-| <a href=$home_link?op=buildck&thm=bonw>build check</a>
-<br>
-<br>
+| <a href=$home_link?op=loadavg>C2 Build server ($thisip)</a> 
+  <a href=$home_link?op=taskstat>monitor page</a> $theTime
+| <a href=$home_link?op=taskstat>task manage</a>
+| <a href=$home_link?thm=bonw>grey</a>
+<hr>
 HTML
+#| <a href=$home_link?op=checkin> check in </a>
 }
 sub html_tail {
 print "<hr> more webpage(cgi) debug info";
