@@ -2,8 +2,7 @@
 
 SCRIPTPATH=`readlink -f $0`
 SCRIPTPATH=${SCRIPTPATH%/*}
-TOP=${SCRIPTPATH}
-cd $TOP
+TOP=${SCRIPTPATH%/*}
 PATH=$PATH:$SCRIPTPATH
 
 DEBUG=true #echo #or true or false
@@ -57,6 +56,98 @@ checkout_target()
     echo "    do not know how to checkout task $myti's source code"
     return 0;
 }
+get_module_cosh()
+{
+    local mysrc=$1;
+    local mycosh="$2";
+    local mybranch="$3";
+    local mydbg=
+    shift 3;
+    local project_list="$@";
+
+    cd  $mysrc
+    if [ "$project_list" = "" ]; then
+        if [ -f .repo/project.list ]; then 
+            project_list=`cat .repo/project.list`
+        else
+            if [ -d .git ]; then
+                project_list="."
+            else
+                if [ "$mydbg" = "on" ]; then
+                              find . -name \.git -type d | sed -e 's,/.git,,g' -e 's,^./,,g'
+                fi
+                project_list=`find . -name \.git -type d | sed -e 's,/.git,,g' -e 's,^./,,g'`
+            fi
+        fi
+    fi
+    if [ "$project_list" = "" ]; then
+        return 0
+    fi
+
+    mkdir -p ${mycosh%/*}
+    echo "#!/bin/sh"  >$mycosh
+    echo "#autocreated script, checkout git by hash ids" >>$mycosh
+    echo "#please update code and switch to target branch before run this" >>$mycosh
+    echo "#branch name: $mybranch" >>$mycosh
+    chmod 755 $mycosh
+    for pi in $project_list; do
+        cd $mysrc/$pi;
+        id=`git log -n 1 | grep ^commit\ | sed 's/commit //g'`;
+        pad="$pi";
+        while [ ${#pad} -lt 20 ]; do
+            pad="$pad ";
+        done
+        echo "pushd $pad; git checkout $id; popd" >>$mycosh
+    done
+}
+get_module_coid()
+{
+    local mysrc=$1
+    local mydbg=
+    shift
+    local project_list="$@"
+
+    cd  $mysrc
+    if [ "$project_list" = "" ]; then
+        if [ -f .repo/project.list ]; then 
+            project_list=`cat .repo/project.list`
+        else
+            if [ -d .git ]; then
+                project_list="."
+            else
+                if [ "$mydbg" = "on" ]; then
+                              find . -name \.git -type d | sed -e 's,/.git,,g' -e 's,^./,,g'
+                fi
+                project_list=`find . -name \.git -type d | sed -e 's,/.git,,g' -e 's,^./,,g'`
+            fi
+        fi
+    fi
+    if [ "$project_list" = "" ]; then
+        echo -en "1000000000_10000000_1000000000000000000000000000000000000000"
+        return 0
+    fi
+
+    new_revid=0;
+    new_revts=0;
+    new_revpt=".";
+    for pi in $project_list; do
+        cd $mysrc/$pi;
+        revid=`git log -n 1 | grep ^commit\ | sed 's/commit //g'`;
+        revts=`git log -n 1 --pretty=format:%ct`;
+        if [ $revts -gt $new_revts ]; then
+            new_revid=$revid
+            new_revts=$revts
+            new_revpt=$pi
+        fi
+    done
+    revid=$new_revid;
+    pathid=`echo $new_revpt | /usr/bin/md5sum | awk '{printf $1}'`00000000;
+    update_id=${new_revts}_${pathid:0:8}_${revid};
+    if [ "$mydbg" = "on" ]; then
+        echo "The last check out id of module $mysrc is: $update_id"
+    fi
+    echo -en "$update_id"
+}
 update_target()
 {
     myti=$1
@@ -72,33 +163,6 @@ update_target()
         repo start $br --all
         repo sync
         ) >>$gitlog 2>&1
-        project_list=`cat .repo/project.list`
-        new_revid=0;
-        new_revts=0;
-        new_revpt=.;
-        for pi in $project_list; do
-            cd $TOP/$myti/source/$pi;
-            revid=`git log -n 1 | grep ^commit\ | sed 's/commit //g'`;
-            revts=`git log -n 1 --pretty=format:%ct`;
-            if [ $revts -gt $new_revts ]; then
-                new_revid=$revid
-                new_revts=$revts
-                new_revpt=$pi
-            fi
-        done
-        revid=$new_revid;
-        pathid=`echo $new_revpt | /usr/bin/md5sum | awk '{printf $1}'`00000000;
-        update_id=${pathid:0:8}_${revid};
-        echo $update_id >$TOP/$myti/build_result/coid
-        if test -d $TOP/$myti/build_result/$update_id; then
-        echo "    Code already up to date"
-        else
-        #save the revision info
-        mkdir -p $TOP/$myti/build_result/$update_id
-        [ -h $TOP/$myti/build_result/coid_link ] && rm $TOP/$myti/build_result/coid_link
-        ln -s $update_id $TOP/$myti/build_result/coid_link
-       (repo forall -c "echo -en \$(pwd)/; git log -n 1 | grep ^commit\ | sed 's/commit //g';") >$TOP/$myti/build_result/$update_id/co
-        fi
     else
     if [ -d .git ]; then
         (
@@ -106,19 +170,6 @@ update_target()
         git checkout $br;
         git pull origin $br;
         ) >>$gitlog 2>&1
-        revid=`git log -n 1 | grep ^commit\ | sed 's/commit //g'`;
-        pathid=`echo . | /usr/bin/md5sum | awk '{printf $1}'`00000000;
-        update_id=${pathid:0:8}_${revid};
-        echo $update_id >$TOP/$myti/build_result/coid
-        if test -d $TOP/$myti/build_result/$update_id; then
-        echo "    Code already up to date"
-        else
-        #save the revision info
-        mkdir -p $TOP/$myti/build_result/$update_id
-        [ -h $TOP/$myti/build_result/coid_link ] && rm $TOP/$myti/build_result/coid_link
-        ln -s $update_id $TOP/$myti/build_result/coid_link
-       (echo -en "$(pwd)/"; git log -n 1 | grep ^commit\ | sed 's/commit //g';) >$TOP/$myti/build_result/$update_id/co
-        fi
     fi
     fi
 }
@@ -127,11 +178,11 @@ build_target()
     myti=$1
     $DEBUG "Debug on build $myti......";
     mkdir -p $TOP/$myti/build_result
-    if [ ! -f $TOP/$myti/build_result/coid ]; then
-        echo "    Error: can not find checkout id file $TOP/$myti/build_result/coid";
+    if [ ! -f $TOP/$myti/build_result/last_coid ]; then
+        echo "    Error: can not find checkout id file $TOP/$myti/build_result/last_coid";
         return 0;
     fi
-    update_id=`cat $TOP/$myti/build_result/coid`
+    update_id=`cat $TOP/$myti/build_result/last_coid`
     if [ ! -d $TOP/$myti/build_result/$update_id ]; then
         echo "    Error: can not find checkout id folder $TOP/$myti/build_result/$update_id";
         return 0;
@@ -139,7 +190,7 @@ build_target()
     
     cd $TOP/$myti/build_result
     rm -rf fail pass result
-    cp coid coid_built   #a softlock for avoid rebuild
+    cp last_coid last_built   #a softlock for avoid rebuild
     cd $TOP/$myti/build_result/$update_id
     rm -rf fail pass result
 
@@ -147,33 +198,24 @@ build_target()
     cd $TOP/$myti
     if [ -f Makefile ]; then
         make $target
-        if [ $? -eq 0 ]; then
-        echo "pass" >$TOP/$myti/build_result/$update_id/result
-        ln -s result $TOP/$myti/build_result/$update_id/pass
-        ln -s coid_link/result  $TOP/$myti/build_result/coid_pass
-        else
-        echo "fail" >$TOP/$myti/build_result/$update_id/result
-        ln -s result $TOP/$myti/build_result/$update_id/fail
-        ln -s coid_link/result  $TOP/$myti/build_result/coid_fail
-        fi
+        build_ret=$?
     else
     if [ -x build.sh ]; then
         ./build.sh $target
-        if [ $? -eq 0 ]; then
-        echo "pass" >$TOP/$myti/build_result/$update_id/result
-        ln -s result $TOP/$myti/build_result/$update_id/pass
-        ln -s coid_link/result  $TOP/$myti/build_result/coid_pass
-        else
-        echo "fail" >$TOP/$myti/build_result/$update_id/result
-        ln -s result $TOP/$myti/build_result/$update_id/fail
-        ln -s coid_link/result  $TOP/$myti/build_result/coid_fail
-        fi
+        build_ret=$?
     else
         echo "    no build method detected."
+        build_ret=1
+    fi
+    fi
+    if [ $build_ret -eq 0 ]; then
+        echo "pass" >$TOP/$myti/build_result/$update_id/result
+        ln -s result $TOP/$myti/build_result/$update_id/pass
+        ln -s coid_link/result  $TOP/$myti/build_result/pass
+    else
         echo "fail" >$TOP/$myti/build_result/$update_id/result
         ln -s result $TOP/$myti/build_result/$update_id/fail
-        ln -s coid_link/result  $TOP/$myti/build_result/coid_fail
-    fi
+        ln -s coid_link/result  $TOP/$myti/build_result/fail
     fi
     )>$TOP/$myti/build_result/$update_id/log 2>&1
 
@@ -223,9 +265,19 @@ build_project()
     fi
 
     update_target $ti
+    update_id=`get_module_coid $TOP/$ti/source`
+    if test -d $TOP/$myti/build_result/$update_id; then
+        echo "    Code already up to date"
+    else
+        echo $update_id >$TOP/$myti/build_result/last_coid
+        mkdir -p $TOP/$myti/build_result/$update_id
+        [ -h $TOP/$myti/build_result/coid_link ] && rm $TOP/$myti/build_result/coid_link
+        ln -s $update_id $TOP/$myti/build_result/coid_link
+        get_module_cosh $TOP/$ti/source $TOP/$myti/build_result/$update_id/co $branch
+    fi
 
     cd $TOP/$ti
-    diff -q $TOP/$ti/build_result/coid $TOP/$ti/build_result/coid_built >/dev/null 2>&1
+    diff -q $TOP/$ti/build_result/last_coid $TOP/$ti/build_result/last_built >/dev/null 2>&1
     ret=$?
     case $ret in
     0)  $DEBUG "task $ti completed.";
@@ -253,9 +305,12 @@ done
 
 if [ $# -gt 0 ] ; then
   pre=$1
-  if [ -d $TOP/$pre/source ]; then
-      build_project  $pre
-  fi
+  for ti in $projects; do
+    case $ti in
+    $pre*)  build_project $ti;;
+    *)      $DEBUG found $ti matches $pre ;; #does not match
+    esac
+  done
 else
   nr=0
   while [ $nr -lt $CONFIG_NRLOOP ]; do
@@ -266,7 +321,7 @@ else
       fi
       if [ "$projects" = "" ]; then
           cd $TOP  #auto detect the project
-          projects="`find $TOP -name build_result -type d | sed -e s,$TOP/,,g -e s,/build_result,,g`"
+          projects="`find . -name build_result -type d | sed -e s,$TOP/,,g -e s,/build_result,,g`"
       fi
       for ti in $projects; do
           build_project $ti
