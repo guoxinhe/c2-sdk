@@ -42,14 +42,14 @@ our %actions = (
 );
 our %known_tasks = (
 	'proj1' => {
-		'title'   => 'jazz2t + android br=devel + sw_media u-boot br=master',
-		'script'  => '/build2/android/jazz2t-c2sdk_android/build-jazz2t-sw_media-android-devel.sh',
+		'title'   => 'jazz2t + android sw_media u-boot br=jazz2t-Android-0_3-1_Branch',
+		'script'  => '/build2/android/jazz2t-br031/newbuild.sh',
                 'hostip'  => '10.16.13.195',
                 'rebuild' => 'on',
 		},
 	'proj2' => {
-		'title'   => 'jazz2t + android sw_media u-boot br=jazz2t-Android-0_2-1_Branch',
-		'script'  => '/build2/android/jazz2t-c2sdk_android_BR021/build-jazz2t-sw_media-android-br021.sh',
+		'title'   => 'jazz2t + android br=devel + sw_media u-boot br=master',
+		'script'  => '/build2/android/jazz2t-c2sdk_android/build-jazz2t-sw_media-android-devel.sh',
                 'hostip'  => '10.16.13.195',
                 'rebuild' => 'on',
 		},
@@ -60,20 +60,20 @@ our %known_tasks = (
                 'rebuild' => 'on',
 		},
 	'proj4' => {
+		'title'   => 'jazz2l + android br=devel + sw_media u-boot br=master',
+		'script'  => '/build/jazz2l/android-devel/build-jazz2l-sw_media-android-devel.sh',
+                'hostip'  => '10.16.13.196',
+                'rebuild' => 'on',
+		},
+	'proj5' => {
 		'title'   => 'jazz2 + sdk br=master',
 		'script'  => '/build/jazz2/dev-daily/build-jazz2-sdk-maintree.sh',
                 'hostip'  => '10.16.13.196',
                 'rebuild' => 'on',
 		},
-	'proj5' => {
+	'proj6' => {
 		'title'   => 'jazz2l + sdk br=master',
 		'script'  => '/build/jazz2l/dev-daily/build-jazz2l-sdk-maintree.sh',
-                'hostip'  => '10.16.13.196',
-                'rebuild' => 'on',
-		},
-	'proj6' => {
-		'title'   => 'jazz2l + android br=devel + sw_media u-boot br=master',
-		'script'  => '/build/jazz2l/android-devel/build-jazz2l-sw_media-android-devel.sh',
                 'hostip'  => '10.16.13.196',
                 'rebuild' => 'on',
 		},
@@ -82,6 +82,12 @@ our %known_tasks = (
 		'script'  => '/build/jazz2t/dev-daily/build-jazz2t-sdk-maintree.sh',
                 'hostip'  => '10.16.13.196',
                 'rebuild' => 'on',
+		},
+	'proj_done_20110831' => {
+		'title'   => 'jazz2t + android sw_media u-boot br=jazz2t-Android-0_2-1_Branch',
+		'script'  => '/build2/android/jazz2t-c2sdk_android_BR021/build-jazz2t-sw_media-android-br021.sh',
+                'hostip'  => '10.16.13.195',
+                'rebuild' => 'off',
 		},
 );
 
@@ -347,6 +353,13 @@ sub manage_tasks {
     my $tskid;
     foreach $tskid (sort keys %known_tasks) {
         my $scr=$known_tasks{$tskid}{'script' };
+        if ( -x $scr ) {
+            print "| <a href=#$tskid> $tskid </a>\n";
+        }
+    }
+    print "<br>\n";
+    foreach $tskid (sort keys %known_tasks) {
+        my $scr=$known_tasks{$tskid}{'script' };
         my $hip=$known_tasks{$tskid}{'hostip' };
         my $tit=$known_tasks{$tskid}{'title' };
         my $reb=$known_tasks{$tskid}{'rebuild' };
@@ -356,9 +369,9 @@ sub manage_tasks {
             my @tlock=<$top/*.lock>;
             my $nrlock=@tlock;
             if ($input_params{'thm'} eq '' ) {
-            print "<br>$tskid:  <font size=+1 color=blue><b>$tit</b></font><br>\n";
+                print "<br><a name=$tskid>$tskid</a>:  <font size=+1 color=blue ><b>$tit</b></font><br>\n";
             } else {
-                print "<br>$tskid:  <font size=+1 color=black><b>$tit</b></font><br>\n";
+                print "<br><a name=$tskid>$tskid</a>:  <font size=+1 color=black><b>$tit</b></font><br>\n";
             }
             print "script:$hip".'@'."$scr<br>\n";
             print "op : <a href=/build/link/$tskid/l/progress.log>progress</a> | ";
