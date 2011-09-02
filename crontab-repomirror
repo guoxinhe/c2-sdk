@@ -53,7 +53,7 @@ fi
 
 cd $top
 tm_done=`date +%s`
-echo "`date` mirror sync c2sdk, android $((tm_done-tm_start)) seconds consumed." >>$log
+echo "`date` mirror sync c2sdk, android, -------------------------------    $((tm_done-tm_start)) seconds consumed." >>$log
 echo "`whoami`@`hostname`:`readlink -f $0`" >>$log
 n=`sed -n $= $log`
 if [ $n -gt 20000 ];then

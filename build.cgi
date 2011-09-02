@@ -43,7 +43,7 @@ our %actions = (
 our %known_tasks = (
 	'proj1' => {
 		'title'   => 'jazz2t + android sw_media u-boot br=jazz2t-Android-0_3-1_Branch',
-		'script'  => '/build2/android/jazz2t-br031/newbuild.sh',
+		'script'  => '/build2/android/jazz2t-br031/build-jazz2t-sw_media-android-br031.sh',
                 'hostip'  => '10.16.13.195',
                 'rebuild' => 'on',
 		},
@@ -217,20 +217,25 @@ sub check_loadavg {
     my $ret=`ssh $usr\@$hostip cat /proc/loadavg`;
     my @load = split(/\s+/, $ret);
     print "$usr\@$hostip cat /proc/loadavg: $ret ==== $load[0] <br>\n";
-    print "<pre>";
-    system "ssh build\@10.16.13.195 \"crontab -l\" ";
-    print "</pre>";
 
     my ($usr, $hostip) = ('build','10.16.13.196');
     my $ret=`ssh $usr\@$hostip cat /proc/loadavg`;
     my @load = split(/\s+/, $ret);
-    print "$usr\@$hostip cat /proc/loadavg: $ret ==== $load[0] <br>\n";
+    print "$usr\@$hostip cat /proc/loadavg: $ret ==== $load[0] <br><br>\n";
+
+    print "<b>ssh build\@10.16.13.195 \"crontab -l\"</b>\n";
+    print "<pre>";
+    system "ssh build\@10.16.13.195 \"crontab -l\" ";
+    print "</pre>";
+
+    print "<b>ssh build\@10.16.13.196 \"crontab -l\"</b>\n";
     print "<pre>";
     system "ssh build\@10.16.13.196 \"crontab -l\" ";
     print "</pre>";
-	if (defined $maxload && get_loadavg() > $maxload) {
-            	die "The load average on the server is too high";
-	}
+
+    if (defined $maxload && get_loadavg() > $maxload) {
+        die "The load average on the server is too high";
+    }
 }
 
 sub check_machine_loadavg {
