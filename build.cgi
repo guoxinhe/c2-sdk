@@ -77,6 +77,12 @@ our %known_tasks = (
                 'hostip'  => '10.16.13.196',
                 'rebuild' => 'on',
 		},
+	'proj6b' => {
+		'title'   => 'jazz2l + sdk br=master +gcc 4.3.5',
+		'script'  => '/build/jazz2l/dev-gcc435-daily/build-jazz2l-sdk-maintree-gcc435.sh',
+                'hostip'  => '10.16.13.196',
+                'rebuild' => 'on',
+		},
 	'proj7' => {
 		'title'   => 'jazz2t + sdk br=master',
 		'script'  => '/build/jazz2t/dev-daily/build-jazz2t-sdk-maintree.sh',
