@@ -413,7 +413,8 @@ sub manage_tasks {
 
 sub stopbuild_project {
     my ($hostip, $scr)=($input_params{'h'},$input_params{'s'});
-    print "<font color=red size=+1><b>still not implement this feature for stopping $hostip:$scr</b></font><br>\n";
+    print "<font color=blue size=+1><b>for stopping $hostip:$scr</b></font><br>\n";
+    print "<font color=red size=+5><b>still not implement this feature</b></font><br>\n";
     print "more info about this task:<br>\n";
 
     print "<pre>";
