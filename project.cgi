@@ -26,9 +26,9 @@ from UserDict import UserDict
 #--------------------------------------------------------------------------
 #put here, not in a function,otherwise my system does not work.
 home_link = 'project.cgi'
-home_fold = '/home/hguo/public_html/xh'
-db_path=home_fold;
-db_file='apache/c2liclist'
+home_fold = '/var/www/html/build'
+db_path='/home/hguo'
+db_file='sdk/c2liclist'
 db_list=[];
 
 form      = cgi.FieldStorage()
@@ -170,6 +170,9 @@ def load_user_profile():
     return 0;
 
 def create_html_links():
+    print """
+        | <a href=http://10.16.13.195/build/build.cgi>195 build</a>
+        | <a href=http://10.16.13.196/build/build.cgi>196 build</a>"""
     print '|<a href=%s?op=liclist>License</a>' % (home_link)
     print '|<a href=%s?op=liclistall>Detail License</a>' % (home_link);
     if user == 'guest':
