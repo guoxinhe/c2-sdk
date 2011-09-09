@@ -526,9 +526,9 @@ print <<HTML;
 </head>
 <body>
 | <a href=http://10.16.13.195/build/build.cgi>195</a>
-  <a href=http://10.16.13.195/build/project.cgi?op=liclist>project</a>
+  <a href=http://10.16.13.195/build/project.cgi?op=liclist>license</a>
 | <a href=http://10.16.13.196/build/build.cgi>196</a>
-  <a href=http://10.16.13.196/build/project.cgi?op=liclist>project</a>
+  <a href=http://10.16.13.196/build/project.cgi?op=liclist>license</a>
 | <a href=$home_link?op=loadavg>C2 Build server ($thisip)</a> 
   <a href=$home_link?op=taskstat>monitor page</a> $theTime
 | <a href=$home_link?op=taskstat>task manage</a>
