@@ -1,0 +1,8 @@
+#!/bin/sh
+
+[ $# -gt 0 ] || exit 0
+m=$1
+[ -f $m/.git/config ] || exit 0
+
+grep "url = " $m/.git/config
+
