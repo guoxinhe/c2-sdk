@@ -391,6 +391,11 @@ sub manage_tasks {
                 print "<br><a name=$tskid>$tskid</a>:  <font size=+1 color=black><b>$tit</b></font><br>\n";
             }
             print "script:$hip".'@'."$scr<br>\n";
+            my $crnt=`ssh build\@$hip \"crontab -l| grep -m 1 $scr\"`;
+            if ($crnt) {
+                print "crontab task: <font face='courier new'><b>$crnt</b></font><br>"
+            }
+            
             print "op : <a href=/build/link/$tskid/l/progress.log>progress</a> | ";
             print "<a href=/build/link/$tskid/l>all logs</a> |";
             print "<a href=/build/link/$tskid/l/env.log>settings</a> ";

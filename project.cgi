@@ -854,7 +854,26 @@ def action_liclistall():
 def action_licrepo():
     create_html_head();
     print "<p>The config file is still not commited to repository server yet.</p>"
-    print "<br><a href='conf/c2liclist.py'>Click here download the config file</a>"
+    print "<a href='conf/c2liclist.py'>Click here download the config file</a>"
+    print "<br>"
+
+    os.system("ls -clrt / >/dev/null");
+
+    fi,fo,fe=os.popen3("ls -clrt /")
+    for i in fe.readlines():
+       print "error: %s <br>" % i
+    for i in fo.readlines():
+        print "myresult: %s <br>" %i
+
+    f=os.popen("ls -l /")
+    for i in f.readlines():
+        print "myresult: %s <br>" %i
+
+    import commands
+    x=commands.getoutput("echo current path is: ")
+    print x
+    print commands.getoutput("pwd")
+
     create_html_tail();
     pass
 def action_savexls():

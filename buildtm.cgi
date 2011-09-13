@@ -42,14 +42,14 @@ our %actions = (
 );
 our %known_tasks = (
 	'proj1' => {
-		'title'   => 'jazz2t + android br=devel + sw_media u-boot br=master',
-		'script'  => '/build2/android/jazz2t-c2sdk_android/build-jazz2t-sw_media-android-devel.sh',
+		'title'   => 'jazz2t + android sw_media u-boot br=jazz2t-Android-0_3-1_Branch',
+		'script'  => '/build2/android/jazz2t-br031/build-jazz2t-sw_media-android-br031.sh',
                 'hostip'  => '10.16.13.195',
                 'rebuild' => 'on',
 		},
 	'proj2' => {
-		'title'   => 'jazz2t + android sw_media u-boot br=jazz2t-Android-0_2-1_Branch',
-		'script'  => '/build2/android/jazz2t-c2sdk_android_BR021/build-jazz2t-sw_media-android-br021.sh',
+		'title'   => 'jazz2t + android br=devel + sw_media u-boot br=master',
+		'script'  => '/build2/android/jazz2t-c2sdk_android/build-jazz2t-sw_media-android-devel.sh',
                 'hostip'  => '10.16.13.195',
                 'rebuild' => 'on',
 		},
@@ -60,20 +60,32 @@ our %known_tasks = (
                 'rebuild' => 'on',
 		},
 	'proj4' => {
+		'title'   => 'jazz2l + android br=devel + sw_media u-boot br=master',
+		'script'  => '/build/jazz2l/android-devel/build-jazz2l-sw_media-android-devel.sh',
+                'hostip'  => '10.16.13.196',
+                'rebuild' => 'on',
+		},
+	'proj5' => {
 		'title'   => 'jazz2 + sdk br=master',
 		'script'  => '/build/jazz2/dev-daily/build-jazz2-sdk-maintree.sh',
                 'hostip'  => '10.16.13.196',
                 'rebuild' => 'on',
 		},
-	'proj5' => {
+	'proj5b' => {
+		'title'   => 'jazz2 + sdk br=master +gcc 4.3.5',
+		'script'  => '/build/jazz2/dev-gcc435-daily/build-jazz2-sdk-maintree-gcc435.sh',
+                'hostip'  => '10.16.13.196',
+                'rebuild' => 'on',
+		},
+	'proj6' => {
 		'title'   => 'jazz2l + sdk br=master',
 		'script'  => '/build/jazz2l/dev-daily/build-jazz2l-sdk-maintree.sh',
                 'hostip'  => '10.16.13.196',
                 'rebuild' => 'on',
 		},
-	'proj6' => {
-		'title'   => 'jazz2l + android br=devel + sw_media u-boot br=master',
-		'script'  => '/build/jazz2l/android-devel/build-jazz2l-sw_media-android-devel.sh',
+	'proj6b' => {
+		'title'   => 'jazz2l + sdk br=master +gcc 4.3.5',
+		'script'  => '/build/jazz2l/dev-gcc435-daily/build-jazz2l-sdk-maintree-gcc435.sh',
                 'hostip'  => '10.16.13.196',
                 'rebuild' => 'on',
 		},
@@ -82,6 +94,12 @@ our %known_tasks = (
 		'script'  => '/build/jazz2t/dev-daily/build-jazz2t-sdk-maintree.sh',
                 'hostip'  => '10.16.13.196',
                 'rebuild' => 'on',
+		},
+	'proj_done_20110831' => {
+		'title'   => 'jazz2t + android sw_media u-boot br=jazz2t-Android-0_2-1_Branch',
+		'script'  => '/build2/android/jazz2t-c2sdk_android_BR021/build-jazz2t-sw_media-android-br021.sh',
+                'hostip'  => '10.16.13.195',
+                'rebuild' => 'off',
 		},
 );
 
@@ -211,20 +229,25 @@ sub check_loadavg {
     my $ret=`ssh $usr\@$hostip cat /proc/loadavg`;
     my @load = split(/\s+/, $ret);
     print "$usr\@$hostip cat /proc/loadavg: $ret ==== $load[0] <br>\n";
-    print "<pre>";
-    system "ssh build\@10.16.13.195 \"crontab -l\" ";
-    print "</pre>";
 
     my ($usr, $hostip) = ('build','10.16.13.196');
     my $ret=`ssh $usr\@$hostip cat /proc/loadavg`;
     my @load = split(/\s+/, $ret);
-    print "$usr\@$hostip cat /proc/loadavg: $ret ==== $load[0] <br>\n";
+    print "$usr\@$hostip cat /proc/loadavg: $ret ==== $load[0] <br><br>\n";
+
+    print "<b>ssh build\@10.16.13.195 \"crontab -l\"</b>\n";
+    print "<pre>";
+    system "ssh build\@10.16.13.195 \"crontab -l\" ";
+    print "</pre>";
+
+    print "<b>ssh build\@10.16.13.196 \"crontab -l\"</b>\n";
     print "<pre>";
     system "ssh build\@10.16.13.196 \"crontab -l\" ";
     print "</pre>";
-	if (defined $maxload && get_loadavg() > $maxload) {
-            	die "The load average on the server is too high";
-	}
+
+    if (defined $maxload && get_loadavg() > $maxload) {
+        die "The load average on the server is too high";
+    }
 }
 
 sub check_machine_loadavg {
@@ -347,6 +370,13 @@ sub manage_tasks {
     my $tskid;
     foreach $tskid (sort keys %known_tasks) {
         my $scr=$known_tasks{$tskid}{'script' };
+        if ( -x $scr ) {
+            print "| <a href=#$tskid> $tskid </a>\n";
+        }
+    }
+    print "<br>\n";
+    foreach $tskid (sort keys %known_tasks) {
+        my $scr=$known_tasks{$tskid}{'script' };
         my $hip=$known_tasks{$tskid}{'hostip' };
         my $tit=$known_tasks{$tskid}{'title' };
         my $reb=$known_tasks{$tskid}{'rebuild' };
@@ -356,11 +386,16 @@ sub manage_tasks {
             my @tlock=<$top/*.lock>;
             my $nrlock=@tlock;
             if ($input_params{'thm'} eq '' ) {
-            print "<br>$tskid:  <font size=+1 color=blue><b>$tit</b></font><br>\n";
+                print "<br><a name=$tskid>$tskid</a>:  <font size=+1 color=blue ><b>$tit</b></font><br>\n";
             } else {
-                print "<br>$tskid:  <font size=+1 color=black><b>$tit</b></font><br>\n";
+                print "<br><a name=$tskid>$tskid</a>:  <font size=+1 color=black><b>$tit</b></font><br>\n";
             }
             print "script:$hip".'@'."$scr<br>\n";
+            my $crnt=`ssh build\@$hip \"crontab -l| grep -m 1 $scr\"`;
+            if ($crnt) {
+                print "crontab task: <font face='courier new'><b>$crnt</b></font><br>"
+            }
+            
             print "op : <a href=/build/link/$tskid/l/progress.log>progress</a> | ";
             print "<a href=/build/link/$tskid/l>all logs</a> |";
             print "<a href=/build/link/$tskid/l/env.log>settings</a> ";
@@ -383,7 +418,8 @@ sub manage_tasks {
 
 sub stopbuild_project {
     my ($hostip, $scr)=($input_params{'h'},$input_params{'s'});
-    print "<font color=red size=+1><b>still not implement this feature for stopping $hostip:$scr</b></font><br>\n";
+    print "<font color=blue size=+1><b>for stopping $hostip:$scr</b></font><br>\n";
+    print "<font color=red size=+5><b>still not implement this feature</b></font><br>\n";
     print "more info about this task:<br>\n";
 
     print "<pre>";
@@ -495,7 +531,9 @@ print <<HTML;
 </head>
 <body>
 | <a href=http://10.16.13.195/build/build.cgi>195</a>
+  <a href=http://10.16.13.195/build/project.cgi?op=liclist>license</a>
 | <a href=http://10.16.13.196/build/build.cgi>196</a>
+  <a href=http://10.16.13.196/build/project.cgi?op=liclist>license</a>
 | <a href=$home_link?op=loadavg>C2 Build server ($thisip)</a> 
   <a href=$home_link?op=taskstat>monitor page</a> $theTime
 | <a href=$home_link?op=taskstat>task manage</a>
