@@ -89,6 +89,12 @@ our %known_tasks = (
                 'hostip'  => '10.16.13.196',
                 'rebuild' => 'on',
 		},
+	'proj6c' => {
+		'title'   => 'jazz2l + sdk 0.5-1 release for hdmi certification',
+		'script'  => '/build/jazz2l/rel/jazz2l-rel-build-hdmi-certification.sh',
+                'hostip'  => '10.16.13.196',
+                'rebuild' => 'on',
+		},
 	'proj7' => {
 		'title'   => 'jazz2t + sdk br=master',
 		'script'  => '/build/jazz2t/dev-daily/build-jazz2t-sdk-maintree.sh',
@@ -394,6 +400,8 @@ sub manage_tasks {
             my $crnt=`ssh build\@$hip \"crontab -l| grep -m 1 $scr\"`;
             if ($crnt) {
                 print "crontab task: <font face='courier new'><b>$crnt</b></font><br>"
+            } else {
+                print "no crontab item for this project<br>"
             }
             
             print "op : <a href=/build/link/$tskid/l/progress.log>progress</a> | ";

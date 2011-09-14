@@ -89,6 +89,12 @@ our %known_tasks = (
                 'hostip'  => '10.16.13.196',
                 'rebuild' => 'on',
 		},
+	'proj6c' => {
+		'title'   => 'jazz2l + sdk 0.5-1 release for hdmi certification',
+		'script'  => '/build/jazz2l/rel/jazz2l-rel-build-hdmi-certification.sh',
+                'hostip'  => '10.16.13.196',
+                'rebuild' => 'on',
+		},
 	'proj7' => {
 		'title'   => 'jazz2t + sdk br=master',
 		'script'  => '/build/jazz2t/dev-daily/build-jazz2t-sdk-maintree.sh',
@@ -322,7 +328,7 @@ sub print_top_results {
        join ("</th><th>", @dates) . "</th></tr>";
     } else {
     print "<table border=0>";
-    print "<tr class=tti ><th>Category</th><th>" . join ("</th><th>", @dates) . "</th></tr>";
+    print "<tr><td class=tti >Category</td><td class=tti >" . join ("</td><td class=tti >", @dates) . "</td></tr>";
     }
    
     my $newrow = 0;
@@ -394,6 +400,8 @@ sub manage_tasks {
             my $crnt=`ssh build\@$hip \"crontab -l| grep -m 1 $scr\"`;
             if ($crnt) {
                 print "crontab task: <font face='courier new'><b>$crnt</b></font><br>"
+            } else {
+                print "no crontab item for this project<br>"
             }
             
             print "op : <a href=/build/link/$tskid/l/progress.log>progress</a> | ";
@@ -509,17 +517,17 @@ HTML
 print <<HTML;
 <!--
 td {text-align: center}
-table {background: grey}
 td.category {vertical-align:top}
+table {background: white;  border-collapse: collapse; font-family: Arial }
 a:link {color:black}
 a:visited {color:black}
 a:hover {color:blue}
 a:active {color:green}
-.tti  {background: #CCCCCC; font-weight:bold}
-.pass {background: #FFFFFF; }
-.fail {background: #AAAAAA; font-weight:bold}
-.na   {background: #FFFFFF}
-.run  {background: #888844; font-weight:bold}
+.tti  {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #DDDDDD; font-weight:bold}
+.pass {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #FFFFFF; }
+.fail {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #E0E0FF; font-weight:bold}
+.na   {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #FFFFFF}
+.run  {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #E0E0C0; font-weight:bold}
 -->
 
 HTML
