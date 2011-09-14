@@ -328,7 +328,7 @@ sub print_top_results {
        join ("</th><th>", @dates) . "</th></tr>";
     } else {
     print "<table border=0>";
-    print "<tr class=tti ><th>Category</th><th>" . join ("</th><th>", @dates) . "</th></tr>";
+    print "<tr><td class=tti >Category</td><td class=tti >" . join ("</td><td class=tti >", @dates) . "</td></tr>";
     }
    
     my $newrow = 0;
@@ -517,17 +517,18 @@ HTML
 print <<HTML;
 <!--
 td {text-align: center}
-table {background: grey}
+table {background: grey;  border-collapse: collapse; font-family: Arial }
 td.category {vertical-align:top}
 a:link {color:black}
 a:visited {color:black}
 a:hover {color:blue}
 a:active {color:green}
-.tti  {background: #CCCCCC; font-weight:bold}
-.pass {background: #FFFFFF; }
-.fail {background: #AAAAAA; font-weight:bold}
-.na   {background: #FFFFFF}
-.run  {background: #888844; font-weight:bold}
+.tti  {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #DDDDDD; font-weight:bold}
+.pass {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #FFFFFF; }
+.fail {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #E0E0FF; font-weight:bold}
+.na   {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #FFFFFF}
+.run  {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #E0E0C0; font-weight:bold}
+body  {font-family: Arial }
 -->
 
 HTML

@@ -517,8 +517,8 @@ HTML
 print <<HTML;
 <!--
 td {text-align: center}
+table {background: grey;  border-collapse: collapse; font-family: Arial }
 td.category {vertical-align:top}
-table {background: white;  border-collapse: collapse; font-family: Arial }
 a:link {color:black}
 a:visited {color:black}
 a:hover {color:blue}
@@ -528,6 +528,7 @@ a:active {color:green}
 .fail {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #E0E0FF; font-weight:bold}
 .na   {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #FFFFFF}
 .run  {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #E0E0C0; font-weight:bold}
+body  {font-family: Arial }
 -->
 
 HTML
