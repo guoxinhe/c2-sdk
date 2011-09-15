@@ -1,0 +1,59 @@
+#!/bin/sh
+#
+# ---------------------------- main()
+
+
+# --- Config
+# Set GIT_DIR either from the working directory, or from the environment
+# variable.
+GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
+if [ -z "$GIT_DIR" ]; then
+	echo >&2 "fatal: post-receive: GIT_DIR not set"
+	exit 1
+fi
+GIT_DIR=$(readlink -f $GIT_DIR)
+projectdesc=$(sed -ne '1p' "$GIT_DIR/description")
+# Check if the description is unchanged from it's default, and shorten it to
+# a more manageable length if it is
+if expr "$projectdesc" : "Unnamed repository.*$" >/dev/null
+then
+	case "$GIT_DIR" in
+	(/*) projectdesc="UNNAMED PROJECT ($GIT_DIR)";;
+	(*)  projectdesc="UNNAMED PROJECT ($PWD/$GIT_DIR)";;
+	esac
+fi
+
+recipients=$(git config hooks.mailinglist)
+announcerecipients=$(git config hooks.announcelist)
+envelopesender=$(git config hooks.envelopesender)
+emailprefix=$(git config hooks.emailprefix || echo '[SCM] ')
+custom_showrev=$(git config hooks.showrev)
+
+hlog=$HOME/git-hook-log
+mkdir -p $hlog
+
+# --- Main loop
+# Allow dual mode: run from the command line just like the update hook, or
+# if no arguments are given then run as a hook script
+if [ -n "$1" -a -n "$2" -a -n "$3" ]; then
+	# Output to the terminal in command line mode - if someone wanted to
+	# resend an email; they could redirect the output to sendmail
+	# themselves
+	PAGER= generate_email $2 $3 $1
+else
+	while read oldrev newrev refname
+	do
+            cat <<TEXT >>$hlog/all.log
+`date` Process pre-receive information
+    GIT_DIR      = $GIT_DIR    
+    projectdesc  = $projectdesc
+    oldrev       = $oldrev     
+    newrev       = $newrev     
+    refname      = $refname    
+    myname       = `id`
+TEXT
+		
+	done
+fi
+
+exit 1
