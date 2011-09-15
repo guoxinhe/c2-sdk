@@ -541,24 +541,28 @@ def dbf_update_database():
     if ord == 'component':
         db_list.sort(lambda x,y: cmp(x['component'],y['component']) or \
                   cmp(x['subcomp'], y['subcomp']) or \
+                  cmp(x['type'], y['type']) or \
                   cmp(x['release'], y['release']), reverse=myreverse )
     elif ord == 'subcomp':
         db_list.sort(lambda x,y: cmp(x['subcomp'],y['subcomp']) or \
                   cmp(x['component'], y['component']) or \
+                  cmp(x['type'], y['type']) or \
                   cmp(x['release'], y['release']), reverse=myreverse )
     elif ord == 'type':
         db_list.sort(lambda x,y: cmp(x['type'],y['type']) or \
                   cmp(x['component'], y['component']) or \
                   cmp(x['subcomp'], y['subcomp']) or \
                   cmp(x['release'], y['release']), reverse=myreverse )
+    elif ord == 'release':
+        db_list.sort(lambda x,y: cmp(x['release'], y['release']) or \
+                  cmp(x['component'], y['component']) or \
+                  cmp(x['subcomp'], y['subcomp']) or \
+                  cmp(x['type'],y['type']), reverse=myreverse )
     elif ord == 'version':
         db_list.sort(lambda x,y: cmp(x['version'],y['version']) or \
                   cmp(x['component'], y['component']) or \
                   cmp(x['subcomp'], y['subcomp']) or \
                   cmp(x['release'], y['release']), reverse=myreverse )
-    elif ord == 'release':
-        db_list.sort(lambda x,y: cmp(x['release'], y['release']) or \
-                  cmp(x['component'],y['component']), reverse=myreverse )
     elif ord == 'license':
         db_list.sort(lambda x,y: cmp(x['license'],y['license']) or \
                   cmp(x['component'], y['component']) or \
@@ -569,9 +573,8 @@ def dbf_update_database():
                   cmp(x['component'], y['component']) or \
                   cmp(x['subcomp'], y['subcomp']) or \
                   cmp(x['release'], y['release']), reverse=myreverse )
-    else: #default
-        db_list.sort(lambda x,y: cmp(x['release'], y['release']) or \
-                  cmp(x['component'],y['component']), reverse=myreverse )
+    else:
+        pass
 
     return 0
 
