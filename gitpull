@@ -1,14 +1,17 @@
 #!/bin/sh
 
-remote=`git remote | xargs | awk '{print $1;}'`
+#remote=`git remote | xargs | awk '{print $1;}'`
+remote=`git remote | xargs`
 branch=`git branch | grep ^\* |sed 's,\* \(.*\),\1,g'`
 pulled=
-echo Git at $remote  $branch
+echo "Git at remote=($remote)  branch=($branch)"
 
 if [ "$remote" != "" ];then
 if [ "$branch" != "" ];then
-    git pull $remote $branch
-    pulled=1
+    for r in $remote; do
+        git pull $r $branch
+        pulled=1
+    done
 fi
 fi
 
