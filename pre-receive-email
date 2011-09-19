@@ -686,6 +686,7 @@ pre_push_enable_checking()
     #if [ "$GIT_NAME" == "git-hooktest.git" ]; then
     if [ "$GIT_USER" = "hguo" ]; then
         log=$HOME/githookprereceive.log
+        echo ""                                     >>$log
         date                                        >>$log
         readlink -f $0                              >>$log
         echo "GIT_USER         = $GIT_USER"         >>$log
@@ -753,9 +754,10 @@ if [ -n "$1" -a -n "$2" -a -n "$3" ]; then
 else
 	while read oldrev newrev refname
 	do
-	    if [ "$GIT_NAME" = "git-hooktest.git" ]; then
-	    #if [ "$GIT_USER" = "hguo" ]; then
-		generate_email $oldrev $newrev $refname > $HOME/githookprereceive.email
+	    #if [ "$GIT_NAME" = "git-hooktest.git" ]; then
+	    if [ "$GIT_USER" = "hguo" ]; then
+		generate_email $oldrev $newrev $refname > /home/hguo/githookprereceive.email
+		#cat $HOME/githookprereceive.email | send_mail
             else
 		generate_email $oldrev $newrev $refname | send_mail
             fi
