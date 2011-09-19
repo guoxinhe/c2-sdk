@@ -640,6 +640,8 @@ show_new_revisions()
 
 send_mail()
 {
+	[ "$git_pushresult" = "enable" ] && exit 0
+	[ "$git_pushresult" = "unset"  ] && exit 0
 	if [ -n "$envelopesender" ]; then
 		/usr/sbin/sendmail -t -f "$envelopesender"
 	else
@@ -755,12 +757,12 @@ else
 	while read oldrev newrev refname
 	do
 	    #if [ "$GIT_NAME" = "git-hooktest.git" ]; then
-	    if [ "$GIT_USER" = "hguo" ]; then
-		generate_email $oldrev $newrev $refname > /home/hguo/githookprereceive.email
-		#cat $HOME/githookprereceive.email | send_mail
-            else
+	    #if [ "$GIT_USER" = "hguo" ]; then
+		#generate_email $oldrev $newrev $refname > /home/hguo/githookprereceive.email
+		#[ "$git_pushresult" = "disable" ] && cat $HOME/githookprereceive.email | send_mail
+            #else
 		generate_email $oldrev $newrev $refname | send_mail
-            fi
+            #fi
 	done
 fi
 exit 1
