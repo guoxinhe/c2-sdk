@@ -651,39 +651,40 @@ pre_push_enable_checking()
 {
     [ "${change_type}"    != "update" ] && exit 0
     [ "${git_pushpolicy}" != "user"   ] && exit 0
-    git_branchenable=$(git  config --local push.${short_refname}.enable  || echo '')
-    git_branchdisable=$(git config --local push.${short_refname}.disable || echo '')
+    git_branchenable="$(git  config push.${short_refname}.enable  || echo '')"
+    git_branchdisable="$(git config push.${short_refname}.disable || echo '')"
 
     #--------------------------------------------
-    if [ "$git_userenable" == "all" ]; 
+    if [ "$git_userenable" = "all" ]; 
         then git_pushresult="enable";
     else
         echo "$git_userenable" | grep -m 1 "$GIT_USER" >/dev/null 2>&1
         [ $? -eq  0 ] && git_pushresult="enable";
     fi
     #--------------------------------------------
-    if [ "$git_userdisable" == "all" ]; 
+    if [ "$git_userdisable" = "all" ]; 
         then git_pushresult="disable";
     else
         echo "$git_userdisable" | grep -m 1 "$GIT_USER" >/dev/null 2>&1
         [ $? -eq  0 ] && git_pushresult="disable";
     fi
     #--------------------------------------------
-    if [ "$git_branchenable" == "all" ]; 
+    if [ "$git_branchenable" = "all" ]; 
         then git_pushresult="enable";
     else
         echo "$git_branchenable" | grep -m 1 "$GIT_USER" >/dev/null 2>&1
         [ $? -eq  0 ] && git_pushresult="enable";
     fi
     #--------------------------------------------
-    if [ "$git_branchdisable" == "all" ]; 
+    if [ "$git_branchdisable" = "all" ]; 
         then git_pushresult="disable";
     else
         echo "$git_branchdisable" | grep -m 1 "$GIT_USER" >/dev/null 2>&1
         [ $? -eq  0 ] && git_pushresult="disable";
     fi
 
-    if [ "$GIT_NAME" == "git-hooktest.git" ]; then
+    #if [ "$GIT_NAME" == "git-hooktest.git" ]; then
+    if [ "$GIT_USER" = "hguo" ]; then
         log=$HOME/githookprereceive.log
         date                                        >>$log
         readlink -f $0                              >>$log
@@ -697,8 +698,8 @@ pre_push_enable_checking()
         echo "git_branchdisable= $git_branchdisable">>$log
         echo "git_pushresult   = $git_pushresult"   >>$log
     fi
-    [ "$git_pushresult" == "enable" ] && exit 0
-    [ "$git_pushresult" == "unset"  ] && exit 0
+    [ "$git_pushresult" = "enable" ] && exit 0
+    [ "$git_pushresult" = "unset"  ] && exit 0
 }
 # ---------------------------- main()
 
@@ -734,10 +735,10 @@ custom_showrev=$(git config hooks.showrev)
 GIT_USER=$(whoami)
 GIT_PATH=$(readlink -f $GIT_DIR)
 GIT_NAME=${GIT_PATH##*/}
-git_pushpolicy=$(git   config --local push.policy || echo 'user')
-git_pushresult=$(git   config --local push.preset || echo 'unset')
-git_userenable=$(git   config --local push.user.enable  || echo 'all')
-git_userdisable=$(git  config --local push.user.disable || echo '')
+git_pushpolicy="$(git   config push.policy || echo 'user')"
+git_pushresult="$(git   config push.preset || echo 'unset')"
+git_userenable="$(git   config push.user.enable  || echo 'all')"
+git_userdisable="$(git  config push.user.disable || echo '')"
 git_branchenable=
 git_branchdisable=
 
@@ -752,7 +753,8 @@ if [ -n "$1" -a -n "$2" -a -n "$3" ]; then
 else
 	while read oldrev newrev refname
 	do
-	    if [ "$GIT_NAME" == "git-hooktest.git" ]; then
+	    if [ "$GIT_NAME" = "git-hooktest.git" ]; then
+	    #if [ "$GIT_USER" = "hguo" ]; then
 		generate_email $oldrev $newrev $refname > $HOME/githookprereceive.email
             else
 		generate_email $oldrev $newrev $refname | send_mail
