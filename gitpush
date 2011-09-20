@@ -13,7 +13,7 @@ if [ "$branch" != "" ];then
 fi
 fi
 
-if [ "$pulled" == "" ];then
+if [ "$pulled" = "" ];then
     echo Pull nothing
 else
     echo Pull ret $ret

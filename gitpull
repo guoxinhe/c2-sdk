@@ -15,6 +15,6 @@ if [ "$branch" != "" ];then
 fi
 fi
 
-if [ "$pulled" == "" ];then
+if [ "$pulled" = "" ];then
     echo Pul nothing
 fi
