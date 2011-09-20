@@ -1,0 +1,31 @@
+#!/bin/sh
+
+list=$(find . -path \*.git)
+
+for i in $list; do
+    case $i in
+    ./.repo/*) ;;
+    ./manifests*) ;;
+    ./kernel.sdk/linux-2.6-gnu.git);;
+    ./csim.git);;
+    ./sw/sw_arch_defs.git);;
+    *)
+    nohook=0
+    nomail=0
+    [ ! -f $i/hooks/post-receive ] && nohook=1
+    grep mailinglist $i/config >/dev/null 2>&1 || nomail=1
+    if [ $nohook -eq 1  -o $nomail -eq 1 ]; then
+        echo nohook=$nohook nomail=$nomail : $i
+        [ $nohook -eq 1 ] && cp kernel.sdk/linux-2.6.git/hooks/post-receive $i/hooks/
+        [ $nomail -eq 1 ] && cat <<EOF >>$i/config
+[hooks]
+        mailinglist =  cvs-change@c2micro.com
+        announcelist =
+        envelopesender = git@bj.c2micro.com
+        emailprefix = [Git]
+
+EOF
+    fi
+    ;;
+    esac
+done
