@@ -654,37 +654,47 @@ pre_push_enable_checking()
 {
     [ "${change_type}"    != "update" ] && exit 0
     [ "${git_pushpolicy}" != "user"   ] && exit 0
+    git_branchpreset="$(git  config push.${short_refname}.preset  || echo '')"
     git_branchenable="$(git  config push.${short_refname}.enable  || echo '')"
     git_branchdisable="$(git config push.${short_refname}.disable || echo '')"
 
     #--------------------------------------------
-    if [ "$git_userenable" = "all" ]; 
-        then git_pushresult="enable";
+    if [ "$git_userpreset" != "" ]; then
+        git_pushresult="$git_userpreset"
+    fi
+    #--------------------------------------------
+    if [ "$git_userenable" = "all" ]; then
+        git_pushresult="enable";
     else
         echo "$git_userenable" | grep -m 1 "$GIT_USER" >/dev/null 2>&1
         [ $? -eq  0 ] && git_pushresult="enable";
     fi
     #--------------------------------------------
-    if [ "$git_userdisable" = "all" ]; 
-        then git_pushresult="disable";
+    if [ "$git_userdisable" = "all" ]; then
+        git_pushresult="disable";
     else
         echo "$git_userdisable" | grep -m 1 "$GIT_USER" >/dev/null 2>&1
         [ $? -eq  0 ] && git_pushresult="disable";
     fi
     #--------------------------------------------
-    if [ "$git_branchenable" = "all" ]; 
-        then git_pushresult="enable";
+    if [ "$git_branchpreset" != "" ]; then
+        git_pushresult="$git_branchpreset"
+    fi
+    #--------------------------------------------
+    if [ "$git_branchenable" = "all" ]; then
+        git_pushresult="enable";
     else
         echo "$git_branchenable" | grep -m 1 "$GIT_USER" >/dev/null 2>&1
         [ $? -eq  0 ] && git_pushresult="enable";
     fi
     #--------------------------------------------
-    if [ "$git_branchdisable" = "all" ]; 
-        then git_pushresult="disable";
+    if [ "$git_branchdisable" = "all" ]; then
+        git_pushresult="disable";
     else
         echo "$git_branchdisable" | grep -m 1 "$GIT_USER" >/dev/null 2>&1
         [ $? -eq  0 ] && git_pushresult="disable";
     fi
+    #--------------------------------------------
 
     #if [ "$GIT_NAME" == "git-hooktest.git" ]; then
     if [ "$GIT_USER" = "hguo" ]; then
@@ -702,8 +712,7 @@ pre_push_enable_checking()
         echo "git_branchdisable= $git_branchdisable">>$log
         echo "git_pushresult   = $git_pushresult"   >>$log
     fi
-    [ "$git_pushresult" = "enable" ] && exit 0
-    [ "$git_pushresult" = "unset"  ] && exit 0
+    [ "$git_pushresult" != "disable" ] && exit 0
 }
 # ---------------------------- main()
 
@@ -740,9 +749,11 @@ GIT_USER=$(whoami)
 GIT_PATH=$(readlink -f $GIT_DIR)
 GIT_NAME=${GIT_PATH##*/}
 git_pushpolicy="$(git   config push.policy || echo 'user')"
-git_pushresult="$(git   config push.preset || echo 'unset')"
-git_userenable="$(git   config push.user.enable  || echo 'all')"
+git_pushresult="$(git   config push.preset || echo 'enable')"
+git_userpreset="$(git   config push.user.preset  || echo '')"
+git_userenable="$(git   config push.user.enable  || echo '')"
 git_userdisable="$(git  config push.user.disable || echo '')"
+git_branchpreset=
 git_branchenable=
 git_branchdisable=
 
@@ -763,4 +774,6 @@ else
             	fi
 	done
 fi
+if [ "$git_pushresult" = "disable" ]; then
 exit 1
+fi
