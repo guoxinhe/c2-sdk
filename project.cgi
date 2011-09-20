@@ -98,11 +98,26 @@ def evalute_cookie():
     # If already existent session
     else:
         cookie.load(string_cookie)
-        sid = cookie['sid'].value
-        user= cookie['user'].value
-        pswd= cookie['pswd'].value
-        debug=cookie['debug'].value
-        lastorder=cookie['lastorder'].value
+	try:
+            sid = cookie['sid'].value
+        except KeyError:
+            sid = sha.new(repr(time.time())).hexdigest()
+	try:
+            user= cookie['user'].value
+        except KeyError:
+            user='guest'
+	try:
+            pswd= cookie['pswd'].value
+        except KeyError:
+            pswd='empty'
+	try:
+            debug=cookie['debug'].value
+        except KeyError:
+            debug='off'
+	try:
+            lastorder=cookie['lastorder'].value
+        except KeyError:
+            lastorder=ord
         if op == 'loginack' and loginuser <> 'empty' and  method == 'post':
             if loginpswd <> '123456':
                 loginpswd='fail';
