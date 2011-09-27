@@ -654,6 +654,10 @@ pre_push_enable_checking()
 {
     [ "${change_type}"    != "update" ] && exit 0
     [ "${git_pushpolicy}" != "user"   ] && exit 0
+    git_gbranchpreset="$(git  config --global push.${short_refname}.preset  || echo '')"
+    git_gbranchenable="$(git  config --global push.${short_refname}.enable  || echo '')"
+    git_gbranchdisable="$(git config --global push.${short_refname}.disable || echo '')"
+
     git_branchpreset="$(git  config push.${short_refname}.preset  || echo '')"
     git_branchenable="$(git  config push.${short_refname}.enable  || echo '')"
     git_branchdisable="$(git config push.${short_refname}.disable || echo '')"
@@ -674,6 +678,24 @@ pre_push_enable_checking()
         git_pushresult="disable";
     else
         echo "$git_userdisable" | grep -m 1 "$GIT_USER" >/dev/null 2>&1
+        [ $? -eq  0 ] && git_pushresult="disable";
+    fi
+    #--------------------------------------------
+    if [ "$git_gbranchpreset" != "" ]; then
+        git_pushresult="$git_gbranchpreset"
+    fi
+    #--------------------------------------------
+    if [ "$git_gbranchenable" = "all" ]; then
+        git_pushresult="enable";
+    else
+        echo "$git_gbranchenable" | grep -m 1 "$GIT_USER" >/dev/null 2>&1
+        [ $? -eq  0 ] && git_pushresult="enable";
+    fi
+    #--------------------------------------------
+    if [ "$git_gbranchdisable" = "all" ]; then
+        git_pushresult="disable";
+    else
+        echo "$git_gbranchdisable" | grep -m 1 "$GIT_USER" >/dev/null 2>&1
         [ $? -eq  0 ] && git_pushresult="disable";
     fi
     #--------------------------------------------

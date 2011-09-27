@@ -101,6 +101,12 @@ our %known_tasks = (
                 'hostip'  => '10.16.13.196',
                 'rebuild' => 'on',
 		},
+	'proj7b' => {
+		'title'   => 'jazz2t + sdk br=master +gcc 4.3.5',
+		'script'  => '/build/jazz2t/dev-gcc435-daily/build-jazz2t-sdk-maintree-gcc435.sh',
+                'hostip'  => '10.16.13.196',
+                'rebuild' => 'on',
+		},
 	'proj_done_20110831' => {
 		'title'   => 'jazz2t + android sw_media u-boot br=jazz2t-Android-0_2-1_Branch',
 		'script'  => '/build2/android/jazz2t-c2sdk_android_BR021/build-jazz2t-sw_media-android-br021.sh',
@@ -527,7 +533,7 @@ a:active {color:green}
 .pass {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #FFFFFF; }
 .fail {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #E0E0FF; font-weight:bold}
 .na   {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #FFFFFF}
-.run  {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #E0E0C0; font-weight:bold}
+.run  {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #F0F0B0; font-weight:bold}
 body  {font-family: Arial }
 -->
 
