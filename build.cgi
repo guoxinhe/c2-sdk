@@ -39,6 +39,7 @@ our %actions = (
         "rebuild"  => \&rebuild_project,
         "stopbuild"  => \&stopbuild_project,
         "cookies"  => \&cookies_test,
+        "bt"       => \&bug_test,
 );
 our %known_tasks = (
 	'proj1' => {
@@ -158,7 +159,17 @@ sub cookies_test {
 
     print "Cooies test done --------------------<br>\n";
 }
+sub bug_test {
+    print "Bug test start --------------------<br>\n";
+    my $hip="10.16.13.195";
+    my $stret=`ssh build\@$hip \"uptime\"`;
+    print "uptime: <font face='courier new' color=blue><b>$stret</b></font><br>";
 
+    my $stret=`ssh build\@$hip \"echo this is a echo with free workds as parameters\"`;
+    print "echo: <font face='courier new' color=blue><b>$stret</b></font><br>";
+
+    print "Bug test done --------------------<br>\n";
+}
 our $results_dir;
 #our $cgi=new CGI;
 our %input_params = ();
