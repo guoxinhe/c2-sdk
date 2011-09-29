@@ -470,15 +470,20 @@ sub manage_tasks {
 
 sub stopbuild_project {
     my ($hostip, $scr)=($input_params{'h'},$input_params{'s'});
+    my $myip=$ENV{'REMOTE_ADDR'};
+
     print "<font color=blue size=+1><b>for stopping $hostip:$scr</b></font><br>\n";
+    if ( $myip eq '10.16.2.186' ) {
     print "<font color=red size=+5><b>stoping the project's agreement</b></font><br>\n";
     print "<font color=blue >1. you really need the stop for project management reason</font><br>\n";
     print "<font color=blue >2. during job killing, a report email will send to all the involved peoples</font><br>\n";
     print "<font color=blue >3. if you insist stop the job, click the link:</font><br>\n";
-    
     print "<a href=$home_link?op=kill&h=$hostip&s=$scr><font color=red >I agreed, click here to kill the job</font></a><br>\n";
-    print "more info about this task:<br>\n";
+    } else {
+        print "<font color=red size=+5><b>your machine's ip $myip is not in the authorized list.</b></font><br>\n";
+    }
 
+    print "more info about this task:<br>\n";
     print "<pre>";
     system "ssh build\@$hostip \"ps aux | grep $scr\" ";
     print "</pre>";
@@ -486,6 +491,8 @@ sub stopbuild_project {
 
 sub kill_project {
     my ($hostip, $scr)=($input_params{'h'},$input_params{'s'});
+    my $myip=$ENV{'REMOTE_ADDR'};
+    my $user="gest";
 
     if ( -x $scr ) {
         &check_machine_loadavg('build',$hostip);
@@ -503,15 +510,16 @@ sub kill_project {
             return 0;
     }
 
+    if ( $myip eq '10.16.2.186' ) {
     print "<font color=red size=+1><b>Start killing $hostip:$scr</b></font><br>\n";
     print "this may take minutes, please hold this page and<br>\n";
     print "never refresh it, click it or goes back to previous page!<br>\n";
     print "<pre>";
-    #system "yes \"\" | ssh build\@$hostip $scr & ";
-    my $myip=$ENV{'REMOTE_ADDR'};
-    my $user="gest";
     system "yes \"\" | ssh build\@$hostip $scr --kill-running --byip $myip --byuser $user & ";
     #print "</pre>";
+    } else {
+        print "<font color=red size=+5><b>your machine's ip $myip is not in the authorized list.</b></font><br>\n";
+    }
 
 }
 
