@@ -30,6 +30,10 @@ our $maxload = 5;
 
 our $thisip=`/sbin/ifconfig eth0|sed -n 's/.*inet addr:\\([^ ]*\\).*/\\1/p'`;
 chomp($thisip);
+our $thisscript=`readlink -f -n $0`;
+#chomp($thisscript);
+our $thisscrihm=`dirname $thisscript`;
+chomp($thisscrihm);
 
 our $action;
 our %actions = (
@@ -42,88 +46,17 @@ our %actions = (
         "bt"       => \&bug_test,
         "kill"     => \&kill_project,
 );
+
 our %known_tasks = (
-	'proj1' => {
-		'title'   => 'jazz2t + android sw_media u-boot br=jazz2t-Android-0_3-1_Branch',
-		'script'  => '/build2/android/jazz2t-br031/build-jazz2t-sw_media-android-br031.sh',
-                'hostip'  => '10.16.13.195',
+	'projexample' => {
+		'title'   => 'Please give your project title',
+		'script'  => '/the/abs/path/name/of/your/build/script',
+                'hostip'  => '10.0.0.1',
                 'rebuild' => 'off',
                 'kill'    => 'off',
 		},
-	'proj1b' => {
-		'title'   => 'jazz2l + android sw_media u-boot br=jazz2l-Android-0_6-1_Branch',
-		'script'  => '/build2/android/jazz2l-br061/build-jazz2l-sw_media-android-br061.sh',
-                'hostip'  => '10.16.13.195',
-                'rebuild' => 'on',
-                'kill'    => 'on',
-		},
-	'proj2' => {
-		'title'   => 'jazz2t + android br=devel + sw_media u-boot br=master',
-		'script'  => '/build2/android/jazz2t-c2sdk_android/build-jazz2t-sw_media-android-devel.sh',
-                'hostip'  => '10.16.13.195',
-                'rebuild' => 'on',
-		},
-	'proj3' => {
-		'title'   => 'jazz2 + android br=devel + sw_media u-boot br=master',
-		'script'  => '/build2/android/jazz2-c2sdk_android/build-jazz2-sw_media-android-devel.sh',
-                'hostip'  => '10.16.13.195',
-                'rebuild' => 'on',
-		},
-	'proj4' => {
-		'title'   => 'jazz2l + android br=devel + sw_media u-boot br=master',
-		'script'  => '/build/jazz2l/android-devel/build-jazz2l-sw_media-android-devel.sh',
-                'hostip'  => '10.16.13.196',
-                'rebuild' => 'on',
-		},
-	'proj5' => {
-		'title'   => 'jazz2 + sdk br=master',
-		'script'  => '/build/jazz2/dev-daily/build-jazz2-sdk-maintree.sh',
-                'hostip'  => '10.16.13.196',
-                'rebuild' => 'on',
-		},
-	'proj5b' => {
-		'title'   => 'jazz2 + sdk br=master +gcc 4.3.5',
-		'script'  => '/build/jazz2/dev-gcc435-daily/build-jazz2-sdk-maintree-gcc435.sh',
-                'hostip'  => '10.16.13.196',
-                'rebuild' => 'on',
-		},
-	'proj6' => {
-		'title'   => 'jazz2l + sdk br=master',
-		'script'  => '/build/jazz2l/dev-daily/build-jazz2l-sdk-maintree.sh',
-                'hostip'  => '10.16.13.196',
-                'rebuild' => 'on',
-		},
-	'proj6b' => {
-		'title'   => 'jazz2l + sdk br=master +gcc 4.3.5',
-		'script'  => '/build/jazz2l/dev-gcc435-daily/build-jazz2l-sdk-maintree-gcc435.sh',
-                'hostip'  => '10.16.13.196',
-                'rebuild' => 'on',
-		},
-	'proj6c' => {
-		'title'   => 'jazz2l + sdk 0.5-1 release for hdmi certification',
-		'script'  => '/build/jazz2l/rel/jazz2l-rel-build-hdmi-certification.sh',
-                'hostip'  => '10.16.13.196',
-                'rebuild' => 'on',
-		},
-	'proj7' => {
-		'title'   => 'jazz2t + sdk br=master',
-		'script'  => '/build/jazz2t/dev-daily/build-jazz2t-sdk-maintree.sh',
-                'hostip'  => '10.16.13.196',
-                'rebuild' => 'on',
-		},
-	'proj7b' => {
-		'title'   => 'jazz2t + sdk br=master +gcc 4.3.5',
-		'script'  => '/build/jazz2t/dev-gcc435-daily/build-jazz2t-sdk-maintree-gcc435.sh',
-                'hostip'  => '10.16.13.196',
-                'rebuild' => 'on',
-		},
-	'proj_done_20110831' => {
-		'title'   => 'jazz2t + android sw_media u-boot br=jazz2t-Android-0_2-1_Branch',
-		'script'  => '/build2/android/jazz2t-c2sdk_android_BR021/build-jazz2t-sw_media-android-br021.sh',
-                'hostip'  => '10.16.13.195',
-                'rebuild' => 'off',
-		},
 );
+require  "$thisscript.cfg.pl";
 
 our %known_cookies = (
     'cookyspec' => {

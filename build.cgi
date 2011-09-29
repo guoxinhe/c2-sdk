@@ -30,6 +30,10 @@ our $maxload = 5;
 
 our $thisip=`/sbin/ifconfig eth0|sed -n 's/.*inet addr:\\([^ ]*\\).*/\\1/p'`;
 chomp($thisip);
+our $thisscript=`readlink -f -n $0`;
+#chomp($thisscript);
+our $thisscrihm=`dirname $thisscript`;
+chomp($thisscrihm);
 
 our $action;
 our %actions = (
@@ -40,87 +44,19 @@ our %actions = (
         "stopbuild"  => \&stopbuild_project,
         "cookies"  => \&cookies_test,
         "bt"       => \&bug_test,
+        "kill"     => \&kill_project,
 );
+
 our %known_tasks = (
-	'proj1' => {
-		'title'   => 'jazz2t + android sw_media u-boot br=jazz2t-Android-0_3-1_Branch',
-		'script'  => '/build2/android/jazz2t-br031/build-jazz2t-sw_media-android-br031.sh',
-                'hostip'  => '10.16.13.195',
+	'projexample' => {
+		'title'   => 'Please give your project title',
+		'script'  => '/the/abs/path/name/of/your/build/script',
+                'hostip'  => '10.0.0.1',
                 'rebuild' => 'off',
-		},
-	'proj1b' => {
-		'title'   => 'jazz2l + android sw_media u-boot br=jazz2l-Android-0_6-1_Branch',
-		'script'  => '/build2/android/jazz2l-br061/build-jazz2l-sw_media-android-br061.sh',
-                'hostip'  => '10.16.13.195',
-                'rebuild' => 'off',
-		},
-	'proj2' => {
-		'title'   => 'jazz2t + android br=devel + sw_media u-boot br=master',
-		'script'  => '/build2/android/jazz2t-c2sdk_android/build-jazz2t-sw_media-android-devel.sh',
-                'hostip'  => '10.16.13.195',
-                'rebuild' => 'on',
-		},
-	'proj3' => {
-		'title'   => 'jazz2 + android br=devel + sw_media u-boot br=master',
-		'script'  => '/build2/android/jazz2-c2sdk_android/build-jazz2-sw_media-android-devel.sh',
-                'hostip'  => '10.16.13.195',
-                'rebuild' => 'on',
-		},
-	'proj4' => {
-		'title'   => 'jazz2l + android br=devel + sw_media u-boot br=master',
-		'script'  => '/build/jazz2l/android-devel/build-jazz2l-sw_media-android-devel.sh',
-                'hostip'  => '10.16.13.196',
-                'rebuild' => 'on',
-		},
-	'proj5' => {
-		'title'   => 'jazz2 + sdk br=master',
-		'script'  => '/build/jazz2/dev-daily/build-jazz2-sdk-maintree.sh',
-                'hostip'  => '10.16.13.196',
-                'rebuild' => 'on',
-		},
-	'proj5b' => {
-		'title'   => 'jazz2 + sdk br=master +gcc 4.3.5',
-		'script'  => '/build/jazz2/dev-gcc435-daily/build-jazz2-sdk-maintree-gcc435.sh',
-                'hostip'  => '10.16.13.196',
-                'rebuild' => 'on',
-		},
-	'proj6' => {
-		'title'   => 'jazz2l + sdk br=master',
-		'script'  => '/build/jazz2l/dev-daily/build-jazz2l-sdk-maintree.sh',
-                'hostip'  => '10.16.13.196',
-                'rebuild' => 'on',
-		},
-	'proj6b' => {
-		'title'   => 'jazz2l + sdk br=master +gcc 4.3.5',
-		'script'  => '/build/jazz2l/dev-gcc435-daily/build-jazz2l-sdk-maintree-gcc435.sh',
-                'hostip'  => '10.16.13.196',
-                'rebuild' => 'on',
-		},
-	'proj6c' => {
-		'title'   => 'jazz2l + sdk 0.5-1 release for hdmi certification',
-		'script'  => '/build/jazz2l/rel/jazz2l-rel-build-hdmi-certification.sh',
-                'hostip'  => '10.16.13.196',
-                'rebuild' => 'on',
-		},
-	'proj7' => {
-		'title'   => 'jazz2t + sdk br=master',
-		'script'  => '/build/jazz2t/dev-daily/build-jazz2t-sdk-maintree.sh',
-                'hostip'  => '10.16.13.196',
-                'rebuild' => 'on',
-		},
-	'proj7b' => {
-		'title'   => 'jazz2t + sdk br=master +gcc 4.3.5',
-		'script'  => '/build/jazz2t/dev-gcc435-daily/build-jazz2t-sdk-maintree-gcc435.sh',
-                'hostip'  => '10.16.13.196',
-                'rebuild' => 'on',
-		},
-	'proj_done_20110831' => {
-		'title'   => 'jazz2t + android sw_media u-boot br=jazz2t-Android-0_2-1_Branch',
-		'script'  => '/build2/android/jazz2t-c2sdk_android_BR021/build-jazz2t-sw_media-android-br021.sh',
-                'hostip'  => '10.16.13.195',
-                'rebuild' => 'off',
+                'kill'    => 'off',
 		},
 );
+require  "$thisscript.cfg.pl";
 
 our %known_cookies = (
     'cookyspec' => {
@@ -174,6 +110,19 @@ sub bug_test {
     my $stret=`ssh build\@$hip \"echo this is a echo with free workds as parameters\"`;
     print "echo: <font face='courier new' color=blue><b>$stret</b></font><br>";
 
+    print "ENV{'REMOTE_ADDR'  }:  -- $ENV{'REMOTE_ADDR'  } <br> \n";
+    print "ENV{'HTTP_REFERER' }:  -- $ENV{'HTTP_REFERER' } <br> \n";
+    print "ENV{'HTTP_HOST'    }:  -- $ENV{'HTTP_HOST'    } <br> \n";
+    print "ENV{'DOCUMENT_ROOT'}:  -- $ENV{'DOCUMENT_ROOT'} <br> \n";
+    print "ENV{'REQUEST_URI'  }:  -- $ENV{'REQUEST_URI'  } <br> \n";
+    print "ENV{'SERVER_NAME'  }:  -- $ENV{'SERVER_NAME'  } <br> \n";
+    
+    print "searched ENV[*] --------------------<br>\n";
+    my $k;
+    foreach $k (sort keys %ENV) {
+        my $v=$ENV{$k};
+        print "ENV{'$k'}:  -- $v <br> \n";
+    }
     print "Bug test done --------------------<br>\n";
 }
 our $results_dir;
@@ -409,6 +358,7 @@ sub manage_tasks {
         my $hip=$known_tasks{$tskid}{'hostip' };
         my $tit=$known_tasks{$tskid}{'title' };
         my $reb=$known_tasks{$tskid}{'rebuild' };
+        my $kil=$known_tasks{$tskid}{'kill' };
         if ( -x $scr ) {
             my $top= `dirname $scr`;
             chomp($top);
@@ -432,7 +382,11 @@ sub manage_tasks {
             print "<a href=/build/link/$tskid/l/env.log>settings</a> ";
             if ( -e "$scr.lock" || $nrlock > 0 ) {
                 print ",status: <font color=red><b>running</b></font>. ";
+                if ( $kil eq 'on') {
                 print "<a href=$home_link?op=stopbuild&h=$hip&s=$scr>stop build</a><br>";
+                } else {
+                print "stop build disabled";
+                }
             } else {
                 if ( $reb eq 'on') {
                 print ",status: inactive. <a href=$home_link?op=rebuild&h=$hip&s=$scr>rebuild</a><br>";
@@ -449,14 +403,59 @@ sub manage_tasks {
 
 sub stopbuild_project {
     my ($hostip, $scr)=($input_params{'h'},$input_params{'s'});
-    print "<font color=blue size=+1><b>for stopping $hostip:$scr</b></font><br>\n";
-    print "<font color=red size=+5><b>still not implement this feature</b></font><br>\n";
-    print "more info about this task:<br>\n";
+    my $myip=$ENV{'REMOTE_ADDR'};
 
+    print "<font color=blue size=+1><b>for stopping $hostip:$scr</b></font><br>\n";
+    if ( $myip eq '10.16.2.186' ) {
+    print "<font color=red size=+5><b>stoping the project's agreement</b></font><br>\n";
+    print "<font color=blue >1. you really need the stop for project management reason</font><br>\n";
+    print "<font color=blue >2. during job killing, a report email will send to all the involved peoples</font><br>\n";
+    print "<font color=blue >3. if you insist stop the job, click the link:</font><br>\n";
+    print "<a href=$home_link?op=kill&h=$hostip&s=$scr><font color=red >I agreed, click here to kill the job</font></a><br>\n";
+    } else {
+        print "<font color=red size=+5><b>your machine's ip $myip is not in the authorized list.</b></font><br>\n";
+    }
+
+    print "more info about this task:<br>\n";
     print "<pre>";
     system "ssh build\@$hostip \"ps aux | grep $scr\" ";
     print "</pre>";
 }
+
+sub kill_project {
+    my ($hostip, $scr)=($input_params{'h'},$input_params{'s'});
+    my $myip=$ENV{'REMOTE_ADDR'};
+    my $user="gest";
+
+    if ( -x $scr ) {
+        &check_machine_loadavg('build',$hostip);
+        my $top= `dirname $scr`;
+        chomp($top);
+        my @tlock=<$top/*.lock>;
+        my $nrlock=@tlock;
+        if ( -e "$scr.lock" || $nrlock > 0 ) {
+        } else {
+            print "task not running, can not kill<br>\n";
+            return 0;
+        }
+    } else {
+            print "invalid script $scr, can not rebuild<br>\n";
+            return 0;
+    }
+
+    if ( $myip eq '10.16.2.186' ) {
+    print "<font color=red size=+1><b>Start killing $hostip:$scr</b></font><br>\n";
+    print "this may take minutes, please hold this page and<br>\n";
+    print "never refresh it, click it or goes back to previous page!<br>\n";
+    print "<pre>";
+    system "yes \"\" | ssh build\@$hostip $scr --kill-running --byip $myip --byuser $user & ";
+    #print "</pre>";
+    } else {
+        print "<font color=red size=+5><b>your machine's ip $myip is not in the authorized list.</b></font><br>\n";
+    }
+
+}
+
 sub rebuild_project {
     my ($hostip, $scr)=($input_params{'h'},$input_params{'s'});
 
@@ -480,7 +479,7 @@ sub rebuild_project {
     print "never refresh it, click it or goes back to previous page!<br>\n";
     print "<pre>";
     system "yes \"\" | ssh build\@$hostip $scr & ";
-    print "</pre>";
+    #print "</pre>";
     
 }
 sub html_login {
