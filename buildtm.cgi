@@ -55,7 +55,7 @@ our %known_tasks = (
 		'script'  => '/build2/android/jazz2l-br061/build-jazz2l-sw_media-android-br061.sh',
                 'hostip'  => '10.16.13.195',
                 'rebuild' => 'on',
-                'kill'    => 'off',
+                'kill'    => 'on',
 		},
 	'proj2' => {
 		'title'   => 'jazz2t + android br=devel + sw_media u-boot br=master',
@@ -471,13 +471,12 @@ sub manage_tasks {
 sub stopbuild_project {
     my ($hostip, $scr)=($input_params{'h'},$input_params{'s'});
     print "<font color=blue size=+1><b>for stopping $hostip:$scr</b></font><br>\n";
-    print "<font color=red size=+5><b>still not implement this feature</b></font><br>\n";
-    print "<font color=red size=+5><b>stoping the job agreement</b></font><br>\n";
+    print "<font color=red size=+5><b>stoping the project's agreement</b></font><br>\n";
     print "<font color=blue >1. you really need the stop for project management reason</font><br>\n";
     print "<font color=blue >2. during job killing, a report email will send to all the involved peoples</font><br>\n";
     print "<font color=blue >3. if you insist stop the job, click the link:</font><br>\n";
     
-    print "<a href=$home_link?op=kill&h=$hostip&s=$scr><font color=red >I agree, kill the job</font></a><br>\n";
+    print "<a href=$home_link?op=kill&h=$hostip&s=$scr><font color=red >I agreed, click here to kill the job</font></a><br>\n";
     print "more info about this task:<br>\n";
 
     print "<pre>";
