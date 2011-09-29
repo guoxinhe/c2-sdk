@@ -39,13 +39,23 @@ our %actions = (
         "rebuild"  => \&rebuild_project,
         "stopbuild"  => \&stopbuild_project,
         "cookies"  => \&cookies_test,
+        "bt"       => \&bug_test,
+        "kill"     => \&kill_project,
 );
 our %known_tasks = (
 	'proj1' => {
 		'title'   => 'jazz2t + android sw_media u-boot br=jazz2t-Android-0_3-1_Branch',
 		'script'  => '/build2/android/jazz2t-br031/build-jazz2t-sw_media-android-br031.sh',
                 'hostip'  => '10.16.13.195',
+                'rebuild' => 'off',
+                'kill'    => 'off',
+		},
+	'proj1b' => {
+		'title'   => 'jazz2l + android sw_media u-boot br=jazz2l-Android-0_6-1_Branch',
+		'script'  => '/build2/android/jazz2l-br061/build-jazz2l-sw_media-android-br061.sh',
+                'hostip'  => '10.16.13.195',
                 'rebuild' => 'on',
+                'kill'    => 'off',
 		},
 	'proj2' => {
 		'title'   => 'jazz2t + android br=devel + sw_media u-boot br=master',
@@ -101,6 +111,12 @@ our %known_tasks = (
                 'hostip'  => '10.16.13.196',
                 'rebuild' => 'on',
 		},
+	'proj7b' => {
+		'title'   => 'jazz2t + sdk br=master +gcc 4.3.5',
+		'script'  => '/build/jazz2t/dev-gcc435-daily/build-jazz2t-sdk-maintree-gcc435.sh',
+                'hostip'  => '10.16.13.196',
+                'rebuild' => 'on',
+		},
 	'proj_done_20110831' => {
 		'title'   => 'jazz2t + android sw_media u-boot br=jazz2t-Android-0_2-1_Branch',
 		'script'  => '/build2/android/jazz2t-c2sdk_android_BR021/build-jazz2t-sw_media-android-br021.sh',
@@ -152,7 +168,30 @@ sub cookies_test {
 
     print "Cooies test done --------------------<br>\n";
 }
+sub bug_test {
+    print "Bug test start --------------------<br>\n";
+    my $hip="10.16.13.195";
+    my $stret=`ssh build\@$hip \"uptime\"`;
+    print "uptime: <font face='courier new' color=blue><b>$stret</b></font><br>";
 
+    my $stret=`ssh build\@$hip \"echo this is a echo with free workds as parameters\"`;
+    print "echo: <font face='courier new' color=blue><b>$stret</b></font><br>";
+
+    print "ENV{'REMOTE_ADDR'  }:  -- $ENV{'REMOTE_ADDR'  } <br> \n";
+    print "ENV{'HTTP_REFERER' }:  -- $ENV{'HTTP_REFERER' } <br> \n";
+    print "ENV{'HTTP_HOST'    }:  -- $ENV{'HTTP_HOST'    } <br> \n";
+    print "ENV{'DOCUMENT_ROOT'}:  -- $ENV{'DOCUMENT_ROOT'} <br> \n";
+    print "ENV{'REQUEST_URI'  }:  -- $ENV{'REQUEST_URI'  } <br> \n";
+    print "ENV{'SERVER_NAME'  }:  -- $ENV{'SERVER_NAME'  } <br> \n";
+    
+    print "searched ENV[*] --------------------<br>\n";
+    my $k;
+    foreach $k (sort keys %ENV) {
+        my $v=$ENV{$k};
+        print "ENV{'$k'}:  -- $v <br> \n";
+    }
+    print "Bug test done --------------------<br>\n";
+}
 our $results_dir;
 #our $cgi=new CGI;
 our %input_params = ();
@@ -386,6 +425,7 @@ sub manage_tasks {
         my $hip=$known_tasks{$tskid}{'hostip' };
         my $tit=$known_tasks{$tskid}{'title' };
         my $reb=$known_tasks{$tskid}{'rebuild' };
+        my $kil=$known_tasks{$tskid}{'kill' };
         if ( -x $scr ) {
             my $top= `dirname $scr`;
             chomp($top);
@@ -409,7 +449,11 @@ sub manage_tasks {
             print "<a href=/build/link/$tskid/l/env.log>settings</a> ";
             if ( -e "$scr.lock" || $nrlock > 0 ) {
                 print ",status: <font color=red><b>running</b></font>. ";
+                if ( $kil eq 'on') {
                 print "<a href=$home_link?op=stopbuild&h=$hip&s=$scr>stop build</a><br>";
+                } else {
+                print "stop build disabled";
+                }
             } else {
                 if ( $reb eq 'on') {
                 print ",status: inactive. <a href=$home_link?op=rebuild&h=$hip&s=$scr>rebuild</a><br>";
@@ -428,12 +472,50 @@ sub stopbuild_project {
     my ($hostip, $scr)=($input_params{'h'},$input_params{'s'});
     print "<font color=blue size=+1><b>for stopping $hostip:$scr</b></font><br>\n";
     print "<font color=red size=+5><b>still not implement this feature</b></font><br>\n";
+    print "<font color=red size=+5><b>stoping the job agreement</b></font><br>\n";
+    print "<font color=blue >1. you really need the stop for project management reason</font><br>\n";
+    print "<font color=blue >2. during job killing, a report email will send to all the involved peoples</font><br>\n";
+    print "<font color=blue >3. if you insist stop the job, click the link:</font><br>\n";
+    
+    print "<a href=$home_link?op=kill&h=$hostip&s=$scr><font color=red >I agree, kill the job</font></a><br>\n";
     print "more info about this task:<br>\n";
 
     print "<pre>";
     system "ssh build\@$hostip \"ps aux | grep $scr\" ";
     print "</pre>";
 }
+
+sub kill_project {
+    my ($hostip, $scr)=($input_params{'h'},$input_params{'s'});
+
+    if ( -x $scr ) {
+        &check_machine_loadavg('build',$hostip);
+        my $top= `dirname $scr`;
+        chomp($top);
+        my @tlock=<$top/*.lock>;
+        my $nrlock=@tlock;
+        if ( -e "$scr.lock" || $nrlock > 0 ) {
+        } else {
+            print "task not running, can not kill<br>\n";
+            return 0;
+        }
+    } else {
+            print "invalid script $scr, can not rebuild<br>\n";
+            return 0;
+    }
+
+    print "<font color=red size=+1><b>Start killing $hostip:$scr</b></font><br>\n";
+    print "this may take minutes, please hold this page and<br>\n";
+    print "never refresh it, click it or goes back to previous page!<br>\n";
+    print "<pre>";
+    #system "yes \"\" | ssh build\@$hostip $scr & ";
+    my $myip=$ENV{'REMOTE_ADDR'};
+    my $user="gest";
+    system "yes \"\" | ssh build\@$hostip $scr --kill-running --byip $myip --byuser $user & ";
+    #print "</pre>";
+
+}
+
 sub rebuild_project {
     my ($hostip, $scr)=($input_params{'h'},$input_params{'s'});
 
@@ -457,7 +539,7 @@ sub rebuild_project {
     print "never refresh it, click it or goes back to previous page!<br>\n";
     print "<pre>";
     system "yes \"\" | ssh build\@$hostip $scr & ";
-    print "</pre>";
+    #print "</pre>";
     
 }
 sub html_login {
@@ -527,7 +609,7 @@ a:active {color:green}
 .pass {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #FFFFFF; }
 .fail {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #E0E0FF; font-weight:bold}
 .na   {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #FFFFFF}
-.run  {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #E0E0C0; font-weight:bold}
+.run  {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #F0F0B0; font-weight:bold}
 body  {font-family: Arial }
 -->
 
