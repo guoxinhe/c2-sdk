@@ -654,9 +654,9 @@ pre_push_enable_checking()
 {
     [ "${change_type}"    != "update" ] && exit 0
     [ "${git_pushpolicy}" != "user"   ] && exit 0
-    git_gbranchpreset="$(git  config --global push.${short_refname}.preset  || echo '')"
-    git_gbranchenable="$(git  config --global push.${short_refname}.enable  || echo '')"
-    git_gbranchdisable="$(git config --global push.${short_refname}.disable || echo '')"
+    git_gbranchpreset="$(git  config --system push.${short_refname}.preset  || echo '')"
+    git_gbranchenable="$(git  config --system push.${short_refname}.enable  || echo '')"
+    git_gbranchdisable="$(git config --system push.${short_refname}.disable || echo '')"
 
     git_branchpreset="$(git  config push.${short_refname}.preset  || echo '')"
     git_branchenable="$(git  config push.${short_refname}.enable  || echo '')"

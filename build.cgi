@@ -46,7 +46,13 @@ our %known_tasks = (
 		'title'   => 'jazz2t + android sw_media u-boot br=jazz2t-Android-0_3-1_Branch',
 		'script'  => '/build2/android/jazz2t-br031/build-jazz2t-sw_media-android-br031.sh',
                 'hostip'  => '10.16.13.195',
-                'rebuild' => 'on',
+                'rebuild' => 'off',
+		},
+	'proj1b' => {
+		'title'   => 'jazz2l + android sw_media u-boot br=jazz2l-Android-0_6-1_Branch',
+		'script'  => '/build2/android/jazz2l-br061/build-jazz2l-sw_media-android-br061.sh',
+                'hostip'  => '10.16.13.195',
+                'rebuild' => 'off',
 		},
 	'proj2' => {
 		'title'   => 'jazz2t + android br=devel + sw_media u-boot br=master',
