@@ -423,7 +423,7 @@ sub stopbuild_project {
         return 0;
     }
     if ( -x $scr ) {
-        &check_machine_loadavg('build',$hip);
+        #&check_machine_loadavg('build',$hip);
         my $top= `dirname $scr`;
         chomp($top);
         my @tlock=<$top/*.lock>;
@@ -467,7 +467,7 @@ sub kill_project {
         return 0;
     }
     if ( -x $scr ) {
-        &check_machine_loadavg('build',$hip);
+        #&check_machine_loadavg('build',$hip);
         my $top= `dirname $scr`;
         chomp($top);
         my @tlock=<$top/*.lock>;
