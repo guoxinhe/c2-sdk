@@ -121,20 +121,6 @@ sub cookies_test {
 }
 sub bug_test {
     print "Bug test start --------------------<br>\n";
-    my $hip="10.16.13.195";
-    my $stret=`ssh build\@$hip \"uptime\"`;
-    print "uptime: <font face='courier new' color=blue><b>$stret</b></font><br>";
-
-    my $stret=`ssh build\@$hip \"echo this is a echo with free workds as parameters\"`;
-    print "echo: <font face='courier new' color=blue><b>$stret</b></font><br>";
-
-    print "ENV{'REMOTE_ADDR'  }:  -- $ENV{'REMOTE_ADDR'  } <br> \n";
-    print "ENV{'HTTP_REFERER' }:  -- $ENV{'HTTP_REFERER' } <br> \n";
-    print "ENV{'HTTP_HOST'    }:  -- $ENV{'HTTP_HOST'    } <br> \n";
-    print "ENV{'DOCUMENT_ROOT'}:  -- $ENV{'DOCUMENT_ROOT'} <br> \n";
-    print "ENV{'REQUEST_URI'  }:  -- $ENV{'REQUEST_URI'  } <br> \n";
-    print "ENV{'SERVER_NAME'  }:  -- $ENV{'SERVER_NAME'  } <br> \n";
-    
     print "searched ENV[*] --------------------<br>\n";
     my $k;
     foreach $k (sort keys %ENV) {
@@ -606,6 +592,26 @@ HTML
 print <<HTML;
 /* ]]> */-->
 </style>
+    <script type="text/javascript">
+    function openShutManager(oSourceObj,oTargetObj,shutAble,oOpenTip,oShutTip){
+        var sourceObj = typeof oSourceObj == "string" ? document.getElementById(oSourceObj) : oSourceObj;
+        var targetObj = typeof oTargetObj == "string" ? document.getElementById(oTargetObj) : oTargetObj;
+        var openTip = oOpenTip || "";
+        var shutTip = oShutTip || "";
+        if(targetObj.style.display!="none"){
+           if(shutAble) return;
+           targetObj.style.display="none";
+           if(openTip  &&  shutTip){
+            sourceObj.innerHTML = shutTip;
+           }
+        } else {
+           targetObj.style.display="block";
+           if(openTip  &&  shutTip){
+            sourceObj.innerHTML = openTip;
+           }
+        }
+    }
+    </script>
 </head>
 <body>
 | <a href=http://10.16.13.195/build/build.cgi>195</a>
@@ -622,6 +628,8 @@ HTML
 }
 sub html_tail {
 print "<hr> more webpage(cgi) debug info";
+print "<a href='###' onclick=\"openShutManager(this,'moretext',false,'hide','show')\">show</a>";
+print "<p id='moretext' style='display:none'>";
 system "echo '<br>' Servername:; hostname";
 system "echo '<br>' user:; whoami";
 system "echo '<br>' script:; readlink -f $0";
@@ -632,6 +640,7 @@ print "<br>path_info: $path_info";
 system "echo '<br>' Current path:; pwd";
 system "echo '<br>' Server info:; uname -a";
 system "echo '<br>' uptime:; uptime";
+print "</p>";
 print <<HTML;
 <br>
 C2 Build server ($apacheip) monitor page. $theTime
