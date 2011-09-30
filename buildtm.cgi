@@ -366,23 +366,22 @@ sub manage_tasks {
             chomp($top);
             my @tlock=<$top/*.lock>;
             my $nrlock=@tlock;
-            my $byip=`grep CONFIG_REMOTEIP     $top/build_result/l/env.log | sed -e 's,.*=\(.*\),\1,g' `;
-            my $byuser=`grep CONFIG_REMOTEUSER $top/build_result/l/env.log | sed -e 's,.*=\(.*\),\1,g' `;
-            chomp($byip); 
-            chomp($byuser);
+            my $byip=`grep CONFIG_REMOTEIP     $top/build_result/l/env.log | sed -e 's,.*=\\(.*\\),\\1,g' `;
+            my $byuser=`grep CONFIG_REMOTEUSER $top/build_result/l/env.log | sed -e 's,.*=\\(.*\\),\\1,g' `;
+            chomp($byip); chomp($byuser);
+            if ($byip ne "" || $byuser ne "") { $byuser="runby:$byuser\@$byip"; }
             if ($input_params{'thm'} eq '' ) {
                 print "<br><a name=$tskid>$tskid</a>:  <font size=+1 color=blue ><b>$tit</b></font><br>\n";
             } else {
                 print "<br><a name=$tskid>$tskid</a>:  <font size=+1 color=black><b>$tit</b></font><br>\n";
             }
-            print "script:$hip".'@'."$scr runby:$byuser".'@'."$byip<br>\n";
+            print "script:$hip".'@'."$scr $byuser<br>\n";
             my $crnt=`ssh build\@$hip \"crontab -l| grep -m 1 $scr\"`;
             if ($crnt) {
                 print "crontab task: <font face='courier new'><b>$crnt</b></font><br>"
             } else {
                 print "no crontab item for this project<br>"
             }
-            
             print "op : <a href=/build/link/$tskid/l/progress.log>progress</a> | ";
             print "<a href=/build/link/$tskid/l>all logs</a> |";
             print "<a href=/build/link/$tskid/l/env.log>settings</a> ";

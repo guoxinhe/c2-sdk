@@ -28,8 +28,10 @@ $theTime = "$hour:$minute:$second $weekDays[$dayOfWeek] $months[$month] $dayOfMo
 # Leave it undefined (or set to 'undef') to turn off load checking.
 our $maxload = 5;
 
-our $thisip=`/sbin/ifconfig eth0|sed -n 's/.*inet addr:\\([^ ]*\\).*/\\1/p'`;
-chomp($thisip);
+our $apacheip=`/sbin/ifconfig eth0|sed -n 's/.*inet addr:\\([^ ]*\\).*/\\1/p'`;
+our $browserip=$ENV{'REMOTE_ADDR'};
+our $browserusr='guest';
+chomp($apacheip);
 our $thisscript=`readlink -f -n $0`;
 #chomp($thisscript);
 our $thisscrihm=`dirname $thisscript`;
@@ -364,19 +366,22 @@ sub manage_tasks {
             chomp($top);
             my @tlock=<$top/*.lock>;
             my $nrlock=@tlock;
+            my $byip=`grep CONFIG_REMOTEIP     $top/build_result/l/env.log | sed -e 's,.*=\\(.*\\),\\1,g' `;
+            my $byuser=`grep CONFIG_REMOTEUSER $top/build_result/l/env.log | sed -e 's,.*=\\(.*\\),\\1,g' `;
+            chomp($byip); chomp($byuser);
+            if ($byip ne "" || $byuser ne "") { $byuser="runby:$byuser\@$byip"; }
             if ($input_params{'thm'} eq '' ) {
                 print "<br><a name=$tskid>$tskid</a>:  <font size=+1 color=blue ><b>$tit</b></font><br>\n";
             } else {
                 print "<br><a name=$tskid>$tskid</a>:  <font size=+1 color=black><b>$tit</b></font><br>\n";
             }
-            print "script:$hip".'@'."$scr<br>\n";
+            print "script:$hip".'@'."$scr $byuser<br>\n";
             my $crnt=`ssh build\@$hip \"crontab -l| grep -m 1 $scr\"`;
             if ($crnt) {
                 print "crontab task: <font face='courier new'><b>$crnt</b></font><br>"
             } else {
                 print "no crontab item for this project<br>"
             }
-            
             print "op : <a href=/build/link/$tskid/l/progress.log>progress</a> | ";
             print "<a href=/build/link/$tskid/l>all logs</a> |";
             print "<a href=/build/link/$tskid/l/env.log>settings</a> ";
@@ -403,17 +408,16 @@ sub manage_tasks {
 
 sub stopbuild_project {
     my ($hostip, $scr)=($input_params{'h'},$input_params{'s'});
-    my $myip=$ENV{'REMOTE_ADDR'};
 
     print "<font color=blue size=+1><b>for stopping $hostip:$scr</b></font><br>\n";
-    if ( $myip eq '10.16.2.186' ) {
+    if ( $browserip eq '10.16.2.186' ) {
     print "<font color=red size=+5><b>stoping the project's agreement</b></font><br>\n";
     print "<font color=blue >1. you really need the stop for project management reason</font><br>\n";
     print "<font color=blue >2. during job killing, a report email will send to all the involved peoples</font><br>\n";
     print "<font color=blue >3. if you insist stop the job, click the link:</font><br>\n";
     print "<a href=$home_link?op=kill&h=$hostip&s=$scr><font color=red >I agreed, click here to kill the job</font></a><br>\n";
     } else {
-        print "<font color=red size=+5><b>your machine's ip $myip is not in the authorized list.</b></font><br>\n";
+        print "<font color=red size=+5><b>you are not in the authorized list.</b></font><br>\n";
     }
 
     print "more info about this task:<br>\n";
@@ -424,8 +428,6 @@ sub stopbuild_project {
 
 sub kill_project {
     my ($hostip, $scr)=($input_params{'h'},$input_params{'s'});
-    my $myip=$ENV{'REMOTE_ADDR'};
-    my $user="gest";
 
     if ( -x $scr ) {
         &check_machine_loadavg('build',$hostip);
@@ -443,15 +445,15 @@ sub kill_project {
             return 0;
     }
 
-    if ( $myip eq '10.16.2.186' ) {
+    if ( $browserip eq '10.16.2.186' ) {
     print "<font color=red size=+1><b>Start killing $hostip:$scr</b></font><br>\n";
     print "this may take minutes, please hold this page and<br>\n";
     print "never refresh it, click it or goes back to previous page!<br>\n";
     print "<pre>";
-    system "yes \"\" | ssh build\@$hostip $scr --kill-running --byip $myip --byuser $user & ";
+    system "yes \"\" | ssh build\@$hostip $scr --kill-running --byip $browserip --byuser $browserusr & ";
     #print "</pre>";
     } else {
-        print "<font color=red size=+5><b>your machine's ip $myip is not in the authorized list.</b></font><br>\n";
+        print "<font color=red size=+5><b>you are not in the authorized list.</b></font><br>\n";
     }
 
 }
@@ -478,7 +480,7 @@ sub rebuild_project {
     print "this may take ours, please hold this page and<br>\n";
     print "never refresh it, click it or goes back to previous page!<br>\n";
     print "<pre>";
-    system "yes \"\" | ssh build\@$hostip $scr & ";
+    system "yes \"\" | ssh build\@$hostip $scr --byip $browserip --byuser $browserusr & ";
     #print "</pre>";
     
 }
@@ -565,7 +567,7 @@ print <<HTML;
   <a href=http://10.16.13.195/build/project.cgi?op=liclist>license</a>
 | <a href=http://10.16.13.196/build/build.cgi>196</a>
   <a href=http://10.16.13.196/build/project.cgi?op=liclist>license</a>
-| <a href=$home_link?op=loadavg>C2 Build server ($thisip)</a> 
+| <a href=$home_link?op=loadavg>C2 Build server ($apacheip)</a> 
   <a href=$home_link?op=taskstat>monitor page</a> $theTime
 | <a href=$home_link?op=taskstat>task manage</a>
 | <a href=$home_link?thm=bonw>grey</a>
@@ -587,7 +589,7 @@ system "echo '<br>' Server info:; uname -a";
 system "echo '<br>' uptime:; uptime";
 print <<HTML;
 <br>
-C2 Build server ($thisip) monitor page. $theTime
+C2 Build server ($apacheip) monitor page. $theTime
 </body>
 HTML
 }
