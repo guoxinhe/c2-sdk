@@ -3,8 +3,7 @@
 use CGI::Cookie;
 use CGI qw(:standard :escapeHTML -nosticky);
 
-our $home_link='perl-home.cgi';
-our $login_link='perl-login.cgi';
+our $home_link='/build/buildk.cgi';
 # See what incoming cookies we have!
 our %input_params = (
     'user' => 'guest' ,
@@ -55,6 +54,7 @@ if ( $ENV{'REQUEST_METHOD'} eq 'POST' ) {
          $input_params{'password'}  ne '' ){
          $input_params{'user'} = $input_params{'username'} ;
          $input_params{'pswd'} = $input_params{'password'} ;
+         our $home_link=$input_params{'prevhref'};
          sendcookie('user',$input_params{'user'},'+1y');
          sendcookie('pswd',$input_params{'pswd'},'+1y');
          sendcookie('apps',$input_params{'apps'},'+1y');
@@ -75,6 +75,7 @@ if ( $input_params{'user'} eq 'guest' ) {
     print "please login<br>\n";
 } else {
     print "Welcome $input_params{'user'}<br>\n";
+    print "prevhref=$input_params{'prevhref'}<br>\n";
 }
 
 html_tail();
