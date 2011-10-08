@@ -353,7 +353,8 @@ sub manage_tasks {
     my $tskid;
     foreach $tskid (sort keys %known_tasks) {
         my $scr=$known_tasks{$tskid}{'script' };
-        if ( -x $scr ) {
+        my $liv=$known_tasks{$tskid}{'live' };
+        if ( -x $scr && $liv ne 'off' ) {
             print "| <a href=#$tskid> $tskid </a>\n";
         }
     }
@@ -364,7 +365,8 @@ sub manage_tasks {
         my $tit=$known_tasks{$tskid}{'title' };
         my $reb=$known_tasks{$tskid}{'rebuild' };
         my $kil=$known_tasks{$tskid}{'kill' };
-        if ( -x $scr ) {
+        my $liv=$known_tasks{$tskid}{'live' };
+        if ( -x $scr && $liv ne 'off' ) {
             my $top= `dirname $scr`;
             chomp($top);
             my @tlock=<$top/*.lock>;

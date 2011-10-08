@@ -1,8 +1,7 @@
 #!/usr/bin/perl
-#use 5.008;
+use 5.008;
 #use strict;
 #use warnings;
-use CGI::Cookie;
 use CGI qw(:standard :escapeHTML -nosticky);
 use CGI::Util qw(unescape);
 use CGI::Carp qw(fatalsToBrowser set_message);
@@ -31,6 +30,7 @@ our $maxload = 5;
 
 our $apacheip=`/sbin/ifconfig eth0|sed -n 's/.*inet addr:\\([^ ]*\\).*/\\1/p'`;
 our $browserip=$ENV{'REMOTE_ADDR'};
+our $browserusr='guest';
 our $thisscript=`readlink -f -n $0`;
 our $thisscrihm=`dirname $thisscript`;
 chomp($apacheip);
@@ -38,7 +38,7 @@ chomp($thisscrihm);
 
 our $action;
 our %actions = (
-	"login"  	=> \&html_login,
+	"checkin"  	=> \&html_login,
 	"loadavg"  	=> \&check_loadavg,
         "taskstat" 	=> \&manage_tasks,
         "rebuild"  	=> \&rebuild_project,
@@ -46,7 +46,6 @@ our %actions = (
         "cookies"  	=> \&cookies_test,
         "bt"       	=> \&bug_test,
         "kill"     	=> \&kill_project,
-        "logout"        => \&html_logout,
 );
 
 our %known_tasks = (
@@ -60,30 +59,21 @@ our %known_tasks = (
 );
 require  "$thisscript.cfg.pl";
 
+our %known_cookies = (
+    'cookyspec' => {
+           'domain'  => 'a partial or complete domain name for which the cookie is valid. Like .devdaily.com',
+           'expires' => '(optional) +60s +20m +5h nowimmediately +5M +1y',
+           'name'    => 'the name of the cookie (required)',
+           'path'    => '(optional), default to / ',
+           'secure'  => '(optional)',
+           'value'   => 'required, can be one of $ % @ variable',
+           },
+);
+
 our $results_dir;
 our %input_params = ();
 our ($my_url, $my_uri, $base_url, $path_info, $home_link);
 our $cgi=new CGI;
-
-our %known_cookies = (
-    #'expires' => '(optional) +60s +20m +5h nowimmediately +5M +1y',
-    'user' => {'value'=>'guest' ,'domain'=>'.build','expires'=>'+1y','path'=>'/','secure'=> 0,},
-    'pswd' => {'value'=>'123456','domain'=>'.build','expires'=>'+3s','path'=>'/','secure'=> 0,},
-    'apps' => {'value'=>'email' ,'domain'=>'.build','expires'=>'+1y','path'=>'/','secure'=> 0,},
-);
-%cookies = fetch CGI::Cookie();
-foreach $c (keys %cookies) {
-        $v = $cookies{$c} -> value();
-        $input_params{$c}=$v;
-}
-foreach $c (keys %known_cookies) {
-    my $v  =$known_cookies{$c}{'value'  };
-    my $e=$known_cookies{$c}{'expires'};
-    unless (grep (/^$c$/,keys %cookies)) {
-        sendcookie($c,$v,$e);
-        $input_params{$c}=$v;
-    }
-}
 
 # Go!
 #----------------------------------------------------------------
@@ -93,57 +83,58 @@ foreach $c (keys %known_cookies) {
 &html_debug;
 &dispatch;
 &html_tail;
-exit;
+exit; 
 
 
-sub sendcookie {
-    my ($name,$value,$life) = @_;
-    my $c;
-    if ($life) {
-        $c = new CGI::Cookie(-name => $name,
-                    -expires => $life,
-                    -path => "/",
-                    -value => $value);
-    } else {
-        $c = new CGI::Cookie(-name => $name,
-                    -path => "/",
-                    -value => $value);
-    }
-    print "Set-Cookie: ",$c->as_string,"\n";
-}
 sub cookies_test {
     print "<br>\n";
     print "Cooies test start --------------------<br>\n";
 
-%cookies = fetch CGI::Cookie();
-foreach $c (keys %cookies) {
-        $v = $cookies{$c} -> value();
-    if ( $c eq "user" ) {
-        $input_params{'user'}=$v;
-    }
-    if ( $c eq "pswd" ) {
-        $input_params{'pswd'}=$v;
-    }
-    if ( $c eq "apps" ) {
-        $input_params{'apps'}=$v;
-    }
-    print "Get cookie $c = $v <br>\n";
-}
-foreach $c (keys %known_cookies) {
-    my $value  =$known_cookies{$c}{'value'  };
-    my $expires=$known_cookies{$c}{'expires'};
-    unless (grep (/^$c$/,keys %cookies)) {
-        sendcookie($c,$value,$expires);
-        print "Set cookie $c = $value <br>\n";
+    use CGI;
+    $query = new CGI;
+    $cookie = $query->cookie(-name=>'MY_COOKIE',
+	 -value=>'BEST_COOKIE=chocolatechip',
+	 -expires=>'+4h',
+	 -path=>'/');
+    #print $query->header(-cookie=>$cookie);
+
+    $theCookie = $query->cookie('MY_COOKIE');
+    if ("$theCookie") {
+        print "<BLOCKQUOTE>\n";
+        print "if theCookie exist, will be displayed here---=== [$theCookie] ===---";
+        print "</BLOCKQUOTE>\n";
     } else {
-        print "Already set cookie $c <br>\n";
+       print "Can't find my cookie!<br>\n";
     }
-}
+
+    print "-+-$ENV{'HTTP_COOKIE'}-+-<br>\n";
+    @pairs = split(/&/, $ENV{'HTTP_COOKIE'});
+    foreach $pair (@pairs){
+        ($name, $value) = split(/=/, $pair);
+        $value =~ tr/+/ /;
+        $value =~ s/%([a-fA-F0-9][a-fA-F0-9])/pack("C", hex($1))/eg;
+        $cookie{$name} = $value;
+        print "Cooies $name = $value --------------------<br>\n";
+    }
 
     print "Cooies test done --------------------<br>\n";
 }
 sub bug_test {
     print "Bug test start --------------------<br>\n";
+    my $hip="10.16.13.195";
+    my $stret=`ssh build\@$hip \"uptime\"`;
+    print "uptime: <font face='courier new' color=blue><b>$stret</b></font><br>";
+
+    my $stret=`ssh build\@$hip \"echo this is a echo with free workds as parameters\"`;
+    print "echo: <font face='courier new' color=blue><b>$stret</b></font><br>";
+
+    print "ENV{'REMOTE_ADDR'  }:  -- $ENV{'REMOTE_ADDR'  } <br> \n";
+    print "ENV{'HTTP_REFERER' }:  -- $ENV{'HTTP_REFERER' } <br> \n";
+    print "ENV{'HTTP_HOST'    }:  -- $ENV{'HTTP_HOST'    } <br> \n";
+    print "ENV{'DOCUMENT_ROOT'}:  -- $ENV{'DOCUMENT_ROOT'} <br> \n";
+    print "ENV{'REQUEST_URI'  }:  -- $ENV{'REQUEST_URI'  } <br> \n";
+    print "ENV{'SERVER_NAME'  }:  -- $ENV{'SERVER_NAME'  } <br> \n";
+    
     print "searched ENV[*] --------------------<br>\n";
     my $k;
     foreach $k (sort keys %ENV) {
@@ -286,19 +277,19 @@ sub dispatch {
 sub print_top_results {
     our ($results_dir,$urlpre)=(@_);
     my $num_days = 9;
-
+  
     opendir(DIR, $results_dir) or die "Couldn't open $results_dir: $!\n";
-
+  
     my $log_num = grep /^(\d{2}[0,1][0-9][0-3][0-9])\.txt$/i, readdir(DIR);
     if ($log_num<10) {
         $num_days = $log_num-1;
     }
-
+  
     opendir(DIR, $results_dir);
     my @dates = (sort({ $b cmp $a} grep(s/^(\d{2}[0,1][0-9][0-3][0-9])\.txt$/$1/, readdir(DIR))))[0..$num_days];
-
+  
     my %results;
-
+  
     for my $d (@dates) {
         open (RES, "${results_dir}/$d.txt") or die "Opening $d: $!\n";
         while (<RES>) {
@@ -307,7 +298,7 @@ sub print_top_results {
             $results{$test}{$d} = [$res, $logfile];
         }
     }
-
+  
     if ($input_params{'thm'} eq '' ) {
     print "<table border=1>";
     print "<tr><th>Category</th><th>" .
@@ -316,38 +307,38 @@ sub print_top_results {
     print "<table border=0>";
     print "<tr><td class=tti >Category</td><td class=tti >" . join ("</td><td class=tti >", @dates) . "</td></tr>";
     }
-
+   
     my $newrow = 0;
 
     for my $test (keys (%results)) {
         print "<tr>" if ($newrow);
-
+       
         # Make test red if the most recent test failed
         my $testclass = "na";
         if (exists($results{$test}{$dates[0]})) {
             $testclass = $results{$test}{$dates[0]}[0] == 0 ? "pass" : $results{$test}{$dates[0]}[0] == 2 ? "run" : "fail";
         }
-
+       
         print "<td class=${testclass}>$test</td>";
-
+       
         for my $d (@dates) {
             my $class = "na";
             my $status = "";
-
+           
             if (exists($results{$test}{$d})) {
                 my ($res, $log) = @{$results{$test}{$d}};
                 $class = $res == 0 ? "pass" : $res == 2 ? "run" : "fail";
-
+               
                 my ($n_warning, $n_error) =(0,0);# check_for_results_string($log);
-
+               
                 if ($input_params{'thm'} eq '' ) {
                 $status = ($n_error) ? "${n_warning}/${n_error}" : uc($class);
                 } else {
                     $status = ($n_error) ? "${n_warning}/${n_error}" : ($class);
                 }
-
+               
                 $log =~ s-$results_dir-$urlpre-;
-
+               
                 $status = "<a href='$log' title='gettin jiggy'>${status}</a>";
             }
             print "<td class='${class}'>${status}</td>";
@@ -362,7 +353,8 @@ sub manage_tasks {
     my $tskid;
     foreach $tskid (sort keys %known_tasks) {
         my $scr=$known_tasks{$tskid}{'script' };
-        if ( -x $scr ) {
+        my $liv=$known_tasks{$tskid}{'live' };
+        if ( -x $scr && $liv ne 'off' ) {
             print "| <a href=#$tskid> $tskid </a>\n";
         }
     }
@@ -373,7 +365,8 @@ sub manage_tasks {
         my $tit=$known_tasks{$tskid}{'title' };
         my $reb=$known_tasks{$tskid}{'rebuild' };
         my $kil=$known_tasks{$tskid}{'kill' };
-        if ( -x $scr ) {
+        my $liv=$known_tasks{$tskid}{'live' };
+        if ( -x $scr && $liv ne 'off' ) {
             my $top= `dirname $scr`;
             chomp($top);
             my @tlock=<$top/*.lock>;
@@ -496,7 +489,7 @@ sub kill_project {
     print "this may take minutes, please hold this page and<br>\n";
     print "never refresh it, click it or goes back to previous page!<br>\n";
     print "<pre>";
-    system "yes \"\" | ssh build\@$hip $scr --kill-running --byip $browserip --byuser $input_params{'user'} & ";
+    system "yes \"\" | ssh build\@$hip $scr --kill-running --byip $browserip --byuser $browserusr & ";
     #print "</pre>";
     } else {
         print "<font color=red size=+5><b>you are not in the authorized list.</b></font><br>\n";
@@ -535,30 +528,21 @@ sub rebuild_project {
     print "this may take ours, please hold this page and<br>\n";
     print "never refresh it, click it or goes back to previous page!<br>\n";
     print "<pre>";
-    system "yes \"\" | ssh build\@$hip $scr --byip $browserip --byuser $input_params{'user'} & ";
+    system "yes \"\" | ssh build\@$hip $scr --byip $browserip --byuser $browserusr & ";
     #print "</pre>";
-}
-sub html_logout {
-         $input_params{'user'} = 'guest' ;
-         $input_params{'pswd'} = '123456';
-         $input_params{'apps'} = 'email' ;
-         sendcookie('user',$input_params{'user'},'+1y');
-         sendcookie('pswd',$input_params{'pswd'},'+1y');
-         sendcookie('apps',$input_params{'apps'},'+1y');
-    print "Logout<br>\n";
 }
 sub html_login {
     if ( $input_params{'username'} ne "" ) {
         print "<i>user  $input_params{'username'} logined</i><br>";
     }
 print <<HTML;
-<form action="login.cgi?op=login" method="POST">
+<form action="$home_link?op=submit" method="POST">
 <center>Add A User</center>
 <center>
 <table border="0" cellpadding="3" cellspacing="3">
     <tr>
-        <td>Username</td>
-        <td><input type="hidden" size="32" name="prevhref" value="$home_link"></td>
+        <td>Login description</td>
+        <td><input type="text" size="64" name="logindesc" value="$input_params{logindesc}"></td>
     </tr>
     <tr>
         <td>Username</td>
@@ -576,30 +560,6 @@ print <<HTML;
 </center>
 </form>
 HTML
-}
-sub html_list_input_params {
-print <<HTML;
-<table border=1><tr><td>Name</td><td>Value</td></tr>
-HTML
-    my $i;
-    foreach $i (sort keys %input_params) {
-        my $v=$input_params{$i};
-        if ( $v eq '') {
-            $v='-';
-        }
-        print "<tr><td>$i</td><td>$v</td></tr>\n"
-    }
-print "</table>";
-
-print <<HTML;
-<table border=1><tr><td>Name</td><td>Value</td></tr>
-HTML
-foreach (sort keys %ENV) {
-    #print "$_ = $ENV{$_}<br>\n";
-    print "<tr><td>$_</td><td>$ENV{$_}</td></tr>\n"
-}
-print "</table>";
-
 }
 sub html_head {
 print "Content-type: text/html\n\n";
@@ -648,50 +608,22 @@ HTML
 print <<HTML;
 /* ]]> */-->
 </style>
-    <script type="text/javascript">
-    function openShutManager(oSourceObj,oTargetObj,shutAble,oOpenTip,oShutTip){
-        var sourceObj = typeof oSourceObj == "string" ? document.getElementById(oSourceObj) : oSourceObj;
-        var targetObj = typeof oTargetObj == "string" ? document.getElementById(oTargetObj) : oTargetObj;
-        var openTip = oOpenTip || "";
-        var shutTip = oShutTip || "";
-        if(targetObj.style.display!="none"){
-           if(shutAble) return;
-           targetObj.style.display="none";
-           if(openTip  &&  shutTip){
-            sourceObj.innerHTML = shutTip;
-           }
-        } else {
-           targetObj.style.display="block";
-           if(openTip  &&  shutTip){
-            sourceObj.innerHTML = openTip;
-           }
-        }
-    }
-    </script>
 </head>
 <body>
-| <a href=$home_link>Home</a>
 | <a href=http://10.16.13.195/build/build.cgi>195</a>
   <a href=http://10.16.13.195/build/project.cgi?op=liclist>license</a>
 | <a href=http://10.16.13.196/build/build.cgi>196</a>
   <a href=http://10.16.13.196/build/project.cgi?op=liclist>license</a>
-| <a href=$home_link?op=loadavg>C2 Build server ($apacheip)</a>
+| <a href=$home_link?op=loadavg>C2 Build server ($apacheip)</a> 
   <a href=$home_link?op=taskstat>monitor page</a> $theTime
 | <a href=$home_link?op=taskstat>task manage</a>
 | <a href=$home_link?thm=bonw>grey</a>
+<hr>
 HTML
-    if ( $input_params{'user'} eq 'guest' || $input_params{'user'} eq '') {
-        print "| <a href=$home_link?op=login>Login</a>\n";
-    } else {
-        print "| $input_params{'user'} <a href=login.cgi?op=logout>Logout</a>\n";
-    }
-    print "<hr>";
+#| <a href=$home_link?op=checkin> check in </a>
 }
 sub html_tail {
 print "<hr> more webpage(cgi) debug info";
-print "<a href='###' onclick=\"openShutManager(this,'moretext',false,'hide','show')\">show</a>";
-print "<p id='moretext' style='display:none'>";
-html_list_input_params();
 system "echo '<br>' Servername:; hostname";
 system "echo '<br>' user:; whoami";
 system "echo '<br>' script:; readlink -f $0";
@@ -702,7 +634,6 @@ print "<br>path_info: $path_info";
 system "echo '<br>' Current path:; pwd";
 system "echo '<br>' Server info:; uname -a";
 system "echo '<br>' uptime:; uptime";
-print "</p>";
 print <<HTML;
 <br>
 C2 Build server ($apacheip) monitor page. $theTime
