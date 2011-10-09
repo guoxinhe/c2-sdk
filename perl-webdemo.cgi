@@ -2,7 +2,7 @@
 
 use CGI::Cookie;
 
-our $home_link='perl-webdemo.cgi';
+our $home_link=$ENV{'SCRIPT_NAME'};
 our $bash_home='/var/www';
 our %input_params = (
     'msid'        => 'none'    , #should get from cookie
@@ -31,8 +31,15 @@ our %actions = (
 	"logout"  	=> \&func_logout,
         "default"     	=> \&func_default,
 );
-
+our %friendly_links = (
+        "build195"      => 'http://10.16.13.195',
+        "build196"      => 'http://10.16.13.196',
+        'license'       => 'http://10.16.13.195/build/project.cgi'
+);
 our %cookies = fetch CGI::Cookie();
+if ( %cookies == 0 ) {
+    $mission_params{'first'} = 'yes';
+}
 foreach $c (keys %cookies) {
         $v = $cookies{$c} -> value();
         $input_params{$c}=$v;
@@ -270,15 +277,20 @@ sub html_tail {
         print "<tr><td>$i</td><td>$ENV{$i}&nbsp;</td></tr>\n"
     }
     print "</table>";
-    
+
     system "echo '<br>' Servername:; hostname";
     system "echo '<br>' user:; whoami";
     system "echo '<br>' script:; readlink -f $0";
     system "echo '<br>' Current path:; pwd";
     system "echo '<br>' Server info:; uname -a";
     system "echo '<br>' uptime:; uptime";
-    
     print "</p>";
+    print "<br>\n";
+    foreach $i (sort keys %friendly_links) {
+        my $v=$friendly_links{$i};
+        print "| &nbsp;<a href=$v>$i</a>&nbsp; \n"
+    }
+
     print "<br>Copyright, all rights reserved.</body></html>";
 }
 sub func_loginpage {
@@ -300,7 +312,7 @@ sub func_myprofile {
     print "Welcome $mission_params{'user'}<br><pre>\n";
     system ("id $mission_params{'user'}");
     system ("uname -a");
-    print "<pre>\n";
+    print "</pre>\n";
     
 }
 sub func_default {
