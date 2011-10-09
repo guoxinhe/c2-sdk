@@ -31,10 +31,26 @@ our %actions = (
 	"logout"  	=> \&func_logout,
         "default"     	=> \&func_default,
 );
+our %menu_links = (
+        'Home'       =>  "$home_link",
+        'admin'      =>  "$home_link?op=admin",
+        'build'      =>  "$home_link?op=build",
+        'license'    =>  "$home_link?op=license",
+        'help'       =>  "$home_link?op=help",
+);
 our %friendly_links = (
         "build195"      => 'http://10.16.13.195',
         "build196"      => 'http://10.16.13.196',
         'license'       => 'http://10.16.13.195/build/project.cgi'
+);
+our %system_debug = (
+    'Servername'     => 'hostname',
+    'script'         => "readlink -f $0",
+    'Current_path'   => 'pwd',
+    'Server_info'    => 'uname -a',
+    'uptime'         => 'uptime',
+    'user'           => 'whoami',
+    'home'           => 'pushd ~ >/dev/null; pwd; popd >/dev/null',
 );
 our %cookies = fetch CGI::Cookie();
 if ( %cookies == 0 ) {
@@ -179,7 +195,7 @@ sub dispatch {
 	}
         my $op=$input_params{'op'};
 	if (!defined($actions{$op})) {
-            print "die: Unknown op (debug:): $op" ;
+            print "<font color=red size=+5>die: Unknown op (debug:): $op </font>" ;
 	} else {
 	    $actions{$op}->();
         }
@@ -213,6 +229,7 @@ print <<HTML;
 <!--/* <![CDATA[ */
 <!--
     body  {font-family: Arial }
+    dbg {background: #EEFFEE; font-weight:bold}
     a:link    {color:black}
     a:visited {color:black}
     a:hover   {color:blue}
@@ -243,8 +260,11 @@ print <<HTML;
 </script>
 </head>
 <body>
-| <a href=$home_link>Home</a> 
 HTML
+    foreach $i (sort keys %menu_links) {
+        my $v=$menu_links{$i};
+        print "| &nbsp;<a href=$v>$i</a>&nbsp; \n"
+    }
     if ( $mission_params{'user'} eq 'guest' ) {
         print "| <a href=$home_link?op=loginpage>Login</a> ";
     } else {
@@ -253,38 +273,42 @@ HTML
     }
     print "<hr>";
 }
+
 sub html_tail {
+    my $i;
     print "<hr> more webpage(cgi) debug info";
     print " <a href='###' onclick=\"openShutManager(this,'moretext',false,'hide','show')\">show</a>";
-    print "<p id='moretext' style='display:none'>";
+    print "<div id='moretext' style='background:#CCFFCC; display:none'>";
     
     print "Input parameters list:<table border=1><tr><td>Name</td><td>Value</td></tr>";
-    my $i;
     foreach $i (sort keys %input_params) {
-        my $v=$input_params{$i}.'&nbsp';
-        print "<tr><td>$i</td><td>$v</td></tr>\n"
-    }
-    print "</table>";
-    print "Mission parameters list:<table border=1><tr><td>Name</td><td>Value</td></tr>";
-    my $i;
-    foreach $i (sort keys %mission_params) {
-        my $v=$mission_params{$i}.'&nbsp';
-        print "<tr><td>$i</td><td>$v</td></tr>\n"
-    }
-    print "</table>";
-    print "Perl's ENV list:<table border=1><tr><td>Name</td><td>Value</td></tr>";
-    foreach $i (sort keys %ENV) {
-        print "<tr><td>$i</td><td>$ENV{$i}&nbsp;</td></tr>\n"
+        my $v=$input_params{$i};
+        print "<tr><td>$i</td><td>$v &nbsp;</td></tr>\n";
     }
     print "</table>";
 
-    system "echo '<br>' Servername:; hostname";
-    system "echo '<br>' user:; whoami";
-    system "echo '<br>' script:; readlink -f $0";
-    system "echo '<br>' Current path:; pwd";
-    system "echo '<br>' Server info:; uname -a";
-    system "echo '<br>' uptime:; uptime";
-    print "</p>";
+    print "Mission parameters list:<table border=1><tr><td>Name</td><td>Value</td></tr>";
+    foreach $i (sort keys %mission_params) {
+        my $v=$mission_params{$i};
+        print "<tr><td>$i</td><td>$v &nbsp;</td></tr>\n";
+    }
+    print "</table>";
+
+    print "Perl's ENV list:<table border=1><tr><td>Name</td><td>Value</td></tr>";
+    foreach $i (sort keys %ENV) {
+        print "<tr><td>$i</td><td>$ENV{$i} &nbsp;</td></tr>\n";
+    }
+    print "</table>";
+
+    print "System info list:<table border=1><tr><td>Name</td><td>Value</td></tr>";
+    foreach $i (sort keys %system_debug) {
+        my $v=$system_debug{$i};
+        print "<tr><td>$i</td><td>";
+        system ( $v );
+        print " &nbsp;</td></tr>\n";
+    }
+    print "</table>";
+    print "</div>";
     print "<br>\n";
     foreach $i (sort keys %friendly_links) {
         my $v=$friendly_links{$i};
@@ -294,7 +318,6 @@ sub html_tail {
     print "<br>Copyright, all rights reserved.</body></html>";
 }
 sub func_loginpage {
-    print "please login<br>\n";
     html_login();
 }
 sub func_login {
@@ -318,3 +341,6 @@ sub func_myprofile {
 sub func_default {
     print "the op is $input_params{'op'}<br>\n";
 }
+
+# Your extension code goes here:)
+#----------------------------------------------------------------------------
