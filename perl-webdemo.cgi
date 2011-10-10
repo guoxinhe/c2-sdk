@@ -25,11 +25,11 @@ our %known_cookies = ( #cookies that must saved in client side. readonly variabl
     'pswd' => {'value'=>'none'   ,'domain'=>'.build','expires'=>'+1y','path'=>'/','secure'=> 0,},
 );
 our %actions = (
-	"loginpage"  	=> \&func_loginpage,
-	"myprofile"  	=> \&func_myprofile,
-	"login"  	=> \&func_login,
-	"logout"  	=> \&func_logout,
-        "default"     	=> \&func_default,
+	'loginpage'  	=> \&func_loginpage,
+	'myprofile'  	=> \&func_myprofile,
+	'login'  	=> \&func_login,
+	'logout'  	=> \&func_logout,
+        'default'     	=> \&func_default,
 );
 our %menu_links = (
         'Home'       =>  "$home_link",
@@ -43,7 +43,7 @@ our %friendly_links = (
         "build196"      => 'http://10.16.13.196',
         'license'       => 'http://10.16.13.195/build/project.cgi'
 );
-our %system_debug = (
+our %system_command = (
     'Servername'     => 'hostname',
     'script'         => "readlink -f $0",
     'Current_path'   => 'pwd',
@@ -98,11 +98,17 @@ if ( $ENV{'REQUEST_METHOD'} eq 'GET' ) {
 # pre-process goes here
 #----------------------------------------------------------------------------
 if ( $input_params{'op'} eq 'login' ) {
-    my $check_result='fail';
+    my $check_result='pass';
 
     #verify login information
-    if ( $input_params{'username'} ne 'guest' && $input_params{'password'} ne 'none' ) {
-        $check_result='pass';
+    if ( $input_params{'username'} eq 'guest' ||
+         $input_params{'username'} eq 'root'  ||
+         $input_params{'username'} eq ''      ){
+         $check_result='fail';
+    }
+    if ( $input_params{'password'} eq 'none'  ||
+         $input_params{'password'} eq ''      ){
+         $check_result='fail';
     }
     my $i=system ("test -d /home/$input_params{'username'}");
     if ( $i != 0 ) {
@@ -163,7 +169,7 @@ if ( $input_params{'op'} eq 'logout' ) {
         $mission_params{'user'} = $known_cookies{'user'}{'value'  };
         $mission_params{'pswd'} = $known_cookies{'pswd'}{'value'  };
 }
-
+$input_params{'webtitle'} .= " op: ".$input_params{'op'};
 # Go!
 #----------------------------------------------------------------------------
 html_head();
@@ -229,7 +235,6 @@ print <<HTML;
 <!--/* <![CDATA[ */
 <!--
     body  {font-family: Arial }
-    dbg {background: #EEFFEE; font-weight:bold}
     a:link    {color:black}
     a:visited {color:black}
     a:hover   {color:blue}
@@ -261,6 +266,7 @@ print <<HTML;
 </head>
 <body>
 HTML
+    #list the top level menu
     foreach $i (sort keys %menu_links) {
         my $v=$menu_links{$i};
         print "| &nbsp;<a href=$v>$i</a>&nbsp; \n"
@@ -271,6 +277,7 @@ HTML
         print "| <a href=$home_link?op=logout>Logout</a> ";
         print " <a href=$home_link?op=myprofile>$mission_params{'user'}</a> ";
     }
+
     print "<hr>";
 }
 
@@ -301,8 +308,8 @@ sub html_tail {
     print "</table>";
 
     print "System info list:<table border=1><tr><td>Name</td><td>Value</td></tr>";
-    foreach $i (sort keys %system_debug) {
-        my $v=$system_debug{$i};
+    foreach $i (sort keys %system_command) {
+        my $v=$system_command{$i};
         print "<tr><td>$i</td><td>";
         system ( $v );
         print " &nbsp;</td></tr>\n";
