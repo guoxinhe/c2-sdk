@@ -1,7 +1,179 @@
 #!/usr/bin/perl
-use 5.008;
-#use strict;
-#use warnings;
+
+use CGI::Cookie;
+
+our $home_link=$ENV{'SCRIPT_NAME'};
+our $bash_home='/var/www';
+our $thisscript=`readlink -f -n $0`;
+our $maxload = 5;
+our %input_params = (
+    'msid'        => 'none'    , #should get from cookie
+    'user'        => 'guest'   , #should get from cookie
+    'pswd'        => 'none'    , #should get from cookie
+    'op'          => 'default' ,
+    'debug'       => 'off'     ,
+    'webtitle'    => 'Perl web test page',
+);
+our %mission_params = (
+    'msid'        => 'none'    ,
+    'user'        => 'guest'   ,
+    'pswd'        => 'none'    ,
+    'result'      => ''        ,
+);
+our %known_cookies = ( #cookies that must saved in client side. readonly variable
+    #'expires' => '(optional) +60s +20m +5h nowimmediately +5M +1y',
+    'msid' => {'value'=>'none'   ,'domain'=>'.build','expires'=>'+1y','path'=>'/','secure'=> 0,},
+    'user' => {'value'=>'guest'  ,'domain'=>'.build','expires'=>'+1y','path'=>'/','secure'=> 0,},
+    'pswd' => {'value'=>'none'   ,'domain'=>'.build','expires'=>'+1y','path'=>'/','secure'=> 0,},
+);
+our %actions = (
+	'loginpage'  	=> \&func_loginpage,
+	'myprofile'  	=> \&func_myprofile,
+	'login'  	=> \&func_login,
+	'logout'  	=> \&func_logout,
+        'default'     	=> \&func_default,
+);
+our %menu_links = (
+        'Home'       =>  "$home_link",
+        'admin'      =>  "$home_link?op=admin",
+        'build'      =>  "$home_link",
+        'license'    =>  "http://10.16.13.195/build/project.cgi?op=liclist",
+        'help'       =>  "$home_link?op=help",
+);
+our %friendly_links = (
+        "build195"      => 'http://10.16.13.195/build/build.cgi',
+        "build196"      => 'http://10.16.13.196/build/build.cgi',
+        'license'       => 'http://10.16.13.195/build/project.cgi?op=liclist',
+);
+our %system_command = (
+    'Servername'     => 'hostname',
+    'script'         => "readlink -f $0",
+    'Current_path'   => 'pwd',
+    'Server_info'    => 'uname -a',
+    'uptime'         => 'uptime',
+    'user'           => 'whoami',
+    'home'           => 'pushd ~ >/dev/null; pwd; popd >/dev/null',
+);
+our %cookies = fetch CGI::Cookie();
+if ( %cookies == 0 ) {
+    $mission_params{'first'} = 'yes';
+}
+foreach $c (keys %cookies) {
+        $v = $cookies{$c} -> value();
+        $input_params{$c}=$v;
+}
+foreach $c (keys %known_cookies) {
+    my $value  =$known_cookies{$c}{'value'  };
+    my $expires=$known_cookies{$c}{'expires'};
+    unless (grep (/^$c$/,keys %cookies)) {
+        sendcookie($c,$value,$expires);
+    }
+}
+if ( $ENV{'REQUEST_METHOD'} eq 'GET' ) {
+    $input_params{'method'} = 'GET';
+    #for 'get' method:
+    if ( $ENV{'QUERY_STRING'} ne '' ) {
+        my $buffer=$ENV{'QUERY_STRING'};
+        $input_params{'buffer'} = $buffer;
+        @pairs = split(/&/, $buffer);
+        foreach $pair (@pairs){
+            ($name, $value) = split(/=/, $pair);
+            $value =~ tr/+/ /;
+            $value =~ s/%([a-fA-F0-9][a-fA-F0-9])/pack("C", hex($1))/eg;
+            $input_params{$name} = $value;
+        }
+    }
+} else {
+    $input_params{'method'} = 'POST';
+    #for 'post' form:
+    my $buffer;
+    read (STDIN, $buffer, {'CONTENT_LENGTH'});
+    $input_params{'buffer'} = $buffer;
+    @pairs = split(/&/, $buffer);
+    foreach $pair (@pairs){
+        ($name, $value) = split(/=/, $pair);
+        $value =~ tr/+/ /;
+        $value =~ s/%([a-fA-F0-9][a-fA-F0-9])/pack("C", hex($1))/eg;
+        $input_params{$name} = $value;
+    }
+}
+# pre-process goes here
+#----------------------------------------------------------------------------
+if ( $input_params{'op'} eq 'login' ) {
+    my $check_result='pass';
+
+    #verify login information
+    if ( $input_params{'username'} eq 'guest' ||
+         $input_params{'username'} eq 'root'  ||
+         $input_params{'username'} eq ''      ){
+         $check_result='fail';
+    }
+    if ( $input_params{'password'} eq 'none'  ||
+         $input_params{'password'} eq ''      ){
+         $check_result='fail';
+    }
+    my $i=system ("test -d /home/$input_params{'username'}");
+    if ( $i != 0 ) {
+        $check_result='fail';
+        $mission_params{'result'}='bad user name';
+    }
+    
+    if ( $check_result eq 'pass' ) {
+        $mission_params{'msid'} = `date +%s`;
+        chomp($mission_params{'msid'});
+        $mission_params{'user'} = $input_params{'username'};
+        $mission_params{'pswd'} = $input_params{'password'};
+
+        foreach $c (keys %known_cookies) {
+            my $value  =$mission_params{$c};
+            my $expires=$known_cookies{$c}{'expires'};
+            sendcookie($c,$value,$expires);
+        }
+
+        #save mission info to server
+        system("mkdir -p $bash_home/.ssh/.users/$mission_params{'user'}");
+        system("echo $mission_params{'msid'} >$bash_home/.ssh/.users/$mission_params{'user'}/msid");
+    }
+}
+if ( $input_params{'op'} ne 'logout' ) {
+    if ($mission_params{'msid'} eq $known_cookies{'msid'}{'value'  } ||
+        $mission_params{'user'} eq $known_cookies{'user'}{'value'  } ||
+        $mission_params{'pswd'} eq $known_cookies{'pswd'}{'value'  } ){
+
+        my $msid='none';
+        #verify login information
+        if ( $input_params{'user'} ne 'guest' && $input_params{'pswd'} ne 'none' ) {
+            #load user/password's msid from server
+            $msid=`cat $bash_home/.ssh/.users/$input_params{'user'}/msid`;
+            chomp($msid);
+        }
+
+        if ( $msid eq $input_params{'msid'} ) {
+        $mission_params{'msid'} = $input_params{'msid'};
+        $mission_params{'user'} = $input_params{'user'};
+        $mission_params{'pswd'} = $input_params{'pswd'};
+        }
+    }
+}
+if ( $input_params{'op'} eq 'logout' ) {
+        $input_params{'msid'} = $known_cookies{'msid'}{'value'  };
+        $input_params{'user'} = $known_cookies{'user'}{'value'  };
+        $input_params{'pswd'} = $known_cookies{'pswd'}{'value'  };
+
+        foreach $c (keys %known_cookies) {
+            my $value  =$known_cookies{$c}{'value'  };
+            my $expires=$known_cookies{$c}{'expires'};
+            sendcookie($c,$value,$expires);
+        }
+
+        #save mission info to server
+        $mission_params{'msid'} = $known_cookies{'msid'}{'value'  };
+        $mission_params{'user'} = $known_cookies{'user'}{'value'  };
+        $mission_params{'pswd'} = $known_cookies{'pswd'}{'value'  };
+}
+$input_params{'webtitle'} .= " op: ".$input_params{'op'};
+
+
 use CGI qw(:standard :escapeHTML -nosticky);
 use CGI::Util qw(unescape);
 use CGI::Carp qw(fatalsToBrowser set_message);
@@ -11,43 +183,6 @@ use File::Find qw();
 use File::Basename qw(basename);
 use Time::HiRes qw(gettimeofday tv_interval);
 binmode STDOUT, ':utf8';
-
-BEGIN {
-	CGI->compile() if $ENV{'MOD_PERL'};
-}
-
-@months = qw(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec);
-@weekDays = qw(Sun Mon Tue Wed Thu Fri Sat Sun);
-($second, $minute, $hour, $dayOfMonth, $month, $yearOffset, $dayOfWeek, $dayOfYear, $daylightSavings) = localtime();
-$year = 1900 + $yearOffset;
-$theTime = "$hour:$minute:$second $weekDays[$dayOfWeek] $months[$month] $dayOfMonth, $year";
-
-# Used to set the maximum load that we will still respond to gitweb queries.
-# If server load exceed this value then return "503 server busy" error.
-# If gitweb cannot determined server load, it is taken to be 0.
-# Leave it undefined (or set to 'undef') to turn off load checking.
-our $maxload = 5;
-
-our $apacheip=`/sbin/ifconfig eth0|sed -n 's/.*inet addr:\\([^ ]*\\).*/\\1/p'`;
-our $browserip=$ENV{'REMOTE_ADDR'};
-our $browserusr='guest';
-our $thisscript=`readlink -f -n $0`;
-our $thisscrihm=`dirname $thisscript`;
-chomp($apacheip);
-chomp($thisscrihm);
-
-our $action;
-our %actions = (
-	"checkin"  	=> \&html_login,
-	"loadavg"  	=> \&check_loadavg,
-        "taskstat" 	=> \&manage_tasks,
-        "rebuild"  	=> \&rebuild_project,
-        "stopbuild"  	=> \&stopbuild_project,
-        "cookies"  	=> \&cookies_test,
-        "bt"       	=> \&bug_test,
-        "kill"     	=> \&kill_project,
-);
-
 our %known_tasks = (
 	'projexample' => {
 		'title'   => 'Please give your project title',
@@ -59,220 +194,206 @@ our %known_tasks = (
 );
 require  "$thisscript.cfg.pl";
 
-our %known_cookies = (
-    'cookyspec' => {
-           'domain'  => 'a partial or complete domain name for which the cookie is valid. Like .devdaily.com',
-           'expires' => '(optional) +60s +20m +5h nowimmediately +5M +1y',
-           'name'    => 'the name of the cookie (required)',
-           'path'    => '(optional), default to / ',
-           'secure'  => '(optional)',
-           'value'   => 'required, can be one of $ % @ variable',
-           },
-);
-
-our $results_dir;
-our %input_params = ();
-our ($my_url, $my_uri, $base_url, $path_info, $home_link);
-our $cgi=new CGI;
-
 # Go!
-#----------------------------------------------------------------
-&evaluate_uri;
-&parseform;
-&html_head;
-&html_debug;
-&dispatch;
-&html_tail;
-exit; 
+#----------------------------------------------------------------------------
+customer_register();
 
+html_head();
 
-sub cookies_test {
-    print "<br>\n";
-    print "Cooies test start --------------------<br>\n";
+dispatch();
 
-    use CGI;
-    $query = new CGI;
-    $cookie = $query->cookie(-name=>'MY_COOKIE',
-	 -value=>'BEST_COOKIE=chocolatechip',
-	 -expires=>'+4h',
-	 -path=>'/');
-    #print $query->header(-cookie=>$cookie);
+html_tail();
 
-    $theCookie = $query->cookie('MY_COOKIE');
-    if ("$theCookie") {
-        print "<BLOCKQUOTE>\n";
-        print "if theCookie exist, will be displayed here---=== [$theCookie] ===---";
-        print "</BLOCKQUOTE>\n";
+#############################################################
+sub sendcookie {
+    my ($name,$value,$life) = @_;
+    my $c;
+    if ($life) {
+        $c = new CGI::Cookie(-name => $name,
+                    -expires => $life,
+                    -path => "/",
+                    -value => $value);
     } else {
-       print "Can't find my cookie!<br>\n";
+        $c = new CGI::Cookie(-name => $name,
+                    -path => "/",
+                    -value => $value);
     }
-
-    print "-+-$ENV{'HTTP_COOKIE'}-+-<br>\n";
-    @pairs = split(/&/, $ENV{'HTTP_COOKIE'});
-    foreach $pair (@pairs){
-        ($name, $value) = split(/=/, $pair);
-        $value =~ tr/+/ /;
-        $value =~ s/%([a-fA-F0-9][a-fA-F0-9])/pack("C", hex($1))/eg;
-        $cookie{$name} = $value;
-        print "Cooies $name = $value --------------------<br>\n";
-    }
-
-    print "Cooies test done --------------------<br>\n";
+    print "Set-Cookie: ",$c->as_string,"\n";
 }
-sub bug_test {
-    print "Bug test start --------------------<br>\n";
-    my $hip="10.16.13.195";
-    my $stret=`ssh build\@$hip \"uptime\"`;
-    print "uptime: <font face='courier new' color=blue><b>$stret</b></font><br>";
-
-    my $stret=`ssh build\@$hip \"echo this is a echo with free workds as parameters\"`;
-    print "echo: <font face='courier new' color=blue><b>$stret</b></font><br>";
-
-    print "ENV{'REMOTE_ADDR'  }:  -- $ENV{'REMOTE_ADDR'  } <br> \n";
-    print "ENV{'HTTP_REFERER' }:  -- $ENV{'HTTP_REFERER' } <br> \n";
-    print "ENV{'HTTP_HOST'    }:  -- $ENV{'HTTP_HOST'    } <br> \n";
-    print "ENV{'DOCUMENT_ROOT'}:  -- $ENV{'DOCUMENT_ROOT'} <br> \n";
-    print "ENV{'REQUEST_URI'  }:  -- $ENV{'REQUEST_URI'  } <br> \n";
-    print "ENV{'SERVER_NAME'  }:  -- $ENV{'SERVER_NAME'  } <br> \n";
-    
-    print "searched ENV[*] --------------------<br>\n";
-    my $k;
-    foreach $k (sort keys %ENV) {
-        my $v=$ENV{$k};
-        print "ENV{'$k'}:  -- $v <br> \n";
-    }
-    print "Bug test done --------------------<br>\n";
-}
-sub evaluate_uri {
-        our $cgi;
-
-        our $my_url = $cgi->url();
-        our $my_uri = $cgi->url(-absolute => 1);
-
-        # Base URL for relative URLs in gitweb ($logo, $favicon, ...),
-        # needed and used only for URLs with nonempty PATH_INFO
-        our $base_url = $my_url;
-
-        # When the script is used as DirectoryIndex, the URL does not contain the name
-        # of the script file itself, and $cgi->url() fails to strip PATH_INFO, so we
-        # have to do it ourselves. We make $path_info global because it's also used
-        # later on.
-        #
-        # Another issue with the script being the DirectoryIndex is that the resulting
-        # $my_url data is not the full script URL: this is good, because we want
-        # generated links to keep implying the script name if it wasn't explicitly
-        # indicated in the URL we're handling, but it means that $my_url cannot be used
-        # as base URL.
-        # Therefore, if we needed to strip PATH_INFO, then we know that we have
-        # to build the base URL ourselves:
-        our $path_info = $ENV{"PATH_INFO"};
-        if ($path_info) {
-                if ($my_url =~ s,\Q$path_info\E$,, &&
-                    $my_uri =~ s,\Q$path_info\E$,, &&
-                    defined $ENV{'SCRIPT_NAME'}) {
-                        $base_url = $cgi->url(-base => 1) . $ENV{'SCRIPT_NAME'};
-                }
-        }
-
-        # target of the home link on top of all pages
-        our $home_link = $my_uri || "/";
-}
-
-# Get loadavg of system, to compare against $maxload.
-# Currently it requires '/proc/loadavg' present to get loadavg;
-# if it is not present it returns 0, which means no load checking.
-sub get_loadavg {
-	if( -e '/proc/loadavg' ){
-		open my $fd, '<', '/proc/loadavg'
-			or return 0;
-		my @load = split(/\s+/, scalar <$fd>);
-		close $fd;
-
-		# The first three columns measure CPU and IO utilization of the last one,
-		# five, and 10 minute periods.  The fourth column shows the number of
-		# currently running processes and the total number of processes in the m/n
-		# format.  The last column displays the last process ID used.
-		return $load[0] || 0;
-	}
-	# additional checks for load average should go here for things that don't export
-	# /proc/loadavg
-
-	return 0;
-}
-sub get_machine_loadavg {
-    my ($usr, $hostip) = ( @_ );
-
-    my $ret=`ssh $usr\@$hostip cat /proc/loadavg`;
-    my @load = split(/\s+/, $ret);
-    return $load[0] || 0;
-    #print "$usr\@$hostip cat /proc/loadavg: $ret ==== $load[0] <br>\n";
-}
-sub check_loadavg {
-    my ($usr, $hostip) = ('build','10.16.13.195');
-    my $ret=`ssh $usr\@$hostip cat /proc/loadavg`;
-    my @load = split(/\s+/, $ret);
-    print "$usr\@$hostip cat /proc/loadavg: $ret ==== $load[0] <br>\n";
-
-    my ($usr, $hostip) = ('build','10.16.13.196');
-    my $ret=`ssh $usr\@$hostip cat /proc/loadavg`;
-    my @load = split(/\s+/, $ret);
-    print "$usr\@$hostip cat /proc/loadavg: $ret ==== $load[0] <br><br>\n";
-
-    print "<b>ssh build\@10.16.13.195 \"crontab -l\"</b>\n";
-    print "<pre>";
-    system "ssh build\@10.16.13.195 \"crontab -l\" ";
-    print "</pre>";
-
-    print "<b>ssh build\@10.16.13.196 \"crontab -l\"</b>\n";
-    print "<pre>";
-    system "ssh build\@10.16.13.196 \"crontab -l\" ";
-    print "</pre>";
-
-    if (defined $maxload && get_loadavg() > $maxload) {
-        die "The load average on the server is too high";
-    }
-}
-
-sub check_machine_loadavg {
-	if (defined $maxload && get_machine_loadavg(@_) > $maxload) {
-                my ($usr, $hostip) = ( @_ );
-                my $ret=`ssh $usr\@$hostip cat /proc/loadavg`;
-                my @load = split(/\s+/, $ret);
-                print "machine $hostip load average too high: $load[0] <br>\n";
-		die "The load average on the server is too high";
-	}
-}
-
-sub html_debug {
-    my $count=keys %input_params;
-    our $action;
-    if ( $count > 0 ) {
-        #my @arr = %input_params;
-        #print "@arr<br>\n";
-        while ( ($key, $val) = each %input_params ) {
-            #print "Web data: $key => $val<br>\n";
-        }
-        if ($input_params{'op'} eq '' ) {
-            #print "Debug: input_params{op} is |$input_params{'op'}|, no set action<br>\n";
-        } else {
-            #print "Debug: input_params{op} is |$input_params{'op'}|, set action<br>\n";
-            $action=$input_params{'op'};
-        }
-    }
-}
-
 # dispatch
 sub dispatch {
-        our $action;
-	if (!defined $action) {
-                #print "not defined action , default to 'taskstat'<br>\n";
-		$action = 'taskstat';
+	if (!defined $input_params{'op'}) {
+		$input_params{'op'} = 'default';
 	}
-        #print "Dispatch action |$action|";
-	if (!defined($actions{$action})) {
-		die "Unknown action (debug:): $action" ;
-	}
-	$actions{$action}->();
+        my $op=$input_params{'op'};
+	if (!defined($actions{$op})) {
+            print "<font color=red size=+5>die: Unknown op (debug:): $op </font>" ;
+	} else {
+	    $actions{$op}->();
+        }
+}
+sub html_login {
+print <<HTML;
+<center><form action="$home_link?op=login" method="POST">
+Please login(method: post)
+<table border="0" cellpadding="3" cellspacing="3">
+    <tr><td>Username</td><td><input type="text"     size="32" name="username" value="$input_params{username}"></td></tr>
+    <tr><td>Password</td><td><input type="password" size="32" name="password" value="$input_params{password}"></td></tr>
+    <tr><td align="center" colspan="2"><input type="submit"   name="op" value="login"></td></tr>
+</table></form></center>
+
+<center><form action="$home_link?op=login" method="GET">
+Please login(method: get)
+<table border="0" cellpadding="3" cellspacing="3">
+    <tr><td>Username</td><td><input type="text"     size="32" name="username" value="$input_params{username}"></td></tr>
+    <tr><td>Password</td><td><input type="password" size="32" name="password" value="$input_params{password}"></td></tr>
+    <tr><td align="center" colspan="2"><input type="submit"   name="op" value="login"></td></tr>
+</table></form></center>
+HTML
+}
+sub html_head {
+print "Content-type: text/html\n\n";
+print <<HTML;
+<html>
+<head>
+<title>$input_params{webtitle}</title>
+<style type="text/css">
+<!--/* <![CDATA[ */
+<!--
+    body  {font-family: Arial }
+    a:link    {color:black}
+    a:visited {color:black}
+    a:hover   {color:blue}
+    a:active  {color:green}
+
+
+    td {text-align: center}
+    table {background: lightgrey;  border-collapse: collapse; font-family: Arial }
+    td.category {vertical-align:top}
+
+    .pass {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #00FF00; }
+    .fail {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #FF0000; font-weight:bold}
+    .na   {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #DDDDDD; }
+    .run  {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #FFFF00; font-weight:bold}
+-->
+/* ]]> */-->
+</style>
+
+<script type="text/javascript">
+    function openShutManager(oSourceObj,oTargetObj,shutAble,oOpenTip,oShutTip){
+        var sourceObj = typeof oSourceObj == "string" ? document.getElementById(oSourceObj) : oSourceObj;
+        var targetObj = typeof oTargetObj == "string" ? document.getElementById(oTargetObj) : oTargetObj;
+        var openTip = oOpenTip || "";
+        var shutTip = oShutTip || "";
+        if(targetObj.style.display!="none"){
+           if(shutAble) return;
+           targetObj.style.display="none";
+           if(openTip  &&  shutTip){
+            sourceObj.innerHTML = shutTip;
+           }
+        } else {
+           targetObj.style.display="block";
+           if(openTip  &&  shutTip){
+            sourceObj.innerHTML = openTip;
+           }
+        }
+    }
+</script>
+</head>
+<body>
+HTML
+    #list the top level menu
+    foreach $i (sort keys %menu_links) {
+        my $v=$menu_links{$i};
+        print "| &nbsp;<a href=$v>$i</a>&nbsp; \n"
+    }
+    if ( $mission_params{'user'} eq 'guest' ) {
+        print "| <a href=$home_link?op=loginpage>Login</a> ";
+    } else {
+        print "| <a href=$home_link?op=logout>Logout</a> ";
+        print " <a href=$home_link?op=myprofile>$mission_params{'user'}</a> ";
+    }
+
+    print "<hr>";
+}
+
+sub html_tail {
+    my $i;
+    print "<hr> more webpage(cgi) debug info";
+    print " <a href='###' onclick=\"openShutManager(this,'moretext',false,'hide','show')\">show</a>";
+    print "<div id='moretext' style='background:#CCFFCC; display:none'>";
+    
+    print "Input parameters list:<table border=1><tr><td>Name</td><td>Value</td></tr>";
+    foreach $i (sort keys %input_params) {
+        my $v=$input_params{$i};
+        print "<tr><td>$i</td><td>$v &nbsp;</td></tr>\n";
+    }
+    print "</table>";
+
+    print "Mission parameters list:<table border=1><tr><td>Name</td><td>Value</td></tr>";
+    foreach $i (sort keys %mission_params) {
+        my $v=$mission_params{$i};
+        print "<tr><td>$i</td><td>$v &nbsp;</td></tr>\n";
+    }
+    print "</table>";
+
+    print "Perl's ENV list:<table border=1><tr><td>Name</td><td>Value</td></tr>";
+    foreach $i (sort keys %ENV) {
+        print "<tr><td>$i</td><td>$ENV{$i} &nbsp;</td></tr>\n";
+    }
+    print "</table>";
+
+    print "System info list:<table border=1><tr><td>Name</td><td>Value</td></tr>";
+    foreach $i (sort keys %system_command) {
+        my $v=$system_command{$i};
+        print "<tr><td>$i</td><td>";
+        system ( $v );
+        print " &nbsp;</td></tr>\n";
+    }
+    print "</table>";
+    print "</div>";
+    print "<br>\n";
+    foreach $i (sort keys %friendly_links) {
+        my $v=$friendly_links{$i};
+        print "| &nbsp;<a href=$v>$i</a>&nbsp; \n"
+    }
+
+    print "<br>Copyright, all rights reserved.</body></html>";
+}
+sub func_loginpage {
+    html_login();
+}
+sub func_login {
+    if ($mission_params{'msid'} eq $known_cookies{'msid'}{'value'  } ||
+        $mission_params{'user'} eq $known_cookies{'user'}{'value'  } ){
+        print "login fail<br>\n";
+    } else {
+        print "login ok<br>\n";
+    }
+}
+sub func_logout {
+    print "logout ok<br>\n";
+}
+sub func_myprofile {
+    print "Welcome $mission_params{'user'}<br><pre>\n";
+    system ("id $mission_params{'user'}");
+    system ("uname -a");
+    print "</pre>\n";
+    
+}
+sub func_default {
+    print "the op is $input_params{'op'}<br>\n";
+}
+
+# Your extension code goes here:)
+#----------------------------------------------------------------------------
+sub customer_register {
+    #register your operations here.
+    $actions{"default"  }=\&manage_tasks;
+    $actions{"rebuild"  }=\&rebuild_project;
+    $actions{"stopbuild"}=\&stopbuild_project;
+    $actions{"kill"     }=\&kill_project;
+
 }
 sub print_top_results {
     our ($results_dir,$urlpre)=(@_);
@@ -299,14 +420,9 @@ sub print_top_results {
         }
     }
   
-    if ($input_params{'thm'} eq '' ) {
     print "<table border=1>";
     print "<tr><th>Category</th><th>" .
-       join ("</th><th>", @dates) . "</th></tr>";
-    } else {
-    print "<table border=0>";
-    print "<tr><td class=tti >Category</td><td class=tti >" . join ("</td><td class=tti >", @dates) . "</td></tr>";
-    }
+    join ("</th><th>", @dates) . "</th></tr>";
    
     my $newrow = 0;
 
@@ -331,11 +447,7 @@ sub print_top_results {
                
                 my ($n_warning, $n_error) =(0,0);# check_for_results_string($log);
                
-                if ($input_params{'thm'} eq '' ) {
                 $status = ($n_error) ? "${n_warning}/${n_error}" : uc($class);
-                } else {
-                    $status = ($n_error) ? "${n_warning}/${n_error}" : ($class);
-                }
                
                 $log =~ s-$results_dir-$urlpre-;
                
@@ -374,12 +486,10 @@ sub manage_tasks {
             my $byip=`grep CONFIG_REMOTEIP     $top/build_result/l/env.log | sed -e 's,.*=\\(.*\\),\\1,g' `;
             my $byuser=`grep CONFIG_REMOTEUSER $top/build_result/l/env.log | sed -e 's,.*=\\(.*\\),\\1,g' `;
             chomp($byip); chomp($byuser);
-            if ($byip ne "" || $byuser ne "") { $byuser="runby:$byuser\@$byip"; }
-            if ($input_params{'thm'} eq '' ) {
-                print "<br><a name=$tskid>$tskid</a>:  <font size=+1 color=blue ><b>$tit</b></font><br>\n";
-            } else {
-                print "<br><a name=$tskid>$tskid</a>:  <font size=+1 color=black><b>$tit</b></font><br>\n";
+            if ($byip ne "" || $byuser ne "") { 
+                $byuser="runby:$byuser\@$byip"; 
             }
+            print "<br><a name=$tskid>$tskid</a>:  <font size=+1 color=blue ><b>$tit</b></font><br>\n";
             print "script:$hip".'@'."$scr $byuser<br>\n";
             my $crnt=`ssh build\@$hip \"crontab -l| grep -m 1 $scr\"`;
             if ($crnt) {
@@ -406,11 +516,28 @@ sub manage_tasks {
             }
 	    unlink("/var/www/html/build/link/$tskid");
             symlink("$top/build_result", "/var/www/html/build/link/$tskid");
-	    &print_top_results("$top/build_result","link/$tskid");
+	    &print_top_results("$top/build_result","/build/link/$tskid");
         }
     }
 }
 
+sub get_machine_loadavg {
+    my ($usr, $hostip) = ( @_ );
+
+    my $ret=`ssh $usr\@$hostip cat /proc/loadavg`;
+    my @load = split(/\s+/, $ret);
+    return $load[0] || 0;
+    #print "$usr\@$hostip cat /proc/loadavg: $ret ==== $load[0] <br>\n";
+}
+sub check_machine_loadavg {
+	if (defined $maxload && get_machine_loadavg(@_) > $maxload) {
+                my ($usr, $hostip) = ( @_ );
+                my $ret=`ssh $usr\@$hostip cat /proc/loadavg`;
+                my @load = split(/\s+/, $ret);
+                print "machine $hostip load average too high: $load[0] <br>\n";
+		die "The load average on the server is too high";
+	}
+}
 sub stopbuild_project {
     my $tskid=$input_params{'p'};
     my $scr=$known_tasks{$tskid}{'script' };
@@ -530,128 +657,4 @@ sub rebuild_project {
     print "<pre>";
     system "yes \"\" | ssh build\@$hip $scr --byip $browserip --byuser $browserusr & ";
     #print "</pre>";
-}
-sub html_login {
-    if ( $input_params{'username'} ne "" ) {
-        print "<i>user  $input_params{'username'} logined</i><br>";
-    }
-print <<HTML;
-<form action="$home_link?op=submit" method="POST">
-<center>Add A User</center>
-<center>
-<table border="0" cellpadding="3" cellspacing="3">
-    <tr>
-        <td>Login description</td>
-        <td><input type="text" size="64" name="logindesc" value="$input_params{logindesc}"></td>
-    </tr>
-    <tr>
-        <td>Username</td>
-        <td><input type="text" size="32" name="username" value="$input_params{username}"></td>
-    </tr>
-    <tr>
-        <td>Password</td>
-        <td><input type="password" size="32" name="password" value="$input_params{password}"></td>
-    </tr>
-    <tr>
-        <td align="center" colspan="2">
-        <input type="submit"  name="submit" value="Submit"></td>
-    </tr>
-</table>
-</center>
-</form>
-HTML
-}
-sub html_head {
-print "Content-type: text/html\n\n";
-print <<HTML;
-<html>
-<head>
-<title>C2 build server runtime monitor</title>
-<style type="text/css">
-<!--/* <![CDATA[ */
-HTML
-if ($input_params{'thm'} eq '' ) {
-print <<HTML;
-<!--
-td {text-align: center}
-table {background: lightgrey}
-td.category {vertical-align:top}
-
-.pass {background: #00FF00; font-weight:bold}
-.fail {background: red;  font-weight:bold}
-.na   {background: grey}
-.run  {background: #ffff00; font-weight:bold}
--->
-
-HTML
-} else {
-print <<HTML;
-<!--
-td {text-align: center}
-table {background: grey;  border-collapse: collapse; font-family: Arial }
-td.category {vertical-align:top}
-a:link {color:black}
-a:visited {color:black}
-a:hover {color:blue}
-a:active {color:green}
-.tti  {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #DDDDDD; font-weight:bold}
-.pass {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #FFFFFF; }
-.fail {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #E0E0FF; font-weight:bold}
-.na   {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #FFFFFF}
-.run  {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #F0F0B0; font-weight:bold}
-body  {font-family: Arial }
--->
-
-HTML
-}
-
-print <<HTML;
-/* ]]> */-->
-</style>
-</head>
-<body>
-| <a href=http://10.16.13.195/build/build.cgi>195</a>
-  <a href=http://10.16.13.195/build/project.cgi?op=liclist>license</a>
-| <a href=http://10.16.13.196/build/build.cgi>196</a>
-  <a href=http://10.16.13.196/build/project.cgi?op=liclist>license</a>
-| <a href=$home_link?op=loadavg>C2 Build server ($apacheip)</a> 
-  <a href=$home_link?op=taskstat>monitor page</a> $theTime
-| <a href=$home_link?op=taskstat>task manage</a>
-| <a href=$home_link?thm=bonw>grey</a>
-<hr>
-HTML
-#| <a href=$home_link?op=checkin> check in </a>
-}
-sub html_tail {
-print "<hr> more webpage(cgi) debug info";
-system "echo '<br>' Servername:; hostname";
-system "echo '<br>' user:; whoami";
-system "echo '<br>' script:; readlink -f $0";
-print "<br>url: $my_url";
-print "<br>uri: $my_uri";
-print "<br>home_link: $home_link";
-print "<br>path_info: $path_info";
-system "echo '<br>' Current path:; pwd";
-system "echo '<br>' Server info:; uname -a";
-system "echo '<br>' uptime:; uptime";
-print <<HTML;
-<br>
-C2 Build server ($apacheip) monitor page. $theTime
-</body>
-HTML
-}
-sub parseform  {
-    read (STDIN, $buffer, {'CONTENT_LENGTH'});
-    @pairs = split(/&/, $buffer);
-
-    foreach $pair (@pairs){
-    	($name, $value) = split(/=/, $pair);
-    	$value =~ tr/+/ /;
-    	$value =~ s/%([a-fA-F0-9][a-fA-F0-9])/pack("C", hex($1))/eg;
-    	$input_params{$name} = $value;
-    }
-    #$input_params{'op'} = param('op');
-    $input_params{'op'} = $cgi->param('op');
-    $input_params{'p'} = $cgi->param('p');
-    $input_params{'thm'} = $cgi->param('thm');
 }
