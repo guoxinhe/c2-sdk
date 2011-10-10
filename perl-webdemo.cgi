@@ -4,6 +4,8 @@ use CGI::Cookie;
 
 our $home_link=$ENV{'SCRIPT_NAME'};
 our $bash_home='/var/www';
+our $thisscript=`readlink -f -n $0`;
+our $maxload = 5;
 our %input_params = (
     'msid'        => 'none'    , #should get from cookie
     'user'        => 'guest'   , #should get from cookie
@@ -33,15 +35,15 @@ our %actions = (
 );
 our %menu_links = (
         'Home'       =>  "$home_link",
-        'admin'      =>  "$home_link?op=admin",
-        'build'      =>  "$home_link?op=build",
-        'license'    =>  "$home_link?op=license",
-        'help'       =>  "$home_link?op=help",
+        'admin'      =>  "$home_link",
+        'build'      =>  "$home_link",
+        'license'    =>  "http://10.16.13.195/build/project.cgi?op=liclist",
+        'help'       =>  "$home_link",
 );
 our %friendly_links = (
-        "build195"      => 'http://10.16.13.195',
-        "build196"      => 'http://10.16.13.196',
-        'license'       => 'http://10.16.13.195/build/project.cgi'
+        "build195"      => 'http://10.16.13.195/build/build.cgi',
+        "build196"      => 'http://10.16.13.196/build/build.cgi',
+        'license'       => 'http://10.16.13.195/build/project.cgi?op=liclist',
 );
 our %system_command = (
     'Servername'     => 'hostname',
@@ -170,8 +172,11 @@ if ( $input_params{'op'} eq 'logout' ) {
         $mission_params{'pswd'} = $known_cookies{'pswd'}{'value'  };
 }
 $input_params{'webtitle'} .= " op: ".$input_params{'op'};
+
 # Go!
 #----------------------------------------------------------------------------
+customer_register();
+
 html_head();
 
 dispatch();
@@ -239,6 +244,16 @@ print <<HTML;
     a:visited {color:black}
     a:hover   {color:blue}
     a:active  {color:green}
+
+
+    td {text-align: center}
+    table {background: lightgrey;  border-collapse: collapse; font-family: Arial }
+    td.category {vertical-align:top}
+
+    .pass {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #00FF00; }
+    .fail {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #FF0000; font-weight:bold}
+    .na   {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #DDDDDD; }
+    .run  {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #FFFF00; font-weight:bold}
 -->
 /* ]]> */-->
 </style>
@@ -351,3 +366,6 @@ sub func_default {
 
 # Your extension code goes here:)
 #----------------------------------------------------------------------------
+sub customer_register {
+    #using format $actions{'newop'}=\&myfunction;
+}
