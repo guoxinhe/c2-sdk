@@ -417,53 +417,51 @@ sub parse_files_by_date {
            print "Die: Opening $d.txt: $!\n";
         }
 
-        if ($fields == 3) { 
-            while (<RES>) {
-                /^.*:.*:.*$/ || next;
-                my $cat='reserved';
-                my ($test, $res, $logfile) = split(/:/);
+        while (<RES>) {
+            if ( $_ =~ /^.*:.*:.*:.*$/ ) {
+                my ($fcategory, $fsubitem, $res, $logfile) = split(/:/);
                 my ($nrfail, $nrall) = split(/\//,$res);
-                $results{$cat}{$test}{$d} = [$res, $logfile, $cat, $test, $nrfail, $nrall];
+                $results{$fcategory}{$fsubitem}{$d} = [$res, $logfile, $fcategory, $fsubitem, $nrfail, $nrall];
+                next;
             }
-        }
-        if ($fields == 4) { 
-            while (<RES>) {
-                /^.*:.*:.*:.*$/ || next;
-                my ($cat, $test, $res, $logfile) = split(/:/);
+            if ( $_ =~ /^.*:.*:.*$/ ) {
+                my ($fcategory, $res, $logfile) = split(/:/);
+                my $fsubitem='-';
                 my ($nrfail, $nrall) = split(/\//,$res);
-                $results{$cat}{$test}{$d} = [$res, $logfile, $cat, $test, $nrfail, $nrall];
+                $results{$fcategory}{$fsubitem}{$d} = [$res, $logfile, $fcategory, $fsubitem, $nrfail, $nrall];
+                next;
             }
         }
     }
     print "<table border=1>";
     print "<tr><th>Category</th>" ;
-    for my $c (1..($fields-3)) {
+    if ($fields == 4) { 
         print "<th>subitem</th>" ;
     }
     print "<th>" . join ("</th><th>", @dates) . "</th></tr>";
 
-    for my $cat (sort keys (%results)) {
-    for my $test (sort keys %{$results{$cat}}) {
+    for my $fcategory (sort keys (%results)) {
+    for my $fsubitem (sort keys %{$results{$fcategory}}) {
         print "<tr>";
         my $class = "na";
-        if (exists($results{$cat}{$test}{$dates[0]})) {
-            my ($res, $logfile, $cat, $test, $nrfail, $nrall) = @{$results{$cat}{$test}{$dates[0]}};
+        if (exists($results{$fcategory}{$fsubitem}{$dates[0]})) {
+            my ($res, $logfile, $fcategory, $fsubitem, $nrfail, $nrall) = @{$results{$fcategory}{$fsubitem}{$dates[0]}};
             if ( $nrall eq '' ) {
                 $class = $res == 0 ? "pass" : $res == 2 ? "run" : "fail";
             } else {
                 $class = "done";
             }
         }
-        if ( $cat ne 'reserved' ) {
-            print "<td class='$class'>$cat</td>";
+        print "<td class='$class'>$fcategory</td>";
+        if ($fields == 4) { 
+            print "<td class='$class'>$fsubitem</td>";
         }
-        print "<td class='$class'>$test</td>";
 
         for my $d (@dates) {    
             my $class = "na";
             my $status = "&nbsp;";
-            if (exists($results{$cat}{$test}{$d})) {
-                my ($res, $logfile, $cat, $test, $nrfail, $nrall) = @{$results{$cat}{$test}{$d}};
+            if (exists($results{$fcategory}{$fsubitem}{$d})) {
+                my ($res, $logfile, $fcategory, $fsubitem, $nrfail, $nrall) = @{$results{$fcategory}{$fsubitem}{$d}};
                 $logfile =~ s-.*test_report-$urlpre-;
                 if ( $nrall eq '' ) {
                     $class = $res == 0 ? "pass" : $res == 2 ? "run" : "fail";
@@ -479,93 +477,6 @@ sub parse_files_by_date {
     }
     }
 
-    print "</table>";
-}
-
-
-sub print_top_results {
-    our ($results_dir,$urlpre)=(@_);
-    my $num_days = 9;
-  
-    opendir(DIR, $results_dir) or die "Couldn't open $results_dir: $!\n";
-  
-    #my $log_num = grep /^(\d{2}[0,1][0-9][0-3][0-9])\.txt$/i, readdir(DIR);
-    my $log_num = grep /^(\d{4}.\d{2}.\d{2})\.txt$/i, readdir(DIR);
-    if ($log_num<10) {
-        $num_days = $log_num-1;
-    }
-  
-    opendir(DIR, $results_dir);
-    my @dates = (sort({ $b cmp $a} grep(s/^(\d{4}.\d{2}.\d{2})\.txt$/$1/, readdir(DIR))))[0..$num_days];
-  
-    my %results;
-  
-    for my $d (@dates) {
-        open (RES, "${results_dir}/$d.txt") or die "Opening $d: $!\n";
-        #print "Get log file $d.txt<br>\n";
-        #print "<ul>";
-        while (<RES>) {
-            #/^.*:.*:.*$/ || next;
-            #my ($test, $res, $logfile) = split(/:/);
-            #$results{$test}{$d} = [$res, $logfile];
-            /^.*:.*:.*:.*$/ || next;
- 
-            my ($cat, $test, $res, $logfile) = split(/:/);
-            my ($nrfail, $nrall) = split(/\//,$res);
-            $results{$test}{$d} = [$res, $logfile, $cat, $nrfail, $nrall];
-            #print "<li> $cat, $test, $res $nrfail $nrall, $logfile</li>";
-        }
-        #print "</ul>";
-    }
-  
-    print "<table border=1>";
-    print "<tr><th>Category</th><th>Cate</th><th>" .
-    join ("</th><th>", @dates) . "</th></tr>";
-   
-    my $newrow = 0;
-
-    for my $test (keys (%results)) {
-        print "<tr>" if ($newrow);
-       
-        # Make test red if the most recent test failed
-        my $testclass = "na";
-        if (exists($results{$test}{$dates[0]})) {
-            $testclass = $results{$test}{$dates[0]}[0] == 0 ? "pass" : $results{$test}{$dates[0]}[0] == 2 ? "run" : "fail";
-        }
-
-        my $bigcat    = "==&nbsp";
-        my $d=$dates[2];
-        if (exists($results{$test}{$d})) {
-            my ($res, $log, $cat, $nrfail, $nrall) = @{$results{$test}{$d}};
-            $bigcat = $cat;
-        }
-       
-        print "<td class=${testclass}>$test</td>";
-        print "<td class=${testclass}>$bigcat</td>";
-       
-        for my $d (@dates) {
-            my $class = "na";
-            my $status = "";
-           
-            if (exists($results{$test}{$d})) {
-                my ($res, $log, $cat, $nrfail, $nrall) = @{$results{$test}{$d}};
-                #$class = $res == 0 ? "pass" : $res == 2 ? "run" : "fail";
-               
-                my ($n_warning, $n_error) =($nrfail,$nrall);# check_for_results_string($log);
-               
-                $status = ($n_error) ? "${n_warning} / ${n_error}" : uc($class);
-               
-                #$log =~ s-$results_dir-$urlpre-;
-                #$log =~ s-/home/meanmi/CTS_result/test_report-$urlpre-;
-                $log =~ s-.*test_report-$urlpre-;
-               
-                $status = "<a href='$log' title='gettin jiggy'>${status}</a>";
-            }
-            print "<td class='${class}'>${status}</td>";
-        }
-        print "</tr>";
-        $newrow = 1;
-    }
     print "</table>";
 }
 
@@ -608,7 +519,6 @@ sub manage_tasks {
         system("mkdir -p $link");
 	unlink("$link/$tskid");
         symlink("$hme/test_report", "$link/$tskid");
-	#print_top_results("$hme/test_report","/qa/link/$tskid");
         parse_files_by_date(10,"$hme/test_report",'(\d{4}.\d{2}.\d{2})\.txt',4,'*/test_report',"/qa/link/$tskid");
     }
 }
