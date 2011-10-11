@@ -14,4 +14,15 @@ our %known_tasks = (
                 'clientip'=> '10.16.6.88',
 		'status'  => 'on',
 		},
+	'projz' => {
+		'title'   => 'Script test case',
+		'config'  => 'your test configuration info for human',
+                'hostip'  => '10.16.6.204',
+		'user'    => 'hguo',
+		'home'	  => '/home/hguo/out',
+		'script'  => '/usr/bin/clear',
+		'reset'   => 'manual',
+                'clientip'=> '10.16.6.88',
+		'status'  => 'on',
+		},
 );
