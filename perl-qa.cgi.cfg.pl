@@ -3,7 +3,7 @@
 # # Any changes made here will be lost!
 
 our %known_tasks = (
-	'projx' => {
+	'projcts' => {
 		'title'   => 'CTS daily test report',
 		'config'  => 'your test configuration info for human',
                 'hostip'  => '10.16.6.204',
@@ -14,7 +14,7 @@ our %known_tasks = (
                 'clientip'=> '10.16.6.88',
 		'status'  => 'on',
 		},
-	'projy' => {
+	'projx' => {
 		'title'   => 'Script test case, for 3 fields ^cate:res:log',
 		'config'  => 'your test configuration info for human',
                 'hostip'  => '10.16.6.204',
@@ -25,12 +25,23 @@ our %known_tasks = (
                 'clientip'=> '10.16.6.88',
 		'status'  => 'on',
 		},
-	'projz' => {
+	'projy' => {
 		'title'   => 'Script test case, for 4 fields ^cate:sub:res:log',
 		'config'  => 'your test configuration info for human',
                 'hostip'  => '10.16.6.204',
 		'user'    => 'hguo',
-		'home'	  => '/home/hguo/out',
+		'home'	  => '/home/hguo/out4',
+		'script'  => '/usr/bin/clear',
+		'reset'   => 'manual',
+                'clientip'=> '10.16.6.88',
+		'status'  => 'on',
+		},
+	'projz' => {
+		'title'   => 'Script test case, for 5 fields ^cate:sub:sub2:res:log',
+		'config'  => 'your test configuration info for human',
+                'hostip'  => '10.16.6.204',
+		'user'    => 'hguo',
+		'home'	  => '/home/hguo/out5',
 		'script'  => '/usr/bin/clear',
 		'reset'   => 'manual',
                 'clientip'=> '10.16.6.88',

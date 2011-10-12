@@ -7,18 +7,18 @@ our $bash_home='/var/www';
 our $thisscript=`readlink -f -n $0`;
 our $maxload = 5;
 our %input_params = (
-    'msid'        => 'none'    , #should get from cookie
-    'user'        => 'guest'   , #should get from cookie
-    'pswd'        => 'none'    , #should get from cookie
-    'op'          => 'default' ,
-    'debug'       => 'off'     ,
-    'webtitle'    => 'Perl web test page',
+    'msid'           => 'none'    , #should get from cookie
+    'user'           => 'guest'   , #should get from cookie
+    'pswd'           => 'none'    , #should get from cookie
+    'op'             => 'default' ,
+    'debug'          => 'off'     ,
+    'webtitle'       => 'C2 Internal',
 );
 our %mission_params = (
-    'msid'        => 'none'    ,
-    'user'        => 'guest'   ,
-    'pswd'        => 'none'    ,
-    'result'      => ''        ,
+    'msid'           => 'none'    ,
+    'user'           => 'guest'   ,
+    'pswd'           => 'none'    ,
+    'result'         => ''        ,
 );
 our %known_cookies = ( #cookies that must saved in client side. readonly variable
     #'expires' => '(optional) +60s +20m +5h nowimmediately +5M +1y',
@@ -27,22 +27,21 @@ our %known_cookies = ( #cookies that must saved in client side. readonly variabl
     'pswd' => {'value'=>'none'   ,'domain'=>'.build','expires'=>'+1y','path'=>'/','secure'=> 0,},
 );
 our %actions = (
-	'loginpage'  	=> \&func_loginpage,
-	'myprofile'  	=> \&func_myprofile,
-	'login'  	=> \&func_login,
-	'logout'  	=> \&func_logout,
-        'default'     	=> \&func_default,
+    'loginpage'      => \&func_loginpage,
+    'myprofile'      => \&func_myprofile,
+    'login'  	     => \&func_login,
+    'logout'  	     => \&func_logout,
+    'default'        => \&func_default,
 );
 our %menu_links = (
-        'Home'       =>  "$home_link",
-        'admin'      =>  "$home_link",
-        'build'      =>  "$home_link",
-        'help'       =>  "$home_link",
+    'Home'           =>  "$home_link",
+    'index'          =>  "$home_link?idx=1",
 );
 our %friendly_links = (
-        "build195"      => 'http://10.16.13.195/build/build.cgi',
-        "build196"      => 'http://10.16.13.196/build/build.cgi',
-        'license'       => 'http://10.16.13.195/build/project.cgi?op=liclist',
+    "build195"       => 'http://10.16.13.195/build/build.cgi',
+    "build196"       => 'http://10.16.13.196/build/build.cgi',
+    'license'        => 'http://10.16.13.195/build/project.cgi?op=liclist',
+    'qareport'       => 'http://10.16.6.204/qa/index.cgi?idx=1',
 );
 our %system_command = (
     'Servername'     => 'hostname',
@@ -170,9 +169,8 @@ if ( $input_params{'op'} eq 'logout' ) {
         $mission_params{'user'} = $known_cookies{'user'}{'value'  };
         $mission_params{'pswd'} = $known_cookies{'pswd'}{'value'  };
 }
-$input_params{'webtitle'} .= " op: ".$input_params{'op'};
 
-
+$input_params{'webtitle'} .= " QA result, op: ".$input_params{'op'};
 use CGI qw(:standard :escapeHTML -nosticky);
 use CGI::Util qw(unescape);
 use CGI::Carp qw(fatalsToBrowser set_message);
@@ -187,8 +185,14 @@ our %known_tasks = (
 		'title'   => 'Please give your project title',
 		},
 );
-require  "$thisscript.cfg.pl";
 
+if      ( -e "/etc/qa/qareport.cfg.pl") {
+    require  "/etc/qa/qareport.cfg.pl";
+} elsif ( -e "$ENV{'SCRIPT_FILENAME'}.cfg.pl") {
+    require  "$ENV{'SCRIPT_FILENAME'}.cfg.pl"
+} elsif ( -e "$thisscript.cfg.pl") {
+    require  "$thisscript.cfg.pl";
+}
 # Go!
 #----------------------------------------------------------------------------
 customer_register();
@@ -269,7 +273,7 @@ print <<HTML;
     .pass {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #00FF00; }
     .fail {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #FF0000; font-weight:bold}
     .na   {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #DDDDDD; }
-    .done {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #00FFFF; }
+    .ratio{padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #00FFFF; }
     .run  {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #FFFF00; font-weight:bold}
 -->
 /* ]]> */-->
@@ -389,7 +393,8 @@ sub customer_register {
 }
 
 sub parse_files_by_date {
-    my ($num_days, $results_dir, $filter, $fields, $urlfilter, $urlpre)=(@_);
+    my ($num_days, $results_dir, $filter, $urlfilter, $urlpre, $enable_index)=(@_);
+    my $fields = 0;
     my $debug=0;
 
     if ( ! opendir(DIR, $results_dir) ) {
@@ -413,70 +418,83 @@ sub parse_files_by_date {
         if ($debug) {
             print "File $d.txt<br>";
         }
-        if ( ! open (RES, "${results_dir}/$d.txt") ) { 
-           print "Die: Opening $d.txt: $!\n";
+        if ( ! open (RES, "$results_dir/$d.txt") ) { 
+           print "Die: Opening $results_dir/$d.txt: $!\n";
         }
 
         while (<RES>) {
-            if ( $_ =~ /^.*:.*:.*:.*$/ ) {
+            if ( $_ =~ /^.*:.*:.*:.*:.*$/ ) {
+                my ($fcategory, $fsubitem, $fsubsec, $res, $logfile) = split(/:/);
+                $results{$fcategory}{$fsubitem}{$fsubsec}{$d} = [$res, $logfile, $fcategory, $fsubitem,$fsubsec];
+		if ($fields < 5) { $fields = 5; }
+            } elsif ( $_ =~ /^.*:.*:.*:.*$/ ) {
                 my ($fcategory, $fsubitem, $res, $logfile) = split(/:/);
-                my ($nrfail, $nrall) = split(/\//,$res);
-                $results{$fcategory}{$fsubitem}{$d} = [$res, $logfile, $fcategory, $fsubitem, $nrfail, $nrall];
-                next;
-            }
-            if ( $_ =~ /^.*:.*:.*$/ ) {
+		my $fsubsec='x';
+                $results{$fcategory}{$fsubitem}{$fsubsec}{$d} = [$res, $logfile, $fcategory, $fsubitem,$fsubsec];
+		if ($fields < 4) { $fields = 4; }
+            } elsif ( $_ =~ /^.*:.*:.*$/ ) {
                 my ($fcategory, $res, $logfile) = split(/:/);
-                my $fsubitem='-';
-                my ($nrfail, $nrall) = split(/\//,$res);
-                $results{$fcategory}{$fsubitem}{$d} = [$res, $logfile, $fcategory, $fsubitem, $nrfail, $nrall];
+                my $fsubitem='x';
+		my $fsubsec='x';
+                $results{$fcategory}{$fsubitem}{$fsubsec}{$d} = [$res, $logfile, $fcategory, $fsubitem,$fsubsec];
+		if ($fields < 3) { $fields = 3; }
+            } else {
                 next;
             }
         }
     }
-    print "<table border=1>";
-    print "<tr><th>Category</th>" ;
-    if ($fields == 4) { 
-        print "<th>subitem</th>" ;
-    }
-    print "<th>" . join ("</th><th>", @dates) . "</th></tr>";
 
-    for my $fcategory (sort keys (%results)) {
-    for my $fsubitem (sort keys %{$results{$fcategory}}) {
+    print "<table border=1>";
+    print "</tr>";
+    if ($enable_index) { print "<th>Index</th>" ;}
+    print "<th>Category</th>" ;
+    if ($fields > 3) { print "<th>subitem</th>" ;}
+    if ($fields > 4) { print "<th>subsec </th>" ;}
+    print "<th>" . join ("</th><th>", @dates) . "</th>";
+    print "</tr>";
+
+    my $line_index=0;
+    for my $category (sort keys  (%results)) {
+    for my $subitem  (sort keys %{$results{$category}}) {
+    for my $subsec   (sort keys %{$results{$category}{$subitem}}) {
+        $line_index += 1;
         print "<tr>";
         my $class = "na";
-        if (exists($results{$fcategory}{$fsubitem}{$dates[0]})) {
-            my ($res, $logfile, $fcategory, $fsubitem, $nrfail, $nrall) = @{$results{$fcategory}{$fsubitem}{$dates[0]}};
+        if (exists($results{$category}{$subitem}{$subsec}{$dates[0]})) {
+            my ($res, $logfile, $fcategory, $fsubitem, $fsubsec) = @{$results{$category}{$subitem}{$subsec}{$dates[0]}};
+            my ($nrfail, $nrall) = split(/\//,$res);
             if ( $nrall eq '' ) {
                 $class = $res == 0 ? "pass" : $res == 2 ? "run" : "fail";
             } else {
-                $class = "done";
+                $class = "ratio";
             }
         }
-        print "<td class='$class'>$fcategory</td>";
-        if ($fields == 4) { 
-            print "<td class='$class'>$fsubitem</td>";
-        }
+        if ($enable_index) { print  "<td>$line_index</td>"; }
+        print                    "<td class='$class'>$category</td>";
+        if ($fields > 3) { print "<td class='$class'>$subitem </td>";}
+        if ($fields > 4) { print "<td class='$class'>$subsec  </td>";}
 
         for my $d (@dates) {    
             my $class = "na";
             my $status = "&nbsp;";
-            if (exists($results{$fcategory}{$fsubitem}{$d})) {
-                my ($res, $logfile, $fcategory, $fsubitem, $nrfail, $nrall) = @{$results{$fcategory}{$fsubitem}{$d}};
+            if (exists($results{$category}{$subitem}{$subsec}{$d})) {
+                my ($res, $logfile, $fcategory, $fsubitem, $fsubsec) = @{$results{$category}{$subitem}{$subsec}{$d}};
+                my ($nrfail, $nrall) = split(/\//,$res);
                 $logfile =~ s-.*test_report-$urlpre-;
                 if ( $nrall eq '' ) {
                     $class = $res == 0 ? "pass" : $res == 2 ? "run" : "fail";
                     $res=uc($class);
                 } else {
-                    $class = "done";
+                    $class = "ratio";
                 }
-                $status = "<a href=$logfile title='click for logs, and 0: success, 1: fail, 2: running, x/y fail/all. ref value $nrfail $nrall'>$res</a>";
+                $status = "<a href=$logfile title='ref value $nrfail $nrall'>$res</a>";
             }
             print "<td class='$class'>$status</td>";
         }
         print "</tr>";
     }
     }
-
+    }
     print "</table>";
 }
 
@@ -506,10 +524,12 @@ sub manage_tasks {
             next;
         }
 
+        my @tlock=<$home/*.lock>;
+        my $nrlock=@tlock;
         print "<br><a name=$tskid>$tskid</a>:  <font size=+1 color=blue ><b>$tit</b></font><br>\n";
         print "home:$hip".'@'."$hme<br>\n";
         print "script:$hip".'@'."$scr \n";
-        if ( -e "$scr.lock") {
+        if ( -e "$scr.lock" || $nrlock > 0 ) {
             print ",status: <font color=red><b>running</b></font><br>";
         } else {
             print ",status: <font color=darkblue><b>test inactive</b></font><br>";
@@ -519,6 +539,6 @@ sub manage_tasks {
         system("mkdir -p $link");
 	unlink("$link/$tskid");
         symlink("$hme/test_report", "$link/$tskid");
-        parse_files_by_date(10,"$hme/test_report",'(\d{4}.\d{2}.\d{2})\.txt',4,'*/test_report',"/qa/link/$tskid");
+        parse_files_by_date(10,"$hme/test_report",'(\d{4}.\d{2}.\d{2})\.txt','*/test_report',"/qa/link/$tskid", $input_params{'idx'});
     }
 }
