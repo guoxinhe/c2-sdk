@@ -782,7 +782,7 @@ sub kill_project {
     print "this may take minutes, please hold this page and<br>\n";
     print "never refresh it, click it or goes back to previous page!<br>\n";
     print "<pre>";
-    system "yes \"\" | ssh build\@$hip $scr --kill-running --byip $browserip --byuser $browserusr & ";
+    system "yes \"\" | ssh build\@$hip $scr --kill-running --byip $browserip --byuser $mission_params{'user'} & ";
     #print "</pre>";
     } else {
         print "<font color=red size=+5><b>you are not in the authorized list.</b></font><br>\n";
@@ -821,6 +821,6 @@ sub rebuild_project {
     print "this may take ours, please hold this page and<br>\n";
     print "never refresh it, click it or goes back to previous page!<br>\n";
     print "<pre>";
-    system "yes \"\" | ssh build\@$hip $scr --byip $browserip --byuser $browserusr & ";
+    system "yes \"\" | ssh build\@$hip $scr --byip $browserip --byuser $mission_params{'user'} & ";
     #print "</pre>";
 }
