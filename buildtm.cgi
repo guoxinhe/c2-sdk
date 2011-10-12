@@ -107,17 +107,19 @@ if ( $input_params{'op'} eq 'login' ) {
          $input_params{'username'} eq 'root'  ||
          $input_params{'username'} eq ''      ){
          $check_result='fail';
+         $mission_params{'result'}='bad user name';
     }
     if ( $input_params{'password'} eq 'none'  ||
          $input_params{'password'} eq ''      ){
          $check_result='fail';
+         $mission_params{'result'}='bad password';
     }
     my $i=system ("test -d /home/$input_params{'username'}");
     if ( $i != 0 ) {
         $check_result='fail';
         $mission_params{'result'}='bad user name';
     }
-    
+
     if ( $check_result eq 'pass' ) {
         $mission_params{'msid'} = `date +%s`;
         chomp($mission_params{'msid'});
@@ -148,10 +150,11 @@ if ( $input_params{'op'} ne 'logout' ) {
             chomp($msid);
         }
 
-        if ( $msid eq $input_params{'msid'} ) {
-        $mission_params{'msid'} = $input_params{'msid'};
-        $mission_params{'user'} = $input_params{'user'};
-        $mission_params{'pswd'} = $input_params{'pswd'};
+        if ( $msid eq $input_params{'msid'} ) { 
+            # I am a login user.
+            $mission_params{'msid'} = $input_params{'msid'};
+            $mission_params{'user'} = $input_params{'user'};
+            $mission_params{'pswd'} = $input_params{'pswd'};
         }
     }
 }
@@ -232,6 +235,20 @@ sub dispatch {
 	} else {
 	    $actions{$op}->();
         }
+}
+sub userlevel {
+    $mylevel=0;
+    if ($mission_params{'msid'} ne $known_cookies{'msid'}{'value'  } &&
+        $mission_params{'user'} ne $known_cookies{'user'}{'value'  } &&
+        $mission_params{'pswd'} ne $known_cookies{'pswd'}{'value'  } ){
+        $mylevel +=1;  #at least a logined user.
+        if ($mission_params{'user'} eq 'hguo')      { $mylevel +=10; }
+        if ($mission_params{'pswd'} eq 'Alexander') { $mylevel +=10; }
+    }
+    if ( $browserip eq '10.16.2.186' || $browserip eq '10.16.2.103' ) {
+        $mylevel +=10;  #herman's ip
+    }
+    return $mylevel;
 }
 sub html_login {
 print <<HTML;
@@ -384,7 +401,9 @@ sub func_logout {
     print "logout ok<br>\n";
 }
 sub func_myprofile {
-    print "Welcome $mission_params{'user'}<br><pre>\n";
+    $mylevel=userlevel();
+    print "Welcome $mission_params{'user'}, your user level is: $mylevel<br><pre>\n";
+
     system ("id $mission_params{'user'}");
     system ("uname -a");
     print "</pre>\n";
@@ -706,7 +725,7 @@ sub stopbuild_project {
             print "invalid script $scr, can not rebuild<br>\n";
             return 0;
     }
-    if ( $browserip eq '10.16.2.186' ) {
+    if ( userlevel() >9 ) {
     print "<font color=red size=+5><b>stoping the project's agreement</b></font><br>\n";
     print "<font color=blue >1. you really need the stop for project management reason</font><br>\n";
     print "<font color=blue >2. during job killing, a report email will send to all the involved peoples</font><br>\n";
@@ -751,7 +770,7 @@ sub kill_project {
             return 0;
     }
 
-    if ( $browserip eq '10.16.2.186' ) {
+    if ( userlevel() >9 ) {
     print "<font color=red size=+1><b>Start killing $hip:$scr</b></font><br>\n";
     print "this may take minutes, please hold this page and<br>\n";
     print "never refresh it, click it or goes back to previous page!<br>\n";
