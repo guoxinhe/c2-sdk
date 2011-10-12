@@ -6,6 +6,7 @@ our $home_link=$ENV{'SCRIPT_NAME'};
 our $bash_home='/var/www';
 our $thisscript=`readlink -f -n $0`;
 our $maxload = 5;
+our $browserip=$ENV{'REMOTE_ADDR'};
 our %input_params = (
     'msid'           => 'none'    , #should get from cookie
     'user'           => 'guest'   , #should get from cookie
@@ -35,7 +36,7 @@ our %actions = (
 );
 our %menu_links = (
     'Home'           =>  "$home_link",
-    'index'          =>  "$home_link?idx=1",
+    'index'          =>  "$home_link?idx=1&thm=1",
     'help'           =>  "$home_link?op=help",
 );
 our %friendly_links = (
@@ -252,8 +253,16 @@ Please login(method: get)
 HTML
 }
 sub html_head {
-print "Content-type: text/html\n\n";
-print <<HTML;
+    my $cellbordercss='padding-left: .2em; padding-right: .2em;border: 1px #808080 solid;';
+    my ($cpass, $cfail, $cna, $cratio, $crun) = ('#00FF00','#FF0000','#DDDDDD','#00FFFF','#FFFF00');
+    
+    if (defined $input_params{'thm'}) {
+        if ($input_params{'thm'} ne '') {
+            ($cpass, $cfail, $cna, $cratio, $crun) = ('#FFFFFF','#FFDDDD','#FFFFFF','#DDFFFF','#FFFFDD');
+        }
+    }
+    print "Content-type: text/html\n\n";
+    print <<HTML;
 <html>
 <head>
 <title>$input_params{webtitle}</title>
@@ -266,16 +275,15 @@ print <<HTML;
     a:hover   {color:blue}
     a:active  {color:green}
 
-
     td {text-align: center}
     table {background: lightgrey;  border-collapse: collapse; font-family: Arial }
     td.category {vertical-align:top}
 
-    .pass {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #00FF00; }
-    .fail {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #FF0000; font-weight:bold}
-    .na   {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #DDDDDD; }
-    .ratio{padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #00FFFF; }
-    .run  {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #FFFF00; font-weight:bold}
+    .pass {$cellbordercss background: $cpass ; }
+    .fail {$cellbordercss background: $cfail ; font-weight:bold}
+    .na   {$cellbordercss background: $cna   ; }
+    .ratio{$cellbordercss background: $cratio; }
+    .run  {$cellbordercss background: $crun  ; font-weight:bold}
 -->
 /* ]]> */-->
 </style>
