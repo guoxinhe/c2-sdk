@@ -36,6 +36,7 @@ our %actions = (
 our %menu_links = (
     'Home'           =>  "$home_link",
     'index'          =>  "$home_link?idx=1",
+    'help'           =>  "$home_link?op=help",
 );
 our %friendly_links = (
     "build195"       => 'http://10.16.13.195/build/build.cgi',
@@ -390,6 +391,33 @@ sub func_default {
 sub customer_register {
     #register your operations here.
     $actions{"default"  }=\&manage_tasks;
+    $actions{"help"     }=\&serverside_help;
+}
+
+sub serverside_help {
+my $kwd='test_report';
+print <<HTML;
+<pre>
+stand log format:
+1. Folder name is '$kwd':
+    /your/local/path/$kwd
+
+2. log file is found direct in folder: /your/local/path/$kwd
+   log file name is: yyyy.mm.dd.txt, like
+        2011.09.01.txt  2011.09.01.txt
+
+3. log line format:
+   Category:[cate level 2:[cate level 3:]]res:/abs/path/$kwd/yoursubdir/xxx.log\
+   cate level 2 is optional.
+   cate level 3 is optional.
+   res type 1, number: 0: pass, 1: fail, 2: running, other number: fail
+   res type 2, ratio : 22/30
+
+   Basic   format: tv:0:/qatest/tv/$kwd/balabala/tv.log
+   2 Level format: tv:turner:0:/qatest/tv/$kwd/balabala/tvturner.log
+   3 Level format: tv:turner:save:0:/qatest/tv/$kwd/balabala/tvturnersave.log
+</pre>
+HTML
 }
 
 sub parse_files_by_date {
