@@ -7,18 +7,18 @@ our $bash_home='/var/www';
 our $thisscript=`readlink -f -n $0`;
 our $maxload = 5;
 our %input_params = (
-    'msid'        => 'none'    , #should get from cookie
-    'user'        => 'guest'   , #should get from cookie
-    'pswd'        => 'none'    , #should get from cookie
-    'op'          => 'default' ,
-    'debug'       => 'off'     ,
-    'webtitle'    => 'Perl web test page',
+    'msid'           => 'none'    , #should get from cookie
+    'user'           => 'guest'   , #should get from cookie
+    'pswd'           => 'none'    , #should get from cookie
+    'op'             => 'default' ,
+    'debug'          => 'off'     ,
+    'webtitle'       => 'C2 Internal',
 );
 our %mission_params = (
-    'msid'        => 'none'    ,
-    'user'        => 'guest'   ,
-    'pswd'        => 'none'    ,
-    'result'      => ''        ,
+    'msid'           => 'none'    ,
+    'user'           => 'guest'   ,
+    'pswd'           => 'none'    ,
+    'result'         => ''        ,
 );
 our %known_cookies = ( #cookies that must saved in client side. readonly variable
     #'expires' => '(optional) +60s +20m +5h nowimmediately +5M +1y',
@@ -27,23 +27,22 @@ our %known_cookies = ( #cookies that must saved in client side. readonly variabl
     'pswd' => {'value'=>'none'   ,'domain'=>'.build','expires'=>'+1y','path'=>'/','secure'=> 0,},
 );
 our %actions = (
-	'loginpage'  	=> \&func_loginpage,
-	'myprofile'  	=> \&func_myprofile,
-	'login'  	=> \&func_login,
-	'logout'  	=> \&func_logout,
-        'default'     	=> \&func_default,
+    'loginpage'      => \&func_loginpage,
+    'myprofile'      => \&func_myprofile,
+    'login'  	     => \&func_login,
+    'logout'  	     => \&func_logout,
+    'default'        => \&func_default,
 );
 our %menu_links = (
-        'Home'       =>  "$home_link",
-        'admin'      =>  "$home_link?op=admin",
-        'build'      =>  "$home_link",
-        'license'    =>  "http://10.16.13.195/build/project.cgi?op=liclist",
-        'help'       =>  "$home_link?op=help",
+    'Home'           =>  "$home_link",
+    'index'          =>  "$home_link?idx=1",
+    'help'           =>  "$home_link?op=help",
 );
 our %friendly_links = (
-        "build195"      => 'http://10.16.13.195/build/build.cgi',
-        "build196"      => 'http://10.16.13.196/build/build.cgi',
-        'license'       => 'http://10.16.13.195/build/project.cgi?op=liclist',
+    "build195"       => 'http://10.16.13.195/build/build.cgi',
+    "build196"       => 'http://10.16.13.196/build/build.cgi',
+    'license'        => 'http://10.16.13.195/build/project.cgi?op=liclist',
+    'qareport'       => 'http://10.16.6.204/qa/index.cgi?idx=1',
 );
 our %system_command = (
     'Servername'     => 'hostname',
@@ -171,9 +170,8 @@ if ( $input_params{'op'} eq 'logout' ) {
         $mission_params{'user'} = $known_cookies{'user'}{'value'  };
         $mission_params{'pswd'} = $known_cookies{'pswd'}{'value'  };
 }
-$input_params{'webtitle'} .= " op: ".$input_params{'op'};
 
-
+$input_params{'webtitle'} .= " build result, op: ".$input_params{'op'};
 use CGI qw(:standard :escapeHTML -nosticky);
 use CGI::Util qw(unescape);
 use CGI::Carp qw(fatalsToBrowser set_message);
@@ -188,8 +186,14 @@ our %known_tasks = (
 		'title'   => 'Please give your project title',
 		},
 );
-require  "$thisscript.cfg.pl";
 
+if      ( -e "/etc/qa/qareport.cfg.pl") {
+    require  "/etc/qa/qareport.cfg.pl";
+} elsif ( -e "$ENV{'SCRIPT_FILENAME'}.cfg.pl") {
+    require  "$ENV{'SCRIPT_FILENAME'}.cfg.pl"
+} elsif ( -e "$thisscript.cfg.pl") {
+    require  "$thisscript.cfg.pl";
+}
 # Go!
 #----------------------------------------------------------------------------
 customer_register();
@@ -270,6 +274,7 @@ print <<HTML;
     .pass {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #00FF00; }
     .fail {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #FF0000; font-weight:bold}
     .na   {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #DDDDDD; }
+    .ratio{padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #00FFFF; }
     .run  {padding-left: .2em; padding-right: .2em;border: 1px #808080 solid; background: #FFFF00; font-weight:bold}
 -->
 /* ]]> */-->
@@ -348,7 +353,7 @@ sub html_tail {
     }
     print "</table>";
     print "</div>";
-    print "<br>\n";
+    print "<br>More links:<br>\n";
     foreach $i (sort keys %friendly_links) {
         my $v=$friendly_links{$i};
         print "| &nbsp;<a href=$v>$i</a>&nbsp; \n"
@@ -386,11 +391,137 @@ sub func_default {
 sub customer_register {
     #register your operations here.
     $actions{"default"  }=\&manage_tasks;
+    $actions{"help"     }=\&serverside_help;
     $actions{"rebuild"  }=\&rebuild_project;
     $actions{"stopbuild"}=\&stopbuild_project;
     $actions{"kill"     }=\&kill_project;
-
 }
+
+sub serverside_help {
+my $kwd='test_report';
+print <<HTML;
+<pre>
+stand log format:
+1. Folder name is '$kwd':
+    /your/local/path/$kwd
+
+2. log file is found direct in folder: /your/local/path/$kwd
+   log file name is: yyyy.mm.dd.txt, like
+        2011.09.01.txt  2011.09.01.txt
+
+3. log line format:
+   Category:[cate level 2:[cate level 3:]]res:/abs/path/$kwd/yoursubdir/xxx.log\
+   cate level 2 is optional.
+   cate level 3 is optional.
+   res type 1, number: 0: pass, 1: fail, 2: running, other number: fail
+   res type 2, ratio : 22/30
+
+   Basic   format: tv:0:/qatest/tv/$kwd/balabala/tv.log
+   2 Level format: tv:turner:0:/qatest/tv/$kwd/balabala/tvturner.log
+   3 Level format: tv:turner:save:0:/qatest/tv/$kwd/balabala/tvturnersave.log
+</pre>
+HTML
+}
+
+sub parse_files_by_date {
+    my ($num_days, $results_dir, $filter, $urlfilter, $urlpre, $enable_index)=(@_);
+    my $fields = 0;
+
+    if ( ! opendir(DIR, $results_dir) ) {
+        print "Die: Couldn't open $results_dir: $!<br>\n";
+        return 0;
+    }
+
+    my $log_num = grep /^$filter$/i, readdir(DIR);
+    if ( $log_num < $num_days ) {
+        $num_days = $log_num;
+    }
+
+    opendir(DIR, $results_dir);
+    my @dates = (sort({ $b cmp $a} grep(s/^$filter$/$1/, readdir(DIR))))[0..($num_days-1)];
+  
+    my %results;
+    for my $d (@dates) {
+        if ( ! open (RES, "$results_dir/$d.txt") ) { 
+           print "Die: Opening $results_dir/$d.txt: $!\n";
+        }
+
+        while (<RES>) {
+            if ( $_ =~ /^.*:.*:.*:.*:.*$/ ) {
+                my ($fcategory, $fsubitem, $fsubsec, $res, $logfile) = split(/:/);
+                $results{$fcategory}{$fsubitem}{$fsubsec}{$d} = [$res, $logfile, $fcategory, $fsubitem,$fsubsec];
+		if ($fields < 5) { $fields = 5; }
+            } elsif ( $_ =~ /^.*:.*:.*:.*$/ ) {
+                my ($fcategory, $fsubitem, $res, $logfile) = split(/:/);
+		my $fsubsec='x';
+                $results{$fcategory}{$fsubitem}{$fsubsec}{$d} = [$res, $logfile, $fcategory, $fsubitem,$fsubsec];
+		if ($fields < 4) { $fields = 4; }
+            } elsif ( $_ =~ /^.*:.*:.*$/ ) {
+                my ($fcategory, $res, $logfile) = split(/:/);
+                my $fsubitem='x';
+		my $fsubsec='x';
+                $results{$fcategory}{$fsubitem}{$fsubsec}{$d} = [$res, $logfile, $fcategory, $fsubitem,$fsubsec];
+		if ($fields < 3) { $fields = 3; }
+            } else {
+                next;
+            }
+        }
+    }
+
+    print "<table border=1>";
+    print "</tr>";
+    if ($enable_index) { print "<th>Index</th>" ;}
+    print "<th>Category</th>" ;
+    if ($fields > 3) { print "<th>subitem</th>" ;}
+    if ($fields > 4) { print "<th>subsec </th>" ;}
+    print "<th>" . join ("</th><th>", @dates) . "</th>";
+    print "</tr>";
+
+    my $line_index=0;
+    for my $category (sort keys  (%results)) {
+    for my $subitem  (sort keys %{$results{$category}}) {
+    for my $subsec   (sort keys %{$results{$category}{$subitem}}) {
+        $line_index += 1;
+        print "<tr>";
+        my $class = "na";
+        if (exists($results{$category}{$subitem}{$subsec}{$dates[0]})) {
+            my ($res, $logfile, $fcategory, $fsubitem, $fsubsec) = @{$results{$category}{$subitem}{$subsec}{$dates[0]}};
+            my ($nrfail, $nrall) = split(/\//,$res);
+            if ( $nrall eq '' ) {
+                $class = $res == 0 ? "pass" : $res == 2 ? "run" : "fail";
+            } else {
+                $class = "ratio";
+            }
+        }
+        if ($enable_index) { print  "<td>$line_index</td>"; }
+        print                    "<td class='$class'>$category</td>";
+        if ($fields > 3) { print "<td class='$class'>$subitem </td>";}
+        if ($fields > 4) { print "<td class='$class'>$subsec  </td>";}
+
+        for my $d (@dates) {    
+            my $class = "na";
+            my $status = "&nbsp;";
+            if (exists($results{$category}{$subitem}{$subsec}{$d})) {
+                my ($res, $logfile, $fcategory, $fsubitem, $fsubsec) = @{$results{$category}{$subitem}{$subsec}{$d}};
+                my ($nrfail, $nrall) = split(/\//,$res);
+                $logfile =~ s-$urlfilter-$urlpre-;
+                if ( $nrall eq '' ) {
+                    $class = $res == 0 ? "pass" : $res == 2 ? "run" : "fail";
+                    $res=uc($class);
+                } else {
+                    $class = "ratio";
+                }
+                $status = "<a href=$logfile title='ref value $nrfail $nrall'>$res</a>";
+            }
+            print "<td class='$class'>$status</td>";
+        }
+        print "</tr>";
+    }
+    }
+    }
+    print "</table>";
+}
+
 sub print_top_results {
     our ($results_dir,$urlpre)=(@_);
     my $num_days = 9;
@@ -512,7 +643,12 @@ sub manage_tasks {
             }
 	    unlink("/var/www/html/build/link/$tskid");
             symlink("$top/build_result", "/var/www/html/build/link/$tskid");
-	    &print_top_results("$top/build_result","/build/link/$tskid");
+	    #print_top_results("$top/build_result","/build/link/$tskid");
+            #print "new version<br>";
+            #arse_files_by_date($num_days, $results_dir, $filter, $urlfilter, $urlpre, $enable_index);
+            parse_files_by_date(10,"$top/build_result", 
+		'(\d{2}[0,1][0-9][0-3][0-9])\.txt', '.*/build_result', 
+		"/build/link/$tskid", $input_params{'idx'});
         }
     }
 }
