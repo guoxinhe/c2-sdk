@@ -382,7 +382,7 @@ sub html_tail {
     print "<br>More links:<br>\n";
     foreach $i (sort keys %friendly_links) {
         my $v=$friendly_links{$i};
-        print "| &nbsp;<a href=$v>$i</a>&nbsp; \n"
+        print "| &nbsp;<a href=$v>$i</a>&nbsp; \n";
     }
 
     print "<br>Copyright, all rights reserved.</body></html>";
@@ -636,6 +636,7 @@ sub stopbuild_project {
     my $tit=$known_tasks{$tskid}{'title' };
     my $reb=$known_tasks{$tskid}{'rebuild' };
     my $kil=$known_tasks{$tskid}{'kill' };
+    my $pmr=$known_tasks{$tskid}{'pm'};
 
     print "<font color=blue size=+1><b>for stopping $hip:$scr</b></font><br>\n";
     if ( $kil ne 'on') {
@@ -657,7 +658,11 @@ sub stopbuild_project {
             print "invalid script $scr, can not rebuild<br>\n";
             return 0;
     }
-    if ( userlevel() >9 ) {
+    my $ulevel=userlevel();
+    if ($pmr =~ /\b$mission_params{'user'}\b/ ) {
+        $ulevel += 10;
+    }
+    if ( $ulevel >9 ) {
         print "<font color=red size=+5><b>stoping the project's agreement</b></font><br>\n";
         print "<font color=blue >1. you really need the stop for project management reason</font><br>\n";
         print "<font color=blue >2. during job killing, a report email will send to all the involved peoples</font><br>\n";
@@ -680,6 +685,7 @@ sub kill_project {
     my $tit=$known_tasks{$tskid}{'title' };
     my $reb=$known_tasks{$tskid}{'rebuild' };
     my $kil=$known_tasks{$tskid}{'kill' };
+    my $pmr=$known_tasks{$tskid}{'pm'};
 
     print "<font color=blue size=+1><b>for stopping $hip:$scr</b></font><br>\n";
     if ( $kil ne 'on') {
@@ -702,7 +708,11 @@ sub kill_project {
             return 0;
     }
 
-    if ( userlevel() >9 ) {
+    my $ulevel=userlevel();
+    if ($pmr =~ /\b$mission_params{'user'}\b/ ) {
+        $ulevel += 10;
+    }
+    if ( $ulevel >9 ) {
         print "<font color=red size=+1><b>Start killing $hip:$scr</b></font><br>\n";
         print "this may take minutes, please hold this page and<br>\n";
         print "never refresh it, click it or goes back to previous page!<br>\n";

@@ -23,6 +23,7 @@ our %known_tasks = (
                 'hostip'  => '10.16.13.195',
                 'rebuild' => 'on',
                 'kill'    => 'on',
+                'pm'      => 'hguo',
 		},
 	'proj3' => {
 		'title'   => 'jazz2 + android br=devel + sw_media u-boot br=master',
