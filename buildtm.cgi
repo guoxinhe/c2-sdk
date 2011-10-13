@@ -116,7 +116,7 @@ if ( $input_params{'op'} eq 'login' ) {
     }
     if ( $input_params{'password'} ne '123456'    &&
          $input_params{'password'} ne '525race'   &&
-         $input_params{'password'} ne 'Alexander' ){
+         $input_params{'password'} ne 'bugfix'    ){
          $check_result='fail';
          $mission_params{'result'}='bad password';
     }
@@ -249,7 +249,7 @@ sub userlevel {
         $mission_params{'pswd'} ne $known_cookies{'pswd'}{'value'  } ){
         $mylevel +=1;  #at least a logined user.
         if ($mission_params{'user'} eq 'hguo')      { $mylevel +=10; }
-        if ($mission_params{'pswd'} eq 'Alexander') { $mylevel +=10; }
+        if ($mission_params{'pswd'} eq 'bugfix')    { $mylevel +=10; }
         elsif ($mission_params{'pswd'} eq '525race') { $mylevel +=5; }
     }
     if ( $browserip eq '10.16.2.186' || $browserip eq '10.16.2.103' ) {
