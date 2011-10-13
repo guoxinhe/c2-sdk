@@ -258,23 +258,17 @@ sub userlevel {
     return $mylevel;
 }
 sub html_login {
-print <<HTML;
-<center><form action="$home_link?op=login" method="POST">
-Please login(method: post)
-<table border="0" cellpadding="3" cellspacing="3">
-    <tr><td>Username</td><td><input type="text"     size="32" name="username" value="$input_params{username}"></td></tr>
-    <tr><td>Password</td><td><input type="password" size="32" name="password" value="$input_params{password}"></td></tr>
-    <tr><td align="center" colspan="2"><input type="submit"   name="op" value="login"></td></tr>
-</table></form></center>
-
-<center><form action="$home_link?op=login" method="GET">
-Please login(method: get)
+    foreach my $mthd ('POST','GET') {
+        print <<HTML;
+<center><form action="$home_link?op=login" method="$mthd">
+Please login(method: $mthd)
 <table border="0" cellpadding="3" cellspacing="3">
     <tr><td>Username</td><td><input type="text"     size="32" name="username" value="$input_params{username}"></td></tr>
     <tr><td>Password</td><td><input type="password" size="32" name="password" value="$input_params{password}"></td></tr>
     <tr><td align="center" colspan="2"><input type="submit"   name="op" value="login"></td></tr>
 </table></form></center>
 HTML
+    }
 }
 sub html_head {
     my $cellbordercss='padding-left: .2em; padding-right: .2em;border: 1px #808080 solid;';
@@ -282,7 +276,7 @@ sub html_head {
     
     if (defined $input_params{'thm'}) {
         if ($input_params{'thm'} ne '') {
-            ($cpass, $cfail, $cna, $cratio, $crun) = ('#FFFFFF','#FFDDDD','#FFFFFF','#DDFFFF','#FFFFDD');
+            ($cpass, $cfail, $cna, $cratio, $crun) = ('#FFFFFF','#FFCCCC','#FFFFFF','#B0FFFF','#FFFFB0');
         }
     }
     print "Content-type: text/html\n\n";
@@ -432,7 +426,7 @@ sub customer_register {
 }
 
 sub serverside_help {
-my $kwd='test_report';
+my $kwd='build_result';
 print <<HTML;
 <pre>
 stand log format:
@@ -440,8 +434,8 @@ stand log format:
     /your/local/path/$kwd
 
 2. log file is found direct in folder: /your/local/path/$kwd
-   log file name is: yyyy.mm.dd.txt, like
-        2011.09.01.txt  2011.09.01.txt
+   log file name is: yymmdd.txt, like
+        110901.txt  110902.txt
 
 3. log line format:
    Category:[cate level 2:[cate level 3:]]res:/abs/path/$kwd/yoursubdir/xxx.log\
@@ -556,72 +550,6 @@ sub parse_files_by_date {
     print "</table>";
 }
 
-sub print_top_results {
-    our ($results_dir,$urlpre)=(@_);
-    my $num_days = 9;
-  
-    opendir(DIR, $results_dir) or die "Couldn't open $results_dir: $!\n";
-  
-    my $log_num = grep /^(\d{2}[0,1][0-9][0-3][0-9])\.txt$/i, readdir(DIR);
-    if ($log_num<10) {
-        $num_days = $log_num-1;
-    }
-  
-    opendir(DIR, $results_dir);
-    my @dates = (sort({ $b cmp $a} grep(s/^(\d{2}[0,1][0-9][0-3][0-9])\.txt$/$1/, readdir(DIR))))[0..$num_days];
-  
-    my %results;
-  
-    for my $d (@dates) {
-        open (RES, "${results_dir}/$d.txt") or die "Opening $d: $!\n";
-        while (<RES>) {
-            /^.*:.*:.*$/ || next;
-            my ($test, $res, $logfile) = split(/:/);
-            $results{$test}{$d} = [$res, $logfile];
-        }
-    }
-  
-    print "<table border=1>";
-    print "<tr><th>Category</th><th>" .
-    join ("</th><th>", @dates) . "</th></tr>";
-   
-    my $newrow = 0;
-
-    for my $test (keys (%results)) {
-        print "<tr>" if ($newrow);
-       
-        # Make test red if the most recent test failed
-        my $testclass = "na";
-        if (exists($results{$test}{$dates[0]})) {
-            $testclass = $results{$test}{$dates[0]}[0] == 0 ? "pass" : $results{$test}{$dates[0]}[0] == 2 ? "run" : "fail";
-        }
-       
-        print "<td class=${testclass}>$test</td>";
-       
-        for my $d (@dates) {
-            my $class = "na";
-            my $status = "";
-           
-            if (exists($results{$test}{$d})) {
-                my ($res, $log) = @{$results{$test}{$d}};
-                $class = $res == 0 ? "pass" : $res == 2 ? "run" : "fail";
-               
-                my ($n_warning, $n_error) =(0,0);# check_for_results_string($log);
-               
-                $status = ($n_error) ? "${n_warning}/${n_error}" : uc($class);
-               
-                $log =~ s-$results_dir-$urlpre-;
-               
-                $status = "<a href='$log' title='gettin jiggy'>${status}</a>";
-            }
-            print "<td class='${class}'>${status}</td>";
-        }
-        print "</tr>";
-        $newrow = 1;
-    }
-    print "</table>";
-}
-
 sub manage_tasks {
     my $tskid;
     foreach $tskid (sort keys %known_tasks) {
@@ -677,9 +605,6 @@ sub manage_tasks {
             }
 	    unlink("/var/www/html/build/link/$tskid");
             symlink("$top/build_result", "/var/www/html/build/link/$tskid");
-	    #print_top_results("$top/build_result","/build/link/$tskid");
-            #print "new version<br>";
-            #arse_files_by_date($num_days, $results_dir, $filter, $urlfilter, $urlpre, $enable_index);
             parse_files_by_date(10,"$top/build_result", 
 		'(\d{2}[0,1][0-9][0-3][0-9])\.txt', '.*/build_result', 
 		"/build/link/$tskid", $input_params{'idx'});
@@ -733,11 +658,11 @@ sub stopbuild_project {
             return 0;
     }
     if ( userlevel() >9 ) {
-    print "<font color=red size=+5><b>stoping the project's agreement</b></font><br>\n";
-    print "<font color=blue >1. you really need the stop for project management reason</font><br>\n";
-    print "<font color=blue >2. during job killing, a report email will send to all the involved peoples</font><br>\n";
-    print "<font color=blue >3. if you insist stop the job, click the link:</font><br>\n";
-    print "<a href=$home_link?op=kill&p=$tskid><font color=red >I agreed, click here to kill the job</font></a><br>\n";
+        print "<font color=red size=+5><b>stoping the project's agreement</b></font><br>\n";
+        print "<font color=blue >1. you really need the stop for project management reason</font><br>\n";
+        print "<font color=blue >2. during job killing, a report email will send to all the involved peoples</font><br>\n";
+        print "<font color=blue >3. if you insist stop the job, click the link:</font><br>\n";
+        print "<a href=$home_link?op=kill&p=$tskid><font color=red >I agreed, click here to kill the job</font></a><br>\n";
     } else {
         print "<font color=red size=+5><b>you are not in the authorized list.</b></font><br>\n";
     }
@@ -778,12 +703,10 @@ sub kill_project {
     }
 
     if ( userlevel() >9 ) {
-    print "<font color=red size=+1><b>Start killing $hip:$scr</b></font><br>\n";
-    print "this may take minutes, please hold this page and<br>\n";
-    print "never refresh it, click it or goes back to previous page!<br>\n";
-    print "<pre>";
-    system "yes \"\" | ssh build\@$hip $scr --kill-running --byip $browserip --byuser $mission_params{'user'} & ";
-    #print "</pre>";
+        print "<font color=red size=+1><b>Start killing $hip:$scr</b></font><br>\n";
+        print "this may take minutes, please hold this page and<br>\n";
+        print "never refresh it, click it or goes back to previous page!<br>\n";
+        system "sleep 1 && echo '<pre>' && ssh build\@$hip $scr --kill-running --byip $browserip --byuser $mission_params{'user'} & ";
     } else {
         print "<font color=red size=+5><b>you are not in the authorized list.</b></font><br>\n";
     }
@@ -820,7 +743,5 @@ sub rebuild_project {
     print "<font color=red size=+1><b>Start running $hip:$scr</b></font><br>\n";
     print "this may take ours, please hold this page and<br>\n";
     print "never refresh it, click it or goes back to previous page!<br>\n";
-    print "<pre>";
-    system "yes \"\" | ssh build\@$hip $scr --byip $browserip --byuser $mission_params{'user'} & ";
-    #print "</pre>";
+    system "sleep 1 && echo '<pre>' && ssh build\@$hip $scr --byip $browserip --byuser $mission_params{'user'} & ";
 }
