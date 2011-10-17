@@ -798,6 +798,7 @@ sub parse_fs_test_result {
     # @sorted = sort { lc($a) cmp lc($b) } @not_sorted # alphabetical sort 
     my @allband = sort { $a <=> $b } split(/\s/,$band_list);
     my $nroffs = @allfs;
+    my $nrofband = @allband;
 
     if ($nroffs < 1 ) {
         return 0;
@@ -807,11 +808,13 @@ sub parse_fs_test_result {
     print "found supported file system: <font color=black><b> @allfs </b></font><br>\n";
     print "Tested band width: <font color=black><b>@allband</b></font><br>\n";
     print "my number of fs: $nroffs<br>\n";
+    print 'Overall FS IO Kernel CPU Usage (%-KB/s)<br>'."\n";
+
 
     my %results;
     foreach $fs (@allfs) {
     foreach $myfop ('r','w') {
-       my $log="gen_${myfop}_${fs}.xls";
+       my $log="gen_${myfop}_${fs}_all.log";
        if ( ! open (LOG, "$top/$log") ) {
            next;
        }
@@ -850,7 +853,43 @@ sub parse_fs_test_result {
        }
     }}
 
+    # table 1
+    #-----------------------------------------------------------------
+    my $nrcols=$nrofband + 4;
+    print "<font size=-1px><table border=1>";
+    print "<tr><td class=pass align='center' colspan='$nrcols'>Overall FS IO Kernel CPU Usage (%-KB/s)</td></tr>\n";
+    print "<tr><td class=ext3b rowspan='2'>Partition</td><td class=ext3b rowspan='2'>Module</td>";
+    print "    <td class=ext3b colspan='$nrofband'>Kernel CPU Usage</td><td class=ext3b colspan='2'>Max</td>\n";
+
+    print "<tr>";
+    foreach $band (@allband) {
+        print "<td class=fat32>$band</td>\n";
+    }
+    print "<td class=fat32>Bindwidth</td><td class=fat32>K-CPU</td></tr>\n";
+    foreach $fs (@allfs) {
+        print "<tr><td class=ext3b rowspan='2'>$fs</td><td>Read</td>\n";
+        foreach $band (@allband) {
+        print "<td class=fat32b>0</td>\n";
+        }
+        print "<td class=ext3b>0</td>\n";
+        print "<td class=ext3b>0</td>\n";
+        print "</tr>";
+
+        print "<tr><td>Write</td>\n";
+        foreach $band (@allband) {
+        print "<td class=fat32b>0</td>\n";
+        }
+        print "<td class=ext3b>0</td>\n";
+        print "<td class=ext3b>0</td>\n";
+        print "</tr>";
+
+    }
+    print "</table></font>";
+    
+    # table 2
+    #-----------------------------------------------------------------
     my $nrcol=$nroffs * 6;
+    print "Detail test data<br>\n";
     print "<font size=-1px><table border=1>";
     print "<tr><td>proj</td><td align='center' colspan='$nrcol'>$top</td></tr>";
     print "<tr><td>fs</td>";
