@@ -877,10 +877,20 @@ sub parse_fs_test_result {
        }
        close(LOG);
        my $tidx=0;
+       my ($avgband,$avga,$avgk)=(0,0,0);
        foreach my $band (sort { $a <=> $b } keys %tmplist) {
            $tidx += 1;
            my ($va,$vk) = @{$tmplist{$band}};
+           $avgband += $band;
+           $avga    += $va;
+           $avgk    += $vk;
            $results_max{$tidx}{$fs}{$myfop} =[$band, $va, $vk ];
+       }
+       if ($tidx > 0) {
+           $avgband = $avgband/$tidx;
+           $avga    = $avga   /$tidx;
+           $avgk    = $avgk   /$tidx;
+           $results_max{0}{$fs}{$myfop} =[$avgband, $avga, $avgk ];
        }
     }}
 
@@ -966,12 +976,21 @@ sub parse_fs_test_result {
        foreach $fs (@allfs) {
           my ($rb,$ra,$rk) = @{$results_max{$tidx}{$fs}{'r'}};
           my ($wb,$wa,$wk) = @{$results_max{$tidx}{$fs}{'w'}};
-          print "<td class=pass>$rb</td>";
-          print "<td class=pass>$ra</td>";
-          print "<td class=pass>$rk</td>";
-          print "<td class=pass>$wb</td>";
-          print "<td class=pass>$wa</td>";
-          print "<td class=pass>$wk</td>";
+          if($tidx == 0) {
+              printf("<td class=$fs>%6d</td>"  ,$rb) ;
+              printf("<td class=$fs>%3.6f</td>",$ra) ;
+              printf("<td class=$fs>%3.6f</td>",$rk) ;
+              printf("<td class=$fs>%6d</td>"  ,$wb) ;
+              printf("<td class=$fs>%3.6f</td>",$wa) ;
+              printf("<td class=$fs>%3.6f</td>",$wk) ;
+          } else {
+              printf  "<td class=pass>$rb</td>";
+              printf  "<td class=pass>$ra</td>";
+              printf  "<td class=pass>$rk</td>";
+              printf  "<td class=pass>$wb</td>";
+              printf  "<td class=pass>$wa</td>";
+              printf  "<td class=pass>$wk</td>";
+          }
        }
        print "</tr>";
     }
