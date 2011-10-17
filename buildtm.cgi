@@ -827,8 +827,9 @@ sub parse_fs_test_result {
     print "Project <font size=+1 color=blue><b>$top</b></font> status: $running<br>\n";
     print "found supported file system: <font color=black><b> @allfs </b></font><br>\n";
     print "Tested band width: <font color=black><b>@allband</b></font><br>\n";
-    print "<a href=/qa/link/$tskid/testing.log>Overall</a>";
-    print " <a href=/qa/link/$tskid/testingenv.log>FS</a> IO Kernel CPU Usage (%-KB/s)<br>\n";
+    print "| <a href=/qa/link/$tskid/testing.log>progress</a>";
+    print "| <a href=/qa/link/$tskid>all logs</a>";
+    print "| <a href=/qa/link/$tskid/testingenv.log>configs</a><br>\n";
 
 
     my %results;
