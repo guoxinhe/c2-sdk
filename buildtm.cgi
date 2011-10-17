@@ -35,17 +35,18 @@ our %actions = (
     'default'        => \&func_default,
 );
 our %menu_links = (
-    'Home'           =>  "$home_link",
-    'index'          =>  "$home_link?idx=1&thm=1",
-    'help'           =>  "$home_link?op=help",
-    'qatest'         =>  "$home_link?op=qatest",
-    'fstest'         =>  "$home_link?op=fstest&idx=1&thm=1",
+    '1 Home'         =>  "$home_link",
+    '2 index'        =>  "$home_link?idx=1&thm=1",
+    '3 qatest'       =>  "$home_link?op=qatest",
+    '4 fstest'       =>  "$home_link?op=fstest&idx=1&thm=1",
+    '5 help'         =>  "$home_link?op=help",
 );
 our %friendly_links = (
-    "build195"       => 'http://10.16.13.195/build/build.cgi',
-    "build196"       => 'http://10.16.13.196/build/build.cgi',
-    'license'        => 'http://10.16.13.195/build/project.cgi?op=liclist',
-    'qareport'       => 'http://10.16.6.204/qa/index.cgi?idx=1',
+    "1 build195"     => 'http://10.16.13.195/build/build.cgi',
+    "2 build196"     => 'http://10.16.13.196/build/build.cgi',
+    '3 license'      => 'http://10.16.13.195/build/project.cgi?op=liclist',
+    '4 qareport'     => 'http://10.16.6.204/qa/index.cgi?idx=1',
+    '5 fsreport'     => 'http://10.16.6.204/qa/index3.cgi?op=fstest&idx=1&thm=1',
 );
 our %system_command = (
     'Servername'     => 'hostname',
@@ -278,12 +279,19 @@ HTML
     }
 }
 sub html_head {
-    my $cellbordercss='padding-left: .2em; padding-right: .2em;border: 1px #808080 solid;';
+    my $cellbordercss='';
+    my $tablecss='background: lightgrey;  font-family: Arial';
     my ($cpass, $cfail, $cna, $cratio, $crun) = ('#00FF00','#FF0000','#DDDDDD','#00FFFF','#FFFF00');
+    my ($bpass, $bfail, $bna, $bratio, $brun) = ('bold','bold','bold','bold','bold');
+    my $anchorcss="";
     
     if (defined $input_params{'thm'}) {
         if ($input_params{'thm'} ne '') {
             ($cpass, $cfail, $cna, $cratio, $crun) = ('#FFFFFF','#FFCCCC','#FFFFFF','#B0FFFF','#FFFFB0');
+            $tablecss='background: lightgrey;  border-collapse: collapse; font-family: Arial';
+            $cellbordercss='padding-left: .2em; padding-right: .2em;border: 1px #808080 solid;';
+            ($bpass, $bfail, $bna, $bratio, $brun) = ('','bold','','','bold');
+            $anchorcss="a:link{color:black} a:visited{color:black} a:hover{color:blue} a:active{color:green} ";
         }
     }
     print "Content-type: text/html\n\n";
@@ -295,13 +303,9 @@ sub html_head {
 <!--/* <![CDATA[ */
 <!--
     body  {font-family: Arial }
-    a:link    {color:black}
-    a:visited {color:black}
-    a:hover   {color:blue}
-    a:active  {color:green}
-
+    $anchorcss
     td {text-align: center}
-    table {background: lightgrey;  border-collapse: collapse; font-family: Arial }
+    table {$tablecss}
     td.category {vertical-align:top}
 
     .ntfs {$cellbordercss background: #FFFF80 ; }
@@ -328,11 +332,11 @@ sub html_head {
     .fat32k{$cellbordercss background: #EFFFA0 ; }
     .yaffsa{$cellbordercss background: #EFE0C0 ; }
 
-    .pass {$cellbordercss background: $cpass ; }
-    .fail {$cellbordercss background: $cfail ; font-weight:bold}
-    .na   {$cellbordercss background: $cna   ; }
-    .ratio{$cellbordercss background: $cratio; }
-    .run  {$cellbordercss background: $crun  ; font-weight:bold}
+    .pass {$cellbordercss background: $cpass ; font-weight:$bpass }
+    .fail {$cellbordercss background: $cfail ; font-weight:$bfail }
+    .na   {$cellbordercss background: $cna   ; font-weight:$bna   }
+    .ratio{$cellbordercss background: $cratio; font-weight:$bratio}
+    .run  {$cellbordercss background: $crun  ; font-weight:$brun  }
 -->
 /* ]]> */-->
 </style>
@@ -363,6 +367,7 @@ HTML
     #list the top level menu
     foreach $i (sort keys %menu_links) {
         my $v=$menu_links{$i};
+        $i =~ s/^\S //;
         print "| &nbsp;<a href=$v>$i</a>&nbsp; \n"
     }
     if ( $mission_params{'user'} eq 'guest' ) {
@@ -413,6 +418,7 @@ sub html_tail {
     print "<br>More links:<br>\n";
     foreach $i (sort keys %friendly_links) {
         my $v=$friendly_links{$i};
+        $i =~ s/^\S //;
         print "| &nbsp;<a href=$v>$i</a>&nbsp; \n";
     }
 
