@@ -39,7 +39,7 @@ our %menu_links = (
     'index'          =>  "$home_link?idx=1&thm=1",
     'help'           =>  "$home_link?op=help",
     'qatest'         =>  "$home_link?op=qatest",
-    'new feature'    =>  "$home_link?op=new&idx=1&thm=1",
+    'fstest'         =>  "$home_link?op=fstest&idx=1&thm=1",
 );
 our %friendly_links = (
     "build195"       => 'http://10.16.13.195/build/build.cgi',
@@ -451,7 +451,7 @@ sub customer_register {
     $actions{"stopbuild"}=\&stopbuild_project;
     $actions{"kill"     }=\&kill_project;
     $actions{"qatest"   }=\&show_qatest;
-    $actions{"new"      }=\&new_feature;
+    $actions{"fstest"   }=\&show_fstest;
 }
 
 sub serverside_help {
@@ -953,7 +953,7 @@ sub parse_fs_test_result {
     }
     print "</table></font>";
 }
-sub new_feature {
+sub show_fstest {
     parse_fs_test_result('/local/c2/hdd-k.32/case_sata/test_report',0);
     parse_fs_test_result('/local/c2/fs-nandroid/test_report',0);
 }
