@@ -38,6 +38,7 @@ our %menu_links = (
     'Home'           =>  "$home_link",
     'index'          =>  "$home_link?idx=1&thm=1",
     'help'           =>  "$home_link?op=help",
+    'qatest'         =>  "$home_link?op=qatest",
     'new feature'    =>  "$home_link?op=new&idx=1&thm=1",
 );
 our %friendly_links = (
@@ -204,6 +205,11 @@ if      ( -e "/etc/qa/qareport.cfg.pl") {
     require  "$ENV{'SCRIPT_FILENAME'}.cfg.pl"
 } elsif ( -e "$thisscript.cfg.pl") {
     require  "$thisscript.cfg.pl";
+}
+if ( $input_params{'op'} eq 'qatest' ) {
+    if      ( -e "/etc/qa/qareport.cfg.pl") {
+        require  "/etc/qa/qareport.cfg.pl";
+    }
 }
 # Go!
 #----------------------------------------------------------------------------
@@ -444,6 +450,7 @@ sub customer_register {
     $actions{"rebuild"  }=\&rebuild_project;
     $actions{"stopbuild"}=\&stopbuild_project;
     $actions{"kill"     }=\&kill_project;
+    $actions{"qatest"   }=\&show_qatest;
     $actions{"new"      }=\&new_feature;
 }
 
@@ -949,4 +956,49 @@ sub parse_fs_test_result {
 sub new_feature {
     parse_fs_test_result('/local/c2/hdd-k.32/case_sata/test_report',0);
     parse_fs_test_result('/local/c2/fs-nandroid/test_report',0);
+}
+
+sub show_qatest {
+    my $tskid;
+    my $link="/var/www/html/qa/link";
+    foreach $tskid (sort keys %known_qatasks) {
+        my $scr=$known_qatasks{$tskid}{'script' };
+        my $sta=$known_qatasks{$tskid}{'status' };
+        if ( -x $scr && $sta ne 'off' ) {
+            print "| <a href=#$tskid> $tskid </a>\n";
+        }
+    }
+    print "<br>\n";
+    foreach $tskid (sort keys %known_qatasks) {
+        my $tit=$known_qatasks{$tskid}{ 'title'   };
+        my $cfg=$known_qatasks{$tskid}{ 'config'  };
+        my $hip=$known_qatasks{$tskid}{ 'hostip'  };
+        my $usr=$known_qatasks{$tskid}{ 'user'    };
+        my $hme=$known_qatasks{$tskid}{ 'home'	};
+        my $scr=$known_qatasks{$tskid}{ 'script'  };
+        my $rst=$known_qatasks{$tskid}{ 'reset'   };
+        my $cip=$known_qatasks{$tskid}{ 'clientip'};
+        my $sta=$known_qatasks{$tskid}{ 'status'  };
+
+        if ( ! -x $scr ||  $sta eq 'off' ) {
+            next;
+        }
+
+        my @tlock=<$home/*.lock>;
+        my $nrlock=@tlock;
+        print "<br><a name=$tskid>$tskid</a>:  <font size=+1 color=blue ><b>$tit</b></font><br>\n";
+        print "home:$hip".'@'."$hme<br>\n";
+        print "script:$hip".'@'."$scr \n";
+        if ( -e "$scr.lock" || $nrlock > 0 ) {
+            print ",status: <font color=red><b>running</b></font><br>";
+        } else {
+            print ",status: <font color=darkblue><b>test inactive</b></font><br>";
+        }
+        print "<a href=/qa/link/$tskid/>all logs</a> |";
+        print "<br>\n";
+        system("mkdir -p $link");
+	unlink("$link/$tskid");
+        symlink("$hme/test_report", "$link/$tskid");
+        parse_files_by_date(10,"$hme/test_report",'(\d{4}.\d{2}.\d{2})\.txt','.*/test_report',"/qa/link/$tskid", $input_params{'idx'});
+    }
 }
