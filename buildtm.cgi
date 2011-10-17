@@ -38,6 +38,7 @@ our %menu_links = (
     'Home'           =>  "$home_link",
     'index'          =>  "$home_link?idx=1&thm=1",
     'help'           =>  "$home_link?op=help",
+    'new feature'    =>  "$home_link?op=new&idx=1&thm=1",
 );
 our %friendly_links = (
     "build195"       => 'http://10.16.13.195/build/build.cgi',
@@ -297,6 +298,26 @@ sub html_head {
     table {background: lightgrey;  border-collapse: collapse; font-family: Arial }
     td.category {vertical-align:top}
 
+    .ntfs {$cellbordercss background: #FFFF80 ; }
+    .ext2 {$cellbordercss background: #FF80FF ; }
+    .ext3 {$cellbordercss background: #FFC0FF ; }
+    .fat32{$cellbordercss background: #FFFFA0 ; }
+
+    .ntfsb {$cellbordercss background: #CFFF80 ; }
+    .ext2b {$cellbordercss background: #CF80FF ; }
+    .ext3b {$cellbordercss background: #CFC0FF ; }
+    .fat32b{$cellbordercss background: #CFFFA0 ; }
+
+    .ntfsa {$cellbordercss background: #DFFF80 ; }
+    .ext2a {$cellbordercss background: #DF80FF ; }
+    .ext3a {$cellbordercss background: #DFC0FF ; }
+    .fat32a{$cellbordercss background: #DFFFA0 ; }
+
+    .ntfsk {$cellbordercss background: #EFFF80 ; }
+    .ext2k {$cellbordercss background: #EF80FF ; }
+    .ext3k {$cellbordercss background: #EFC0FF ; }
+    .fat32k{$cellbordercss background: #EFFFA0 ; }
+
     .pass {$cellbordercss background: $cpass ; }
     .fail {$cellbordercss background: $cfail ; font-weight:bold}
     .na   {$cellbordercss background: $cna   ; }
@@ -423,6 +444,7 @@ sub customer_register {
     $actions{"rebuild"  }=\&rebuild_project;
     $actions{"stopbuild"}=\&stopbuild_project;
     $actions{"kill"     }=\&kill_project;
+    $actions{"new"      }=\&new_feature;
 }
 
 sub serverside_help {
@@ -754,4 +776,81 @@ sub rebuild_project {
     print "this may take ours, please hold this page and<br>\n";
     print "never refresh it, click it or goes back to previous page!<br>\n";
     system "sleep 1 && echo '<pre>' && ssh build\@$hip $scr --byip $browserip --byuser $mission_params{'user'} & ";
+}
+sub parse_fs_test_result {
+
+    my ($top, $flag)=(@_);
+    my ($fs_list, $band_list, $band_max);
+
+
+    if ( ! -d $top) {
+        return 0;
+    }
+
+    $fs_list = `ls $top/r_*_max.log | sed  s,_max.log,, | sed s,.*_,,`;
+    $band_list = `ls $top/r_fat32_*.log | sed  s,.log,, | sed s,.*_,,`; #` | sed s,max,,`;
+    my @allfs = split(/\s/,$fs_list);
+
+    # advanced sort
+    #-------------------------------------------------------------------------
+    # @sorted = sort { $a <=> $b } @not_sorted # numerical sort 
+    # @sorted = sort { $a cmp $b } @not_sorted # ASCII-betical sort 
+    # @sorted = sort { lc($a) cmp lc($b) } @not_sorted # alphabetical sort 
+    my @allband = sort { $a <=> $b } split(/\s/,$band_list);
+    my $nroffs = @allfs;
+
+    if ($nroffs < 1 ) {
+        return 0;
+    }
+
+    print "Project <font size=+1 color=blue><b>$top</b></font><br>\n";
+    print "found supported file system: <font color=black><b> @allfs </b></font><br>\n";
+    print "Tested band width: <font color=black><b>@allband</b></font><br>\n";
+    print "my number of fs: $nroffs<br>\n";
+
+    my $nrcol=$nroffs * 6;
+    print "<font size=12px><table border=1>";
+    print "<tr><td align='center' colspan='$nrcol'>$top</td></tr>";
+    print "<tr>";
+    foreach $fs (@allfs) {
+       print "<td class=$fs align='center' colspan='6'>$fs</td>";
+    }
+    print "</tr>";
+
+    print "<tr>";
+    foreach $fs (@allfs) {
+       print "<td class=$fs align='center' colspan='3'>read</td>";
+       print "<td class=$fs align='center' colspan='3'>write</td>";
+    }
+    print "</tr>";
+
+    print "<tr>";
+    foreach $fs (@allfs) {
+       print "<td class=${fs}b>bandwidth</td>";
+       print "<td class=${fs}a>&nbsp;app&nbsp;</td>";
+       print "<td class=${fs}k>kernel</td>";
+       print "<td class=${fs}b>bandwidth</td>";
+       print "<td class=${fs}a>&nbsp;app&nbsp;</td>";
+       print "<td class=${fs}k>kernel</td>";
+    }
+    print "</tr>";
+
+    foreach $i (@allband) {
+    print "<tr>";
+    foreach $fs (@allfs) {
+       print "<td class=pass>$i</td>";
+       print "<td class=pass>333</td>";
+       print "<td class=pass>666</td>";
+       print "<td class=pass>$i</td>";
+       print "<td class=pass>333</td>";
+       print "<td class=pass>666</td>";
+    }
+    print "</tr>";
+    }
+
+    print "</table></font>";
+}
+sub new_feature {
+    parse_fs_test_result('/local/c2/hdd-k.32/case_sata/test_report',0);
+    parse_fs_test_result('/local/c2/fs-nandroid/test_report',0);
 }
