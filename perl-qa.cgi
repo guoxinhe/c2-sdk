@@ -508,7 +508,7 @@ sub parse_files_by_date {
             if (exists($results{$category}{$subitem}{$subsec}{$d})) {
                 my ($res, $logfile, $fcategory, $fsubitem, $fsubsec) = @{$results{$category}{$subitem}{$subsec}{$d}};
                 my ($nrfail, $nrall) = split(/\//,$res);
-                $logfile =~ s-.*test_report-$urlpre-;
+                $logfile =~ s-$urlfilter-$urlpre-;
                 if ( $nrall eq '' ) {
                     $class = $res == 0 ? "pass" : $res == 2 ? "run" : "fail";
                     $res=uc($class);
@@ -567,6 +567,6 @@ sub manage_tasks {
         system("mkdir -p $link");
 	unlink("$link/$tskid");
         symlink("$hme/test_report", "$link/$tskid");
-        parse_files_by_date(10,"$hme/test_report",'(\d{4}.\d{2}.\d{2})\.txt','*/test_report',"/qa/link/$tskid", $input_params{'idx'});
+        parse_files_by_date(10,"$hme/test_report",'(\d{4}.\d{2}.\d{2})\.txt','.*/test_report',"/qa/link/$tskid", $input_params{'idx'});
     }
 }
