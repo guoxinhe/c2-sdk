@@ -308,21 +308,25 @@ sub html_head {
     .ext2 {$cellbordercss background: #FF80FF ; }
     .ext3 {$cellbordercss background: #FFC0FF ; }
     .fat32{$cellbordercss background: #FFFFA0 ; }
+    .yaffs{$cellbordercss background: #FFE0C0 ; }
 
     .ntfsb {$cellbordercss background: #CFFF80 ; }
     .ext2b {$cellbordercss background: #CF80FF ; }
     .ext3b {$cellbordercss background: #CFC0FF ; }
     .fat32b{$cellbordercss background: #CFFFA0 ; }
+    .yaffsb{$cellbordercss background: #CFE0C0 ; }
 
     .ntfsa {$cellbordercss background: #DFFF80 ; }
     .ext2a {$cellbordercss background: #DF80FF ; }
     .ext3a {$cellbordercss background: #DFC0FF ; }
     .fat32a{$cellbordercss background: #DFFFA0 ; }
+    .yaffsa{$cellbordercss background: #DFE0C0 ; }
 
     .ntfsk {$cellbordercss background: #EFFF80 ; }
     .ext2k {$cellbordercss background: #EF80FF ; }
     .ext3k {$cellbordercss background: #EFC0FF ; }
     .fat32k{$cellbordercss background: #EFFFA0 ; }
+    .yaffsa{$cellbordercss background: #EFE0C0 ; }
 
     .pass {$cellbordercss background: $cpass ; }
     .fail {$cellbordercss background: $cfail ; font-weight:bold}
