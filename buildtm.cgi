@@ -788,10 +788,14 @@ sub parse_fs_test_result {
 
     my ($top, $flag)=(@_);
     my ($fs_list, $band_list, $band_max);
+    my $running="idle";
 
 
     if ( ! -d $top) {
         return 0;
+    }
+    if ( -f "$top/testing.lock") {
+        $running="running";
     }
 
     $fs_list = `ls $top/w_*_max.log | sed  s,_max.log,, | sed s,.*_,,`;
@@ -815,10 +819,9 @@ sub parse_fs_test_result {
         return 0;
     }
 
-    print "Project <font size=+1 color=blue><b>$top</b></font><br>\n";
+    print "Project <font size=+1 color=blue><b>$top</b></font> status: $running<br>\n";
     print "found supported file system: <font color=black><b> @allfs </b></font><br>\n";
     print "Tested band width: <font color=black><b>@allband</b></font><br>\n";
-    print "my number of fs: $nroffs<br>\n";
     print 'Overall FS IO Kernel CPU Usage (%-KB/s)<br>'."\n";
 
 
