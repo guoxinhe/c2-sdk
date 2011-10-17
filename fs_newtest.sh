@@ -3,6 +3,7 @@ CONFIG_SCRIPT=`readlink -f $0`
 TOP=${CONFIG_SCRIPT%/*}
 cd $TOP
 
+CONFIG_MYIP=`/sbin/ifconfig eth0|sed -n 's/.*inet addr:\([^ ]*\).*/\1/p'`
 export PATH="$PATH:./"
 
 ##############################################################################################
@@ -47,10 +48,11 @@ done
 test ! -d $report_dir  && mkdir -p $report_dir
 echo "$(date) pid=$$" >$report_dir/testing.lock
 chmod 777              $report_dir/testing.lock
-cat <<ENDOFME >$report_dir/testingenv.sh
+cat <<ENDOFME >$report_dir/testingenv.log
 #!/bin/sh
 # run on $(date) pid=$$
 # top=$top
+CONFIG_MYIP="       $CONFIG_MYIP"
 testitems="         $testitems"
 report_dir="        $report_dir"
 period="            $period"
@@ -66,10 +68,13 @@ b_band_width="      $b_band_width"
 FSTEST="            $FSTEST"
 LOGTOOL="           $LOGTOOL"
 ENDOFME
-chmod 777      $report_dir/testingenv.sh
+chmod 777      $report_dir/testingenv.log
+echo "$(date) start testing: pid=$$" >>$report_dir/testing.log
+chmod 777      $report_dir/testing.log
 ##############################################################################################
 
 for target in $testitems; do
+        echo "$(date) testing ${target} bandwidth=$b_band_width " >>$report_dir/testing.log
         PARAM=" -y -l $max_size -s $op_size -t $period -n $op_count"
         WLOG=$report_dir/w_${target}_max.log
         RLOG=$report_dir/r_${target}_max.log
@@ -83,6 +88,7 @@ done
 for target in $testitems; do
     bandwidth=$min_band_width
     while test "$bandwidth" -le $max_band_width;do
+        echo "$(date) testing ${target} bandwidth=$bandwidth " >>$report_dir/testing.log
         PARAM=" -y -l $max_size -s $op_size -t $period -n $op_count"
         WLOG=$report_dir/w_${target}_$bandwidth.log
         RLOG=$report_dir/r_${target}_$bandwidth.log

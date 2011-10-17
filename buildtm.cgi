@@ -786,7 +786,7 @@ sub rebuild_project {
 }
 sub parse_fs_test_result {
 
-    my ($top, $flag)=(@_);
+    my ($top, $flag, $tskid)=(@_);
     my ($fs_list, $band_list, $band_max);
     my $running="idle";
 
@@ -819,10 +819,16 @@ sub parse_fs_test_result {
         return 0;
     }
 
+    my $link="/var/www/html/qa/link";
+    unlink("$link/$tskid");
+    symlink("$top", "$link/$tskid");
+
+
     print "Project <font size=+1 color=blue><b>$top</b></font> status: $running<br>\n";
     print "found supported file system: <font color=black><b> @allfs </b></font><br>\n";
     print "Tested band width: <font color=black><b>@allband</b></font><br>\n";
-    print 'Overall FS IO Kernel CPU Usage (%-KB/s)<br>'."\n";
+    print "<a href=/qa/link/$tskid/testing.log>Overall</a>";
+    print " <a href=/qa/link/$tskid/testingenv.log>FS</a> IO Kernel CPU Usage (%-KB/s)<br>\n";
 
 
     my %results;
@@ -961,9 +967,9 @@ sub parse_fs_test_result {
     print "</table></font>";
 }
 sub show_fstest {
-    parse_fs_test_result('/local/c2/hdd-k.32/case_sata/test_report',0);
-    parse_fs_test_result('/local/c2/fs-nandroid/test_report',0);
-    parse_fs_test_result('/mean/c2/fs-nandroid/test_report',0);
+    parse_fs_test_result('/local/c2/hdd-k.32/case_sata/test_report',0,'t1');
+    parse_fs_test_result('/local/c2/fs-nandroid/test_report',0,'t2');
+    parse_fs_test_result('/mean/c2/fs-nandroid/test_report',0,'t3');
 }
 
 sub show_qatest {
