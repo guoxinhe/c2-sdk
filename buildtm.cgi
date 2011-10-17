@@ -794,9 +794,13 @@ sub parse_fs_test_result {
         return 0;
     }
 
-    $fs_list = `ls $top/r_*_max.log | sed  s,_max.log,, | sed s,.*_,,`;
-    $band_list = `ls $top/r_fat32_*.log | sed  s,.log,, | sed s,.*_,, | sed s,max,,`;
+    $fs_list = `ls $top/w_*_max.log | sed  s,_max.log,, | sed s,.*_,,`;
+    if ( $fs_list eq '' ) {
+        return 0;
+    }
     my @allfs = split(/\s/,$fs_list);
+    my $leadfs=@allfs[0];
+    $band_list = `ls $top/r_${leadfs}_*.log | sed  s,.log,, | sed s,.*_,, | sed s,max,,`;
 
     # advanced sort
     #-------------------------------------------------------------------------
@@ -956,6 +960,7 @@ sub parse_fs_test_result {
 sub show_fstest {
     parse_fs_test_result('/local/c2/hdd-k.32/case_sata/test_report',0);
     parse_fs_test_result('/local/c2/fs-nandroid/test_report',0);
+    parse_fs_test_result('/mean/c2/fs-nandroid/test_report',0);
 }
 
 sub show_qatest {
