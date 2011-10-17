@@ -788,7 +788,7 @@ sub parse_fs_test_result {
     }
 
     $fs_list = `ls $top/r_*_max.log | sed  s,_max.log,, | sed s,.*_,,`;
-    $band_list = `ls $top/r_fat32_*.log | sed  s,.log,, | sed s,.*_,,`; #` | sed s,max,,`;
+    $band_list = `ls $top/r_fat32_*.log | sed  s,.log,, | sed s,.*_,, | sed s,max,,`;
     my @allfs = split(/\s/,$fs_list);
 
     # advanced sort
@@ -808,23 +808,63 @@ sub parse_fs_test_result {
     print "Tested band width: <font color=black><b>@allband</b></font><br>\n";
     print "my number of fs: $nroffs<br>\n";
 
+    my %results;
+    foreach $fs (@allfs) {
+    foreach $myfop ('r','w') {
+       my $log="gen_${myfop}_${fs}.xls";
+       if ( ! open (LOG, "$top/$log") ) {
+           next;
+       }
+       my %tmplist;
+       while (<LOG>) { 
+           my ($b,$a,$k) = split(/\s/);
+           $tmplist{$b} =[$a, $k ];
+       }
+       close(LOG);
+       my $tidx=0;
+       foreach my $band (sort { $a <=> $b } keys %tmplist) {
+           $tidx += 1;
+           my ($va,$vk) = @{$tmplist{$band}};
+           $results{$tidx}{$fs}{$myfop} =[$band, $va, $vk ];
+       }
+    }}
+
+    my %results_max;
+    foreach $fs (@allfs) {
+    foreach $myfop ('r','w') {
+       my $log="gen_${myfop}_${fs}_max.log";
+       if ( ! open (LOG, "$top/$log") ) {
+           next;
+       }
+       my %tmplist;
+       while (<LOG>) { 
+           my ($b,$a,$k) = split(/\s/);
+           $tmplist{$b} =[$a, $k ];
+       }
+       close(LOG);
+       my $tidx=0;
+       foreach my $band (sort { $a <=> $b } keys %tmplist) {
+           $tidx += 1;
+           my ($va,$vk) = @{$tmplist{$band}};
+           $results_max{$tidx}{$fs}{$myfop} =[$band, $va, $vk ];
+       }
+    }}
+
     my $nrcol=$nroffs * 6;
-    print "<font size=12px><table border=1>";
-    print "<tr><td align='center' colspan='$nrcol'>$top</td></tr>";
-    print "<tr>";
+    print "<font size=-1px><table border=1>";
+    print "<tr><td>proj</td><td align='center' colspan='$nrcol'>$top</td></tr>";
+    print "<tr><td>fs</td>";
     foreach $fs (@allfs) {
        print "<td class=$fs align='center' colspan='6'>$fs</td>";
     }
     print "</tr>";
-
-    print "<tr>";
+    print "<tr><td>op</td>";
     foreach $fs (@allfs) {
        print "<td class=$fs align='center' colspan='3'>read</td>";
        print "<td class=$fs align='center' colspan='3'>write</td>";
     }
     print "</tr>";
-
-    print "<tr>";
+    print "<tr><td>index</td>";
     foreach $fs (@allfs) {
        print "<td class=${fs}b>bandwidth</td>";
        print "<td class=${fs}a>&nbsp;app&nbsp;</td>";
@@ -835,19 +875,36 @@ sub parse_fs_test_result {
     }
     print "</tr>";
 
-    foreach $i (@allband) {
-    print "<tr>";
-    foreach $fs (@allfs) {
-       print "<td class=pass>$i</td>";
-       print "<td class=pass>333</td>";
-       print "<td class=pass>666</td>";
-       print "<td class=pass>$i</td>";
-       print "<td class=pass>333</td>";
-       print "<td class=pass>666</td>";
-    }
-    print "</tr>";
+    foreach $tidx (sort { $a <=> $b } keys %results) {
+       print "<tr><td>$tidx</td>";
+       foreach $fs (@allfs) {
+          my ($rb,$ra,$rk) = @{$results{$tidx}{$fs}{'r'}};
+          my ($wb,$wa,$wk) = @{$results{$tidx}{$fs}{'w'}};
+          print "<td class=pass>$rb</td>";
+          print "<td class=pass>$ra</td>";
+          print "<td class=pass>$rk</td>";
+          print "<td class=pass>$wb</td>";
+          print "<td class=pass>$wa</td>";
+          print "<td class=pass>$wk</td>";
+       }
+       print "</tr>";
     }
 
+    print "<tr><td>proj</td><td align='center' colspan='$nrcol'>max bandwidth data</td></tr>";
+    foreach $tidx (sort { $a <=> $b } keys %results_max) {
+       print "<tr><td>$tidx</td>";
+       foreach $fs (@allfs) {
+          my ($rb,$ra,$rk) = @{$results_max{$tidx}{$fs}{'r'}};
+          my ($wb,$wa,$wk) = @{$results_max{$tidx}{$fs}{'w'}};
+          print "<td class=pass>$rb</td>";
+          print "<td class=pass>$ra</td>";
+          print "<td class=pass>$rk</td>";
+          print "<td class=pass>$wb</td>";
+          print "<td class=pass>$wa</td>";
+          print "<td class=pass>$wk</td>";
+       }
+       print "</tr>";
+    }
     print "</table></font>";
 }
 sub new_feature {
