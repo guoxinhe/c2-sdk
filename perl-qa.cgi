@@ -187,8 +187,8 @@ our %known_tasks = (
 		},
 );
 
-if      ( -e "/etc/qa/qareport.cfg.pl") {
-    require  "/etc/qa/qareport.cfg.pl";
+if      ( -e "/etc/qa/qareport2.cfg.pl") {
+    require  "/etc/qa/qareport2.cfg.pl";
 } elsif ( -e "$ENV{'SCRIPT_FILENAME'}.cfg.pl") {
     require  "$ENV{'SCRIPT_FILENAME'}.cfg.pl"
 } elsif ( -e "$thisscript.cfg.pl") {
@@ -529,24 +529,24 @@ sub parse_files_by_date {
 sub manage_tasks {
     my $tskid;
     my $link="/var/www/html/qa/link";
-    foreach $tskid (sort keys %known_tasks) {
-        my $scr=$known_tasks{$tskid}{'script' };
-        my $sta=$known_tasks{$tskid}{'status' };
+    foreach $tskid (sort keys %known_qatasks) {
+        my $scr=$known_qatasks{$tskid}{'script' };
+        my $sta=$known_qatasks{$tskid}{'status' };
         if ( -x $scr && $sta ne 'off' ) {
             print "| <a href=#$tskid> $tskid </a>\n";
         }
     }
     print "<br>\n";
-    foreach $tskid (sort keys %known_tasks) {
-        my $tit=$known_tasks{$tskid}{ 'title'   };
-        my $cfg=$known_tasks{$tskid}{ 'config'  };
-        my $hip=$known_tasks{$tskid}{ 'hostip'  };
-        my $usr=$known_tasks{$tskid}{ 'user'    };
-        my $hme=$known_tasks{$tskid}{ 'home'	};
-        my $scr=$known_tasks{$tskid}{ 'script'  };
-        my $rst=$known_tasks{$tskid}{ 'reset'   };
-        my $cip=$known_tasks{$tskid}{ 'clientip'};
-        my $sta=$known_tasks{$tskid}{ 'status'  };
+    foreach $tskid (sort keys %known_qatasks) {
+        my $tit=$known_qatasks{$tskid}{ 'title'   };
+        my $cfg=$known_qatasks{$tskid}{ 'config'  };
+        my $hip=$known_qatasks{$tskid}{ 'hostip'  };
+        my $usr=$known_qatasks{$tskid}{ 'user'    };
+        my $hme=$known_qatasks{$tskid}{ 'home'	};
+        my $scr=$known_qatasks{$tskid}{ 'script'  };
+        my $rst=$known_qatasks{$tskid}{ 'reset'   };
+        my $cip=$known_qatasks{$tskid}{ 'clientip'};
+        my $sta=$known_qatasks{$tskid}{ 'status'  };
 
         if ( ! -x $scr ||  $sta eq 'off' ) {
             next;
