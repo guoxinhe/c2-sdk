@@ -187,8 +187,8 @@ our %known_tasks = (
 		},
 );
 
-if      ( -e "/etc/qa/qareport2.cfg.pl") {
-    require  "/etc/qa/qareport2.cfg.pl";
+if      ( -e "/etc/qa/qareport.cfg.pl") {
+    require  "/etc/qa/qareport.cfg.pl";
 } elsif ( -e "$ENV{'SCRIPT_FILENAME'}.cfg.pl") {
     require  "$ENV{'SCRIPT_FILENAME'}.cfg.pl"
 } elsif ( -e "$thisscript.cfg.pl") {

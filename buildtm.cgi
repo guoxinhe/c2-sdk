@@ -159,7 +159,7 @@ if ( $input_params{'op'} ne 'logout' ) {
             chomp($msid);
         }
 
-        if ( $msid eq $input_params{'msid'} ) { 
+        if ( $msid eq $input_params{'msid'} ) {
             # I am a login user.
             $mission_params{'msid'} = $input_params{'msid'};
             $mission_params{'user'} = $input_params{'user'};
@@ -284,7 +284,7 @@ sub html_head {
     my ($cpass, $cfail, $cna, $cratio, $crun) = ('#00FF00','#FF0000','#DDDDDD','#00FFFF','#FFFF00');
     my ($bpass, $bfail, $bna, $bratio, $brun) = ('bold','bold','bold','bold','bold');
     my $anchorcss="";
-    
+
     if (defined $input_params{'thm'}) {
         if ($input_params{'thm'} ne '') {
             ($cpass, $cfail, $cna, $cratio, $crun) = ('#FFFFFF','#FFCCCC','#FFFFFF','#B0FFFF','#FFFFB0');
@@ -385,7 +385,7 @@ sub html_tail {
     print "<hr> more webpage(cgi) debug info";
     print " <a href='###' onclick=\"openShutManager(this,'moretext',false,'hide','show')\">show</a>";
     print "<div id='moretext' style='background:#CCFFCC; display:none'>";
-    
+
     print "Input parameters list:<table border=1><tr><td>Name</td><td>Value</td></tr>";
     foreach $i (sort keys %input_params) {
         my $v=$input_params{$i};
@@ -445,7 +445,7 @@ sub func_myprofile {
     system ("id $mission_params{'user'}");
     system ("uname -a");
     print "</pre>\n";
-    
+
 }
 sub func_default {
     print "the op is $input_params{'op'}<br>\n";
@@ -508,10 +508,10 @@ sub parse_files_by_date {
     opendir(DIR, $results_dir);
     my @dates = (sort({ $b cmp $a} grep(s/^$filter$/$1/, readdir(DIR))))[0..($num_days-1)];
     close(DIR);
-  
+
     my %results;
     for my $d (@dates) {
-        if ( ! open (RES, "$results_dir/$d.txt") ) { 
+        if ( ! open (RES, "$results_dir/$d.txt") ) {
            print "Die: Opening $results_dir/$d.txt: $!\n";
         }
 
@@ -567,7 +567,7 @@ sub parse_files_by_date {
         if ($fields > 3) { print "<td class='$class'>$subitem </td>";}
         if ($fields > 4) { print "<td class='$class'>$subsec  </td>";}
 
-        for my $d (@dates) {    
+        for my $d (@dates) {
             my $class = "na";
             my $status = "&nbsp;";
             if (exists($results{$category}{$subitem}{$subsec}{$d})) {
@@ -616,8 +616,8 @@ sub manage_tasks {
             my $byip=`grep CONFIG_REMOTEIP     $top/build_result/l/env.log | sed -e 's,.*=\\(.*\\),\\1,g' `;
             my $byuser=`grep CONFIG_REMOTEUSER $top/build_result/l/env.log | sed -e 's,.*=\\(.*\\),\\1,g' `;
             chomp($byip); chomp($byuser);
-            if ($byip ne "" || $byuser ne "") { 
-                $byuser="runby:$byuser\@$byip"; 
+            if ($byip ne "" || $byuser ne "") {
+                $byuser="runby:$byuser\@$byip";
             }
             print "<br><a name=$tskid>$tskid</a>:  <font size=+1 color=blue ><b>$tit</b></font><br>\n";
             print "script:$hip".'@'."$scr $byuser<br>\n";
@@ -646,8 +646,8 @@ sub manage_tasks {
             }
 	    unlink("/var/www/html/build/link/$tskid");
             symlink("$top/build_result", "/var/www/html/build/link/$tskid");
-            parse_files_by_date(10,"$top/build_result", 
-		'(\d{2}[0,1][0-9][0-3][0-9])\.txt', '.*/build_result', 
+            parse_files_by_date(10,"$top/build_result",
+		'(\d{2}[0,1][0-9][0-3][0-9])\.txt', '.*/build_result',
 		"/build/link/$tskid", $input_params{'idx'});
         }
     }
@@ -820,9 +820,9 @@ sub parse_fs_test_result {
 
     # advanced sort
     #-------------------------------------------------------------------------
-    # @sorted = sort { $a <=> $b } @not_sorted # numerical sort 
-    # @sorted = sort { $a cmp $b } @not_sorted # ASCII-betical sort 
-    # @sorted = sort { lc($a) cmp lc($b) } @not_sorted # alphabetical sort 
+    # @sorted = sort { $a <=> $b } @not_sorted # numerical sort
+    # @sorted = sort { $a cmp $b } @not_sorted # ASCII-betical sort
+    # @sorted = sort { lc($a) cmp lc($b) } @not_sorted # alphabetical sort
     my @allband = sort { $a <=> $b } split(/\s/,$band_list);
     my $nroffs = @allfs;
     my $nrofband = @allband;
@@ -844,36 +844,17 @@ sub parse_fs_test_result {
     print "| <a href=/qa/link/$tskid/testingenv.log>configs</a><br>\n";
 
 
-    my %results;
-    foreach $fs (@allfs) {
-    foreach $myfop ('r','w') {
-       my $log="gen_${myfop}_${fs}_all.log";
-       if ( ! open (LOG, "$top/$log") ) {
-           next;
-       }
-       my %tmplist;
-       while (<LOG>) { 
-           my ($b,$a,$k) = split(/\s/);
-           $tmplist{$b} =[$a, $k ];
-       }
-       close(LOG);
-       my $tidx=0;
-       foreach my $band (sort { $a <=> $b } keys %tmplist) {
-           $tidx += 1;
-           my ($va,$vk) = @{$tmplist{$band}};
-           $results{$tidx}{$fs}{$myfop} =[$band, $va, $vk ];
-       }
-    }}
-
+    my %results_all;
     my %results_max;
     foreach $fs (@allfs) {
     foreach $myfop ('r','w') {
-       my $log="gen_${myfop}_${fs}_max.log";
+    foreach $gen ('all','max') {
+       my $log="gen_${myfop}_${fs}_$gen.log";
        if ( ! open (LOG, "$top/$log") ) {
            next;
        }
        my %tmplist;
-       while (<LOG>) { 
+       while (<LOG>) {
            my ($b,$a,$k) = split(/\s/);
            $tmplist{$b} =[$a, $k ];
        }
@@ -886,15 +867,23 @@ sub parse_fs_test_result {
            $avgband += $band;
            $avga    += $va;
            $avgk    += $vk;
-           $results_max{$tidx}{$fs}{$myfop} =[$band, $va, $vk ];
+           if($gen eq 'all') {
+               $results_all{$tidx}{$fs}{$myfop} =[$band, $va, $vk ];
+           } else {
+               $results_max{$tidx}{$fs}{$myfop} =[$band, $va, $vk ];
+           }
        }
        if ($tidx > 0) {
            $avgband = $avgband/$tidx;
            $avga    = $avga   /$tidx;
            $avgk    = $avgk   /$tidx;
-           $results_max{0}{$fs}{$myfop} =[$avgband, $avga, $avgk ];
+           if($gen eq 'all') {
+               $results_all{0}{$fs}{$myfop} =[$avgband, $avga, $avgk ];
+           } else {
+               $results_max{0}{$fs}{$myfop} =[$avgband, $avga, $avgk ];
+           }
        }
-    }}
+    }}}
 
     # table 1
     #-----------------------------------------------------------------
@@ -928,75 +917,67 @@ sub parse_fs_test_result {
 
     }
     print "</table></font>";
-    
+
     # table 2
     #-----------------------------------------------------------------
-    my $nrcol=$nroffs * 6;
-    print "Detail test data<br>\n";
-    print "<font size=-1px><table border=1>";
-    print "<tr><td>proj</td><td align='center' colspan='$nrcol'>$top</td></tr>";
-    print "<tr><td>fs</td>";
-    foreach $fs (@allfs) {
-       print "<td class=$fs align='center' colspan='6'>$fs</td>";
-    }
-    print "</tr>";
-    print "<tr><td>op</td>";
-    foreach $fs (@allfs) {
-       print "<td class=$fs align='center' colspan='3'>read</td>";
-       print "<td class=$fs align='center' colspan='3'>write</td>";
-    }
-    print "</tr>";
-    print "<tr><td>index</td>";
-    foreach $fs (@allfs) {
-       print "<td class=${fs}b>bandwidth</td>";
-       print "<td class=${fs}a>&nbsp;app&nbsp;</td>";
-       print "<td class=${fs}k>kernel</td>";
-       print "<td class=${fs}b>bandwidth</td>";
-       print "<td class=${fs}a>&nbsp;app&nbsp;</td>";
-       print "<td class=${fs}k>kernel</td>";
-    }
-    print "</tr>";
+    foreach $gen ('max','all') {
+        my %results;
+        if($gen eq 'all') {
+            %results = %results_all;
+        } else {
+            %results = %results_max;
+        }
+        my $nrcol=$nroffs * 6;
+        print "Detail test data of bandwidth type $gen<br>\n";
+        print "<font size=-1px><table border=1>";
+        print "<tr><td>proj</td><td align='center' colspan='$nrcol'>$top of $gen</td></tr>";
+        print "<tr><td>fs</td>";
+        foreach $fs (@allfs) {
+           print "<td class=$fs align='center' colspan='6'>$fs</td>";
+        }
+        print "</tr>";
+        print "<tr><td>op</td>";
+        foreach $fs (@allfs) {
+           print "<td class=$fs align='center' colspan='3'>read</td>";
+           print "<td class=$fs align='center' colspan='3'>write</td>";
+        }
+        print "</tr>";
+        print "<tr><td>index</td>";
+        foreach $fs (@allfs) {
+           print "<td class=${fs}b>bandwidth</td>";
+           print "<td class=${fs}a>&nbsp;app&nbsp;</td>";
+           print "<td class=${fs}k>kernel</td>";
+           print "<td class=${fs}b>bandwidth</td>";
+           print "<td class=${fs}a>&nbsp;app&nbsp;</td>";
+           print "<td class=${fs}k>kernel</td>";
+        }
+        print "</tr>";
 
-    foreach $tidx (sort { $a <=> $b } keys %results) {
-       print "<tr><td>$tidx</td>";
-       foreach $fs (@allfs) {
-          my ($rb,$ra,$rk) = @{$results{$tidx}{$fs}{'r'}};
-          my ($wb,$wa,$wk) = @{$results{$tidx}{$fs}{'w'}};
-          print "<td class=pass>$rb</td>";
-          print "<td class=pass>$ra</td>";
-          print "<td class=pass>$rk</td>";
-          print "<td class=pass>$wb</td>";
-          print "<td class=pass>$wa</td>";
-          print "<td class=pass>$wk</td>";
-       }
-       print "</tr>";
+        foreach $tidx (sort { $a <=> $b } keys %results) {
+           print "<tr><td>$tidx</td>";
+           foreach $fs (@allfs) {
+              my ($rb,$ra,$rk) = @{$results{$tidx}{$fs}{'r'}};
+              my ($wb,$wa,$wk) = @{$results{$tidx}{$fs}{'w'}};
+              if($tidx == 0) {
+                  printf("<td class=$fs>%6d</td>"  ,$rb) ;
+                  printf("<td class=$fs>%3.6f</td>",$ra) ;
+                  printf("<td class=$fs>%3.6f</td>",$rk) ;
+                  printf("<td class=$fs>%6d</td>"  ,$wb) ;
+                  printf("<td class=$fs>%3.6f</td>",$wa) ;
+                  printf("<td class=$fs>%3.6f</td>",$wk) ;
+              } else {
+                  print "<td class=pass>$rb</td>";
+                  print "<td class=pass>$ra</td>";
+                  print "<td class=pass>$rk</td>";
+                  print "<td class=pass>$wb</td>";
+                  print "<td class=pass>$wa</td>";
+                  print "<td class=pass>$wk</td>";
+              }
+           }
+           print "</tr>";
+        }
+        print "</table></font>";
     }
-
-    print "<tr><td>proj</td><td align='center' colspan='$nrcol'>max bandwidth data</td></tr>";
-    foreach $tidx (sort { $a <=> $b } keys %results_max) {
-       print "<tr><td>$tidx</td>";
-       foreach $fs (@allfs) {
-          my ($rb,$ra,$rk) = @{$results_max{$tidx}{$fs}{'r'}};
-          my ($wb,$wa,$wk) = @{$results_max{$tidx}{$fs}{'w'}};
-          if($tidx == 0) {
-              printf("<td class=$fs>%6d</td>"  ,$rb) ;
-              printf("<td class=$fs>%3.6f</td>",$ra) ;
-              printf("<td class=$fs>%3.6f</td>",$rk) ;
-              printf("<td class=$fs>%6d</td>"  ,$wb) ;
-              printf("<td class=$fs>%3.6f</td>",$wa) ;
-              printf("<td class=$fs>%3.6f</td>",$wk) ;
-          } else {
-              printf  "<td class=pass>$rb</td>";
-              printf  "<td class=pass>$ra</td>";
-              printf  "<td class=pass>$rk</td>";
-              printf  "<td class=pass>$wb</td>";
-              printf  "<td class=pass>$wa</td>";
-              printf  "<td class=pass>$wk</td>";
-          }
-       }
-       print "</tr>";
-    }
-    print "</table></font>";
 }
 sub show_fstest {
     my $results_dir='/mean/c2/fs-nandroid/test_report';
