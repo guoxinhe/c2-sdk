@@ -503,9 +503,11 @@ sub parse_files_by_date {
     if ( $log_num < $num_days ) {
         $num_days = $log_num;
     }
+    close(DIR);
 
     opendir(DIR, $results_dir);
     my @dates = (sort({ $b cmp $a} grep(s/^$filter$/$1/, readdir(DIR))))[0..($num_days-1)];
+    close(DIR);
   
     my %results;
     for my $d (@dates) {
@@ -997,9 +999,29 @@ sub parse_fs_test_result {
     print "</table></font>";
 }
 sub show_fstest {
-    parse_fs_test_result('/local/c2/hdd-k.32/case_sata/test_report',0,'t1');
-    parse_fs_test_result('/local/c2/fs-nandroid/test_report',0,'t2');
-    parse_fs_test_result('/mean/c2/fs-nandroid/test_report',0,'t3');
+    my $results_dir='/mean/c2/fs-nandroid/test_report';
+    my $filter='(\d{6}.\d{2})';
+    my $num_days=10;
+    my $yangday=$results_dir;
+    my @dates;
+
+    if ( ! opendir(DIR, $results_dir) ) {
+        print "Die: Couldn't open $results_dir: $!<br>\n";
+        return 0;
+    }
+    my $log_num = grep /^$filter$/i, readdir(DIR);
+    close(DIR);
+    if ( $log_num > 0 ) {
+        if ( $log_num < $num_days ) {
+            $num_days = $log_num;
+        }
+        opendir(DIR, $results_dir);
+        @dates = (sort({ $b cmp $a} grep(s/^$filter$/$1/, readdir(DIR))))[0..($num_days-1)];
+        close(DIR);
+        $yangday=$results_dir/$date[0];
+    }
+
+    parse_fs_test_result("$yangday",0,'t3');
 }
 
 sub show_qatest {
