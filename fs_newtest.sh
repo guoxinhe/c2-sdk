@@ -9,7 +9,7 @@ export PATH="$PATH:./"
 ##############################################################################################
 #testitems="fat32 ext2 ext3 ntfs"
 testitems="yaffs"
-report_dir=$TOP/test_report
+report_dir=$TOP/test_report/$(date +%y%m%d.%H)
 
 period=300
 period=60
@@ -46,12 +46,15 @@ do
 done
 
 test ! -d $report_dir  && mkdir -p $report_dir
+chmod 777 $report_dir
+rm -rf    $report_dir/*
 echo "$(date) pid=$$" >$report_dir/testing.lock
 chmod 777              $report_dir/testing.lock
 cat <<ENDOFME >$report_dir/testingenv.log
 #!/bin/sh
 # run on $(date) pid=$$
-# top=$top
+top=$top
+uname="             $(uname -a)"
 CONFIG_MYIP="       $CONFIG_MYIP"
 testitems="         $testitems"
 report_dir="        $report_dir"
@@ -101,4 +104,5 @@ for target in $testitems; do
         bandwidth=$(($bandwidth + $step_band_width))
     done
 done
+cp $report_dir/testing.lock $report_dir/testing.done
 rm -rf $report_dir/testing.lock
