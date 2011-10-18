@@ -835,17 +835,13 @@ sub parse_fs_test_result {
     unlink("$link/$tskid");
     symlink("$top", "$link/$tskid");
 
-
-    print "Project <font size=+1 color=blue><b>$top</b></font> status: $running<br>\n";
+    print "Project: <font size=+1 color=blue><b>$top</b></font> status: $running<br>\n";
     print "Kernel info:";
     system ("grep ^uname= $top/testingenv.log | sed -e 's/.*Linux localhost//g'");
     print "<br>\n";
-    print "found supported file system: <font color=black><b> @allfs </b></font><br>\n";
-    print "Tested band width: <font color=black><b>@allband</b></font><br>\n";
-    print "| <a href=/qa/link/$tskid/testing.log>progress</a>";
-    print "| <a href=/qa/link/$tskid>all logs</a>";
-    print "| <a href=/qa/link/$tskid/testingenv.log>configs</a><br>\n";
-
+    print "Result logs: <a href=/qa/link/$tskid/testing.log>progress</a>";
+    print " &nbsp;|&nbsp; <a href=/qa/link/$tskid>all logs</a>";
+    print " &nbsp;|&nbsp; <a href=/qa/link/$tskid/testingenv.log>configs</a><br>\n";
 
     my %results_all;
     my %results_max;
