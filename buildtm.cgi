@@ -38,7 +38,7 @@ our %menu_links = (
     '1 Home'         =>  "$home_link",
     '2 index'        =>  "$home_link?idx=1&thm=1",
     '3 qatest'       =>  "$home_link?op=qatest",
-    '4 fstest'       =>  "$home_link?op=fstest&idx=1&thm=1",
+    '4 fstest'       =>  "$home_link?op=fstest&thm=1",
     '5 help'         =>  "$home_link?op=help",
 );
 our %friendly_links = (
@@ -46,7 +46,7 @@ our %friendly_links = (
     "2 build196"     => 'http://10.16.13.196/build/build.cgi',
     '3 license'      => 'http://10.16.13.195/build/project.cgi?op=liclist',
     '4 qareport'     => 'http://10.16.6.204/qa/index.cgi?idx=1',
-    '5 fsreport'     => 'http://10.16.6.204/qa/index3.cgi?op=fstest&idx=1&thm=1',
+    '5 fsreport'     => 'http://10.16.6.204/qa/index3.cgi?op=fstest&thm=1',
 );
 our %system_command = (
     'Servername'     => 'hostname',
@@ -1001,7 +1001,7 @@ sub parse_fs_test_result {
 sub show_fstest {
     my $results_dir='/mean/c2/fs-nandroid/test_report';
     my $filter='(\d{6}.\d{2})';
-    my $num_days=10;
+    my $num_days=31;
     my $yangday=$results_dir;
     my @dates;
 
@@ -1018,7 +1018,23 @@ sub show_fstest {
         opendir(DIR, $results_dir);
         @dates = (sort({ $b cmp $a} grep(s/^$filter$/$1/, readdir(DIR))))[0..($num_days-1)];
         close(DIR);
-        $yangday=$results_dir/$date[0];
+        $yangday="$results_dir/$dates[0]";
+        if ( $log_num > 1 ) {
+            print "More test results: ";
+            my $nr=0;
+            for my $d (@dates) {
+                $nr +=1;
+                print " <a href=$home_link?op=fstest&thm=1&d=$d>$d</a> ";
+                if ($nr == 10) {
+                    $nr = 0;
+                    print "&nbsp;&nbsp;&nbsp;&nbsp;<br>\n";
+                }
+            }
+            print "<br>\n";
+        }
+    }
+    if (defined $input_params{'d'}) {
+       $yangday="$results_dir/$input_params{'d'}";
     }
 
     parse_fs_test_result("$yangday",0,'t3');
