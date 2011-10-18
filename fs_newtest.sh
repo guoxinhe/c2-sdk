@@ -12,7 +12,6 @@ testitems="yaffs"
 report_dir=$TOP/test_report/$(date +%y%m%d.%H)
 
 period=300
-period=60
 op_size=64
 op_count=16000
 max_size=102400

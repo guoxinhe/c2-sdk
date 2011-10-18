@@ -40,11 +40,7 @@ test -x /nfshome/fs-nandroid/fs_newtest.sh && /nfshome/fs-nandroid/fs_newtest.sh
 sync                                                
 
 sleep 3600
-/nfshome/setdate.sh                                                          
-h=`date +%k`;
-if test $h -ge 8 -a $h -lt 20 ; then
 reboot -f
-fi
 
 #poll for a basic crontab task
 rebooth=07;

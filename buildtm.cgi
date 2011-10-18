@@ -807,7 +807,7 @@ sub parse_fs_test_result {
         return 0;
     }
     if ( -f "$top/testing.lock") {
-        $running="running";
+        $running="<font color=red><b>running</b></font>";
     }
 
     $fs_list = `ls $top/w_*_max.log | sed  s,_max.log,, | sed s,.*_,,`;
@@ -837,6 +837,9 @@ sub parse_fs_test_result {
 
 
     print "Project <font size=+1 color=blue><b>$top</b></font> status: $running<br>\n";
+    print "Kernel info:";
+    system ("grep ^uname= $top/testingenv.log | sed -e 's/.*Linux localhost//g'");
+    print "<br>\n";
     print "found supported file system: <font color=black><b> @allfs </b></font><br>\n";
     print "Tested band width: <font color=black><b>@allband</b></font><br>\n";
     print "| <a href=/qa/link/$tskid/testing.log>progress</a>";
