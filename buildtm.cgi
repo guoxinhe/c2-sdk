@@ -846,6 +846,7 @@ sub parse_fs_test_result {
 
     my %results_all;
     my %results_max;
+    my $results_sta;
     foreach $fs (@allfs) {
     foreach $myfop ('r','w') {
     foreach $gen ('all','max') {
@@ -884,6 +885,16 @@ sub parse_fs_test_result {
            }
        }
     }}}
+    foreach $fs (@allfs) {
+    foreach $band (@allband) {
+        $results_sta{$band}{$fs}{'r'}='tbd';
+        $results_sta{$band}{$fs}{'w'}='tbd';
+        }
+        $results_sta{'max'}{$fs}{'rb'}=$results_max{0}{$fs}{'r'}[0];
+        $results_sta{'max'}{$fs}{'r'} =$results_max{0}{$fs}{'r'}[2];
+        $results_sta{'max'}{$fs}{'wb'}=$results_max{0}{$fs}{'w'}[0];
+        $results_sta{'max'}{$fs}{'w'} =$results_max{0}{$fs}{'w'}[2];
+    }
 
     # table 1
     #-----------------------------------------------------------------
@@ -901,18 +912,18 @@ sub parse_fs_test_result {
     foreach $fs (@allfs) {
         print "<tr><td class=ext3b rowspan='2'>$fs</td><td>Read</td>\n";
         foreach $band (@allband) {
-        print "<td class=fat32b>0</td>\n";
+            print "<td class=fat32b>$results_sta{$band}{$fs}{'r'}</td>\n";
         }
-        print "<td class=ext3b>0</td>\n";
-        print "<td class=ext3b>0</td>\n";
+        printf( "<td class=ext3b>%6.2f</td>\n",$results_sta{'max'}{$fs}{'rb'});
+        printf( "<td class=ext3b>%2.1f</td>\n",$results_sta{'max'}{$fs}{'r'} );
         print "</tr>";
 
         print "<tr><td>Write</td>\n";
         foreach $band (@allband) {
-        print "<td class=fat32b>0</td>\n";
+            print "<td class=fat32b>$results_sta{$band}{$fs}{'w'}</td>\n";
         }
-        print "<td class=ext3b>0</td>\n";
-        print "<td class=ext3b>0</td>\n";
+        printf( "<td class=ext3b>%6.2f</td>\n",$results_sta{'max'}{$fs}{'wb'});
+        printf( "<td class=ext3b>%2.1f</td>\n",$results_sta{'max'}{$fs}{'w'} );
         print "</tr>";
 
     }
