@@ -39,7 +39,8 @@ our %menu_links = (
     '2 index'        =>  "$home_link?idx=1&thm=1",
     '3 qatest'       =>  "$home_link?op=qatest",
     '4 fstest'       =>  "$home_link?op=fstest&thm=1",
-    '5 help'         =>  "$home_link?op=help",
+    '5 ltptest'      =>  "$home_link?op=ltptest&thm=1",
+    '99 help'        =>  "$home_link?op=help",
 );
 our %friendly_links = (
     "1 build195"     => 'http://10.16.13.195/build/build.cgi',
@@ -47,6 +48,7 @@ our %friendly_links = (
     '3 license'      => 'http://10.16.13.195/build/project.cgi?op=liclist',
     '4 qareport'     => 'http://10.16.6.204/qa/index.cgi?idx=1',
     '5 fsreport'     => 'http://10.16.6.204/qa/index3.cgi?op=fstest&thm=1',
+    '6 ltpreport'    => 'http://10.16.6.204/qa/index3.cgi?op=ltptest&thm=1',
 );
 our %system_command = (
     'Servername'     => 'hostname',
@@ -367,14 +369,17 @@ HTML
     #list the top level menu
     foreach $i (sort keys %menu_links) {
         my $v=$menu_links{$i};
-        $i =~ s/^\S //;
+        $i =~ s/^\S* //;
         print "| &nbsp;<a href=$v>$i</a>&nbsp; \n"
     }
+
+    if ( $ENV{'SERVER_ADDR'} ne '10.16.6.204' ) { #shit, that slim guy do not like this.
     if ( $mission_params{'user'} eq 'guest' ) {
         print "| <a href=$home_link?op=loginpage>Login</a> ";
     } else {
         print "| <a href=$home_link?op=logout>Logout</a> ";
         print " <a href=$home_link?op=myprofile>$mission_params{'user'}</a> ";
+    }
     }
 
     print "<hr>";
@@ -382,7 +387,15 @@ HTML
 
 sub html_tail {
     my $i;
-    print "<hr> more webpage(cgi) debug info";
+    print "<hr>";
+    print "More links: \n";
+    foreach $i (sort keys %friendly_links) {
+        my $v=$friendly_links{$i};
+        $i =~ s/^\S //;
+        print "| &nbsp;<a href=$v>$i</a>&nbsp; \n";
+    }
+    print "<br>\n";
+    print "More webpage(cgi) debug info";
     print " <a href='###' onclick=\"openShutManager(this,'moretext',false,'hide','show')\">show</a>";
     print "<div id='moretext' style='background:#CCFFCC; display:none'>";
 
@@ -415,13 +428,6 @@ sub html_tail {
     }
     print "</table>";
     print "</div>";
-    print "<br>More links:<br>\n";
-    foreach $i (sort keys %friendly_links) {
-        my $v=$friendly_links{$i};
-        $i =~ s/^\S //;
-        print "| &nbsp;<a href=$v>$i</a>&nbsp; \n";
-    }
-
     print "<br>Copyright, all rights reserved.</body></html>";
 }
 sub func_loginpage {
@@ -462,6 +468,7 @@ sub customer_register {
     $actions{"kill"     }=\&kill_project;
     $actions{"qatest"   }=\&show_qatest;
     $actions{"fstest"   }=\&show_fstest;
+    $actions{"ltptest"  }=\&show_ltptest;
 }
 
 sub serverside_help {
@@ -835,7 +842,7 @@ sub parse_fs_test_result {
     unlink("$link/$tskid");
     symlink("$top", "$link/$tskid");
 
-    print "Project: <font size=+1 color=blue><b>$top</b></font> status: $running<br>\n";
+    print "Result: <font color=blue>$top</font> status: $running<br>\n";
     print "Kernel info:";
     system ("grep ^uname= $top/testingenv.log | sed -e 's/.*Linux localhost//g'");
     print "<br>\n";
@@ -1018,6 +1025,7 @@ sub show_fstest {
     my $yangday=$results_dir;
     my @dates;
 
+    print "Project:<font size=+1 color=blue><b>Nand Filesystem test</b></font><br>\n";
     if ( ! opendir(DIR, $results_dir) ) {
         print "Die: Couldn't open $results_dir: $!<br>\n";
         return 0;
@@ -1096,6 +1104,29 @@ sub show_qatest {
         symlink("$hme/test_report", "$link/$tskid");
         parse_files_by_date(10,"$hme/test_report",'(\d{4}.\d{2}.\d{2})\.txt','.*/test_report',"/qa/link/$tskid", $input_params{'idx'});
     }
-    print "<br><br>Project:<font size=+1 color=blue><b>Nand Filesystem test</b></font><br>\n";
+    print "<br>";
     show_fstest();
+}
+sub show_ltptest {
+    my ($top, $flag, $tskid)=('/mean/c2/ltp-test/output' ,0,'ltp');                    #(@_);
+    my $running="idle";
+
+    if ( ! -d $top) {
+        return 0;
+    }
+    if ( -f "$top/testing.lock") {
+        $running="<font color=red><b>running</b></font>";
+    }
+
+    my $link="/var/www/html/qa/link";
+    unlink("$link/$tskid");
+    symlink("$top", "$link/$tskid");
+
+    print "Project: <font size=+1 color=blue><b>LTP: $top</b></font> status: $running<br>\n";
+    print "Kernel info:";
+    system ("grep ^uname= $top/testingenv.log | sed -e 's/.*Linux localhost//g'");
+    print "<br>\n";
+    print "Result logs: <a href=/qa/link/$tskid/testing.log>progress</a>";
+    print " &nbsp;|&nbsp; <a href=/qa/link/$tskid>all logs</a>";
+    print " &nbsp;|&nbsp; <a href=/qa/link/$tskid/testingenv.log>configs</a><br>\n";
 }
