@@ -1043,12 +1043,13 @@ sub show_fstest {
         if ( $log_num > 1 ) {
             print "More test results: ";
             my $nr=0;
+            print "<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\n";
             for my $d (@dates) {
                 $nr +=1;
                 print " &nbsp;&nbsp;<a href=$home_link?op=fstest&thm=1&d=$d>$d</a> ";
                 if ($nr == 10) {
                     $nr = 0;
-                    print "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>\n";
+                    print "<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\n";
                 }
             }
             print "<br>\n";
@@ -1155,12 +1156,13 @@ sub show_ltptest {
         if ( $log_num > 1 ) {
             print "More test results: ";
             my $nr=0;
+            print "<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\n";
             for my $d (@dates) {
                 $nr +=1;
                 print " &nbsp;&nbsp;<a href=$home_link?op=ltptest&thm=1&d=$d>$d</a> ";
                 if ($nr == 10) {
                     $nr = 0;
-                    print "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>\n";
+                    print "<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\n";
                 }
             }
             print "<br>\n";
