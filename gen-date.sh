@@ -16,3 +16,8 @@ echo "#!/bin/sh"  >$f
 echo "date -s \"$(date +%Y-%m-%d\ %H:%M:%S)\"" >>$f
 chmod 755 $f
 
+
+
+#other help jobs
+mkdir -p boardlog
+chmod 777 boardlog

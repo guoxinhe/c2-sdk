@@ -12,34 +12,44 @@
 # Makesure your server side is ready prepare these service listed in script.
 #----------------------------------------------------------------------------
 
-
 #sleep >120 seconds to wait system bring up
-sleep 30                                                                      
-date >/qa.log                                                                
-sleep 120                                                                    
-date >>/qa.log                             
-                                  
-mkdir -p /nfshome                                                            
-mount -t nfs -o nolock 10.16.6.204:/mean/c2 /nfshome                         
-/nfshome/setdate.sh                                                          
-df >>/qa.log                                        
-sync                                                
+sleep 30
+date >/qa.log
+sleep 120
+date >>/qa.log
 
-mkdir -p /mnt                                       
-rm    /mnt/yaffs                                       
-ln -s /data /mnt/yaffs                              
-date >>/qa.log                                      
-echo "Start test" >>/qa.log              
+mkdir -p /nfshome
+mount -t nfs -o nolock 10.16.6.204:/mean/c2 /nfshome
+/nfshome/setdate.sh
+CONFIG_MYIP=`/sbin/ifconfig eth0|sed -n 's/.*inet addr:\([^ ]*\).*/\1/p'`
+CONFIG_BOARDLOG=/nfshome/boardlog/$CONFIG_MYIP/$(date +%y%m%d.%H)
+mkdir -p  $CONFIG_BOARDLOG
+df >>/qa.log
+df >>$CONFIG_BOARDLOG/qa.log
+sync
+
+mkdir -p /mnt
+rm    /mnt/yaffs
+ln -s /data /mnt/yaffs
+
+echo "$(date): Start test" >>/qa.log
+echo "$(date): Start test" >>$CONFIG_BOARDLOG/qa.log
 #upgrade itself
 cp /nfshome/qaboardtest.sh /qaboardtest.sh
 sync
+cp /qaboardtest.sh        $CONFIG_BOARDLOG/
+sync
 
 #there maybe lots of test plans to execute, detect and run them.
-test -x /nfshome/testplan.sh               && /nfshome/testplan.sh
 test -x /nfshome/fs-nandroid/fs_newtest.sh && /nfshome/fs-nandroid/fs_newtest.sh
-sync                                                
+sync
+test -x /nfshome/testplan.sh               && /nfshome/testplan.sh
+sync
 
 sleep 3600
+/nfshome/setdate.sh
+echo "$(date): Reboot" >>/qa.log
+echo "$(date): Reboot" >>$CONFIG_BOARDLOG/qa.log
 reboot -f
 
 #poll for a basic crontab task
@@ -50,6 +60,8 @@ while true;do
     m=`date +%M`;
     if test "$h" = "$rebooth"; then
     if test $m -ge $rebootm; then
+        echo "$(date): Reboot" >>/qa.log
+        echo "$(date): Reboot" >>$CONFIG_BOARDLOG/qa.log
         reboot -f;
     fi
     fi

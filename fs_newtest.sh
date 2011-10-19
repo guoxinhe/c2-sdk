@@ -103,5 +103,6 @@ for target in $testitems; do
         bandwidth=$(($bandwidth + $step_band_width))
     done
 done
+echo "$(date) testing all done:):):):):):):):):) " >>$report_dir/testing.log
 cp $report_dir/testing.lock $report_dir/testing.done
 rm -rf $report_dir/testing.lock
