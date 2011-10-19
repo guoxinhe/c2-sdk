@@ -806,8 +806,8 @@ sub rebuild_project {
 sub parse_fs_test_result {
 
     my ($top, $flag, $tskid)=(@_);
-    my ($fs_list, $band_list, $band_max);
     my $running="idle";
+    my ($fs_list, $band_list, $band_max);
 
 
     if ( ! -d $top) {
@@ -1107,8 +1107,8 @@ sub show_qatest {
     print "<br>";
     show_fstest();
 }
-sub show_ltptest {
-    my ($top, $flag, $tskid)=('/mean/c2/ltp-test/output' ,0,'ltp');                    #(@_);
+sub parse_ltp_test_result {
+    my ($top, $flag, $tskid)=(@_);
     my $running="idle";
 
     if ( ! -d $top) {
@@ -1122,11 +1122,53 @@ sub show_ltptest {
     unlink("$link/$tskid");
     symlink("$top", "$link/$tskid");
 
-    print "Project: <font size=+1 color=blue><b>LTP: $top</b></font> status: $running<br>\n";
+    print "Result: <font color=blue>$top</font> status: $running<br>\n";
     print "Kernel info:";
     system ("grep ^uname= $top/testingenv.log | sed -e 's/.*Linux localhost//g'");
     print "<br>\n";
     print "Result logs: <a href=/qa/link/$tskid/testing.log>progress</a>";
     print " &nbsp;|&nbsp; <a href=/qa/link/$tskid>all logs</a>";
     print " &nbsp;|&nbsp; <a href=/qa/link/$tskid/testingenv.log>configs</a><br>\n";
+}
+sub show_ltptest {
+    my $results_dir='/mean/c2/ltp-test/test_report';
+    my $filter='(\d{6}.\d{2})';
+    my $num_days=60;
+    my $yangday=$results_dir;
+    my @dates;
+
+    print "Project:<font size=+1 color=blue><b>Nand Filesystem test</b></font><br>\n";
+    if ( ! opendir(DIR, $results_dir) ) {
+        print "Die: Couldn't open $results_dir: $!<br>\n";
+        return 0;
+    }
+    my $log_num = grep /^$filter$/i, readdir(DIR);
+    close(DIR);
+    if ( $log_num > 0 ) {
+        if ( $log_num < $num_days ) {
+            $num_days = $log_num;
+        }
+        opendir(DIR, $results_dir);
+        @dates = (sort({ $b cmp $a} grep(s/^$filter$/$1/, readdir(DIR))))[0..($num_days-1)];
+        close(DIR);
+        $yangday="$results_dir/$dates[0]";
+        if ( $log_num > 1 ) {
+            print "More test results: ";
+            my $nr=0;
+            for my $d (@dates) {
+                $nr +=1;
+                print " &nbsp;&nbsp;<a href=$home_link?op=ltptest&thm=1&d=$d>$d</a> ";
+                if ($nr == 10) {
+                    $nr = 0;
+                    print "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>\n";
+                }
+            }
+            print "<br>\n";
+        }
+    }
+    if (defined $input_params{'d'}) {
+       $yangday="$results_dir/$input_params{'d'}";
+    }
+
+    parse_ltp_test_result("$yangday",0,'ltp');
 }
