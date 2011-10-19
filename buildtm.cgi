@@ -1096,4 +1096,6 @@ sub show_qatest {
         symlink("$hme/test_report", "$link/$tskid");
         parse_files_by_date(10,"$hme/test_report",'(\d{4}.\d{2}.\d{2})\.txt','.*/test_report',"/qa/link/$tskid", $input_params{'idx'});
     }
+    print "<br><br>Project:<font size=+1 color=blue><b>Nand Filesystem test</b></font><br>\n";
+    show_fstest();
 }

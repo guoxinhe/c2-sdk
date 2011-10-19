@@ -6,6 +6,7 @@ cd $TOP
 CONFIG_MYIP=`/sbin/ifconfig eth0|sed -n 's/.*inet addr:\([^ ]*\).*/\1/p'`
 export PATH="$PATH:./"
 
+
 ##############################################################################################
 #testitems="fat32 ext2 ext3 ntfs"
 testitems="yaffs"
