@@ -1045,10 +1045,10 @@ sub show_fstest {
             my $nr=0;
             for my $d (@dates) {
                 $nr +=1;
-                print " <a href=$home_link?op=fstest&thm=1&d=$d>$d</a> ";
+                print " &nbsp;&nbsp;<a href=$home_link?op=fstest&thm=1&d=$d>$d</a> ";
                 if ($nr == 10) {
                     $nr = 0;
-                    print "&nbsp;&nbsp;&nbsp;&nbsp;<br>\n";
+                    print "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>\n";
                 }
             }
             print "<br>\n";
