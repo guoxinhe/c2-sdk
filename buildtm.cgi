@@ -47,8 +47,8 @@ our %friendly_links = (
     "2 build196"     => 'http://10.16.13.196/build/build.cgi',
     '3 license'      => 'http://10.16.13.195/build/project.cgi?op=liclist',
     '4 qareport'     => 'http://10.16.6.204/qa/index.cgi?idx=1',
-    '5 fsreport'     => 'http://10.16.6.204/qa/index3.cgi?op=fstest&thm=1',
-    '6 ltpreport'    => 'http://10.16.6.204/qa/index3.cgi?op=ltptest&thm=1',
+    '5 fsreport'     => 'http://10.16.6.204/qa/index.cgi?op=fstest&thm=1',
+    '6 ltpreport'    => 'http://10.16.6.204/qa/index.cgi?op=ltptest&thm=1',
 );
 our %system_command = (
     'Servername'     => 'hostname',
@@ -385,7 +385,7 @@ HTML
     print "Website links: \n";
     foreach $i (sort keys %friendly_links) {
         my $v=$friendly_links{$i};
-        $i =~ s/^\S //;
+        $i =~ s/^\S* //;
         print "| &nbsp;<a href=$v>$i</a>&nbsp; \n";
     }
 
@@ -398,7 +398,7 @@ sub html_tail {
     print "Website links: \n";
     foreach $i (sort keys %friendly_links) {
         my $v=$friendly_links{$i};
-        $i =~ s/^\S //;
+        $i =~ s/^\S* //;
         print "| &nbsp;<a href=$v>$i</a>&nbsp; \n";
     }
     print "<br>\n";
@@ -1056,13 +1056,14 @@ sub show_fstest {
         if ( $log_num > 1 ) {
             print "More test results: ";
             my $nr=0;
-            print "<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\n";
             for my $d (@dates) {
+                if ( $nr == 0 ) {
+                    print "<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\n";
+                }
                 $nr +=1;
                 print " &nbsp;&nbsp;<a href=$home_link?op=fstest&thm=1&d=$d>$d</a> ";
                 if ($nr == 10) {
                     $nr = 0;
-                    print "<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\n";
                 }
             }
             print "<br>\n";
@@ -1120,6 +1121,8 @@ sub show_qatest {
     }
     print "<br>";
     show_fstest();
+    print "<br>";
+    show_ltptest();
 }
 sub parse_ltp_test_result {
     my ($top, $flag, $tskid)=(@_);
@@ -1143,6 +1146,35 @@ sub parse_ltp_test_result {
     print "Result logs: <a href=/qa/link/$tskid/testing.log>progress</a>";
     print " &nbsp;|&nbsp; <a href=/qa/link/$tskid>all logs</a>";
     print " &nbsp;|&nbsp; <a href=/qa/link/$tskid/testingenv.log>configs</a><br>\n";
+
+    my @result_pass=split(/,/, `grep \ PASS\  $top/result-log | sed 's/.* PASS .*/ PASS, /'` );
+    my @result_fail=split(/,/, `grep \ FAIL\  $top/result-log | sed 's/.* FAIL .*/ FAIL, /'` );
+    my $nr_pass=0+@result_pass;
+    my $nr_fail=0+@result_fail;
+    print "total fail / pass:<b><font size=+2 color=red>$nr_fail</font> / <font size=+2 color=blue>$nr_pass</font></b><br>\n";
+
+    my $log="result-log";
+    if ( ! open (LOG, "$top/$log") ) {
+        return 0;
+    }
+    my %result_faillist;
+    while (<LOG>) {
+        if ( $_ =~ /^.*FAIL.*$/ ) {
+            my ($fun,$fp,$ret) = split(/\s+/);
+            $result_faillist{$fun} =$ret;
+        }
+    }
+    close(LOG);
+    print "Detail fail list \n";
+    print " [ <a href='###' onclick=\"openShutManager(this,'${tskid}_fail',false,'hide','show')\">hide</a> ] <br>\n";
+    print "<div id='${tskid}_fail' style='display:block'>";
+    print "<font size=-1px><table border=1>";
+    print "<tr><td>Function</td><td>Return</td></tr>";
+    foreach $f (sort keys %result_faillist) {
+       print "<tr><td class=pass>$f</td><td class=fail>$result_faillist{$f}</td></tr>";
+    }
+    print "</table>";
+    print "</div>";
 }
 sub show_ltptest {
     my $results_dir='/mean/c2/nfsroot/tango3-rootfs/ltp/ltp-full-20090228/test_report';
@@ -1169,13 +1201,14 @@ sub show_ltptest {
         if ( $log_num > 1 ) {
             print "More test results: ";
             my $nr=0;
-            print "<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\n";
             for my $d (@dates) {
+                if ( $nr == 0 ) {
+                    print "<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\n";
+                }
                 $nr +=1;
                 print " &nbsp;&nbsp;<a href=$home_link?op=ltptest&thm=1&d=$d>$d</a> ";
                 if ($nr == 10) {
                     $nr = 0;
-                    print "<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\n";
                 }
             }
             print "<br>\n";
