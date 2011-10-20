@@ -46,7 +46,7 @@ morningreboot()
 {
   #poll for a basic crontab task
   /nfshome/setdate.sh
-  rebooth=07;
+  rebooth=02;
   rebootm=58;
   while true;do
     h=`date +%H`;
