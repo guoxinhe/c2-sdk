@@ -17,7 +17,8 @@ set ipaddr
 set gatewayip
 set netmask
 nfs;go
-rn ltp: /mean/c2/nfsroot/tango3-rootfs/ltp/ltp-full-20090228
+rn ltp: /mean/c2/nfsroot/tango3-rootfs/ltp/ltp-full-20090228/runltp
+by    : /ltp/ltp-full-20090228/runltp
 run ltp's result: /mean/c2/nfsroot/tango3-rootfs/ltp/ltp-full-20090228/results
 
 
