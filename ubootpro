@@ -4,6 +4,24 @@
 #
 #Please modify the macaddr, ip, server ip, and nfs root before use it.
 
+#tango3 kernel 2.6.32 ltp test settings:
+#=================================================
+server side:
+/mean/c2/nfsroot/tango3-linux.tar.bz2 extract and mv to tango3-rootfs
+/mean/c2/nfsroot/vmlinux.bin
+uboot's env:
+bootargs=mem=256m,128m,64m console=ttyS0 nfsroot=10.16.6.204:/mean/c2/nfsroot/tango3-rootfs root=nfs rw ip=10.16.6.172 init=/init
+bootfile /mean/c2/nfsroot/vmlinux.bin
+set serverip
+set ipaddr
+set gatewayip
+set netmask
+nfs;go
+rn ltp: /mean/c2/nfsroot/tango3-rootfs/ltp/ltp-full-20090228
+run ltp's result: /mean/c2/nfsroot/tango3-rootfs/ltp/ltp-full-20090228/results
+
+
+
 #big jazz2l board's setting
 setenv macaddr       '00:E0:c3:00:01:02'
 setenv ethaddr       '00:E0:c3:00:01:02'
