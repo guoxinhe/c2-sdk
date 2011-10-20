@@ -1147,34 +1147,70 @@ sub parse_ltp_test_result {
     print " &nbsp;|&nbsp; <a href=/qa/link/$tskid>all logs</a>";
     print " &nbsp;|&nbsp; <a href=/qa/link/$tskid/testingenv.log>configs</a><br>\n";
 
-    my @result_pass=split(/,/, `grep \ PASS\  $top/result-log | sed 's/.* PASS .*/ PASS, /'` );
-    my @result_fail=split(/,/, `grep \ FAIL\  $top/result-log | sed 's/.* FAIL .*/ FAIL, /'` );
-    my $nr_pass=0+@result_pass;
-    my $nr_fail=0+@result_fail;
+    my @results_pass=split(/,/, `grep \ PASS\  $top/result-log | sed 's/.* PASS .*/ PASS, /'` );
+    my @results_fail=split(/,/, `grep \ FAIL\  $top/result-log | sed 's/.* FAIL .*/ FAIL, /'` );
+    my $nr_pass=@results_pass-1;
+    my $nr_fail=@results_fail-1;
     print "total fail / pass:<b><font size=+2 color=red>$nr_fail</font> / <font size=+2 color=blue>$nr_pass</font></b><br>\n";
 
     my $log="result-log";
     if ( ! open (LOG, "$top/$log") ) {
         return 0;
     }
-    my %result_faillist;
+    my %results_faillist;
+    my %results_passlist;
+    my %results_all;
+    my $findex=0;
+    my $pindex=0;
     while (<LOG>) {
         if ( $_ =~ /^.*FAIL.*$/ ) {
+            $findex += 1;
             my ($fun,$fp,$ret) = split(/\s+/);
-            $result_faillist{$fun} =$ret;
+            $results_faillist{$fun} =$ret;
+            $results_all{$findex}{'fail'}=[$fun, $ret];
+        } elsif ( $_ =~ /^.*PASS.*$/ ) {
+            $pindex += 1;
+            my ($fun,$fp,$ret) = split(/\s+/);
+            $results_passlist{$fun} =$ret;
+            $results_all{$pindex}{'pass'}=[$fun, $ret];
         }
     }
     close(LOG);
-    print "Detail fail list \n";
-    print " [ <a href='###' onclick=\"openShutManager(this,'${tskid}_fail',false,'hide','show')\">hide</a> ] <br>\n";
-    print "<div id='${tskid}_fail' style='display:block'>";
+
+    print "Detail result list \n";
+    print " [ <a href='###' onclick=\"openShutManager(this,'${tskid}_all',false,'hide','show')\">hide</a> ] <br>\n";
+    print "<div id='${tskid}_all' style='display:block'>";
     print "<font size=-1px><table border=1>";
-    print "<tr><td>Function</td><td>Return</td></tr>";
-    foreach $f (sort keys %result_faillist) {
-       print "<tr><td class=pass>$f</td><td class=fail>$result_faillist{$f}</td></tr>";
+    print "<tr><td>Index</td><td>Function</td><td>Return</td><td>Function</td><td>Return</td></tr>";
+    foreach $tidx (sort { $a <=> $b } keys %results_all) {
+        my ($pf,$pr,$ff,$fr) = (
+            $results_all{$tidx}{'pass'}[0],$results_all{$tidx}{'pass'}[1],
+            $results_all{$tidx}{'fail'}[0],$results_all{$tidx}{'fail'}[1]);
+        print "<tr><td>$tidx</td><td class=fail>$ff</td><td class=fail>$fr</td><td class=pass>$pf</td><td class=pass>$pr</td></tr>";
     }
     print "</table>";
     print "</div>";
+
+    foreach $fp ('fail','pass') {
+        my %mylist;
+        if ($fp eq 'fail') {
+            %mylist=%results_faillist;
+        } else {
+            %mylist=%results_passlist;
+        }
+        print "Detail $fp list \n";
+        print " [ <a href='###' onclick=\"openShutManager(this,'${tskid}_$fp',false,'hide','show')\">show</a> ] <br>\n";
+        print "<div id='${tskid}_$fp' style='display:none'>";
+        print "<font size=-1px><table border=1>";
+        print "<tr><td>Index</td><td>Function</td><td>Return</td></tr>";
+        my $tidx=0;
+        foreach $f (sort keys %mylist) {
+           $tidx +=1;
+           print "<tr><td>$tidx</td><td class=$fp>$f</td><td class=$fp>$mylist{$f}</td></tr>";
+        }
+        print "</table>";
+        print "</div>";
+    }
 }
 sub show_ltptest {
     my $results_dir='/mean/c2/nfsroot/tango3-rootfs/ltp/ltp-full-20090228/test_report';
