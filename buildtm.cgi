@@ -374,12 +374,19 @@ HTML
     }
 
     if ( $ENV{'SERVER_ADDR'} ne '10.16.6.204' ) { #shit, that slim guy do not like this.
-    if ( $mission_params{'user'} eq 'guest' ) {
-        print "| <a href=$home_link?op=loginpage>Login</a> ";
-    } else {
-        print "| <a href=$home_link?op=logout>Logout</a> ";
-        print " <a href=$home_link?op=myprofile>$mission_params{'user'}</a> ";
+        if ( $mission_params{'user'} eq 'guest' ) {
+            print "| <a href=$home_link?op=loginpage>Login</a> ";
+        } else {
+            print "| <a href=$home_link?op=logout>Logout</a> ";
+            print " <a href=$home_link?op=myprofile>$mission_params{'user'}</a> ";
+        }
     }
+    print "<br>\n";
+    print "Website links: \n";
+    foreach $i (sort keys %friendly_links) {
+        my $v=$friendly_links{$i};
+        $i =~ s/^\S //;
+        print "| &nbsp;<a href=$v>$i</a>&nbsp; \n";
     }
 
     print "<hr>";
@@ -388,7 +395,7 @@ HTML
 sub html_tail {
     my $i;
     print "<hr>";
-    print "More links: \n";
+    print "Website links: \n";
     foreach $i (sort keys %friendly_links) {
         my $v=$friendly_links{$i};
         $i =~ s/^\S //;
@@ -461,7 +468,11 @@ sub func_default {
 #----------------------------------------------------------------------------
 sub customer_register {
     #register your operations here.
-    $actions{"default"  }=\&manage_tasks;
+    if ( $ENV{'SERVER_ADDR'} ne '10.16.6.204' ) { #shit, that slim guy do not like this.
+        $actions{"default"  }=\&manage_tasks;
+    } else {
+        $actions{"default"  }=\&show_qatest;
+    }
     $actions{"help"     }=\&serverside_help;
     $actions{"rebuild"  }=\&rebuild_project;
     $actions{"stopbuild"}=\&stopbuild_project;
@@ -967,7 +978,9 @@ sub parse_fs_test_result {
             %results = %results_max;
         }
         my $nrcol=$nroffs * 6;
-        print "Detail test data of bandwidth type $gen<br>\n";
+        print "Detail test data of bandwidth type $gen \n";
+        print " [ <a href='###' onclick=\"openShutManager(this,'${tskid}_table${gen}',false,'hide','show')\">hide</a> ] <br>\n";
+        print "<div id='${tskid}_table${gen}' style='display:block'>";
         print "<font size=-1px><table border=1>";
         print "<tr><td>proj</td><td align='center' colspan='$nrcol'>$top of $gen</td></tr>";
         print "<tr><td>fs</td>";
@@ -1015,7 +1028,7 @@ sub parse_fs_test_result {
            }
            print "</tr>";
         }
-        print "</table></font>";
+        print "</table></font></div>\n";
     }
 }
 sub show_fstest {
