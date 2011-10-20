@@ -1145,7 +1145,7 @@ sub parse_ltp_test_result {
     print " &nbsp;|&nbsp; <a href=/qa/link/$tskid/testingenv.log>configs</a><br>\n";
 }
 sub show_ltptest {
-    my $results_dir='/mean/c2/ltp-test/test_report';
+    my $results_dir='/mean/c2/nfsroot/tango3-rootfs/ltp/ltp-full-20090228/test_report';
     my $filter='(\d{6}.\d{2})';
     my $num_days=60;
     my $yangday=$results_dir;
