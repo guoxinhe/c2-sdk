@@ -13,14 +13,16 @@
 #----------------------------------------------------------------------------
 
 #sleep >120 seconds to wait system bring up
-sleep 30
-date >/qa.log
-date >/qadaemon.log
-sleep 120
-date >>/qa.log
+if test ! -x /nfshome/setdate.sh; then
+    sleep 30
+    date >/qa.log
+    date >/qadaemon.log
+    sleep 120
+    date >>/qa.log
+    mkdir -p /nfshome
+    mount -t nfs -o nolock 10.16.6.204:/mean/c2 /nfshome
+fi
 
-mkdir -p /nfshome
-mount -t nfs -o nolock 10.16.6.204:/mean/c2 /nfshome
 /nfshome/setdate.sh
 
 CONFIG_MYIP=`/sbin/ifconfig eth0|sed -n 's/.*inet addr:\([^ ]*\).*/\1/p'`
@@ -29,10 +31,6 @@ mkdir -p  $CONFIG_BOARDLOG
 df >>/qa.log
 df >>$CONFIG_BOARDLOG/qa.log
 sync
-
-mkdir -p /mnt
-rm    /mnt/yaffs
-ln -s /data /mnt/yaffs
 
 echo "$(date): Start test" >>/qa.log
 echo "$(date): Start test" >>$CONFIG_BOARDLOG/qa.log
@@ -73,7 +71,7 @@ morningreboot &
 #there maybe lots of test plans to execute, detect and run them.
 test "$CONFIG_TEST_FS"  = "1" && /nfshome/fs-nandroid/fs_newtest.sh
 sync
-test "$CONFIG_TEST_LTP" = "1" && /nfshome/ltp-test/ltp_newtest.sh
+test "$CONFIG_TEST_LTP" = "1" && /ltp/ltp-full-20090228/ltp_newtest.sh
 sync
 
 
