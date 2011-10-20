@@ -38,15 +38,17 @@ our %menu_links = (
     '1 Home'         =>  "$home_link",
     '2 index'        =>  "$home_link?idx=1&thm=1",
     '3 qatest'       =>  "$home_link?op=qatest",
-    '4 fstest'       =>  "$home_link?op=fstest&idx=1&thm=1",
-    '5 help'         =>  "$home_link?op=help",
+    '4 fstest'       =>  "$home_link?op=fstest&thm=1",
+    '5 ltptest'      =>  "$home_link?op=ltptest&thm=1",
+    '99 help'        =>  "$home_link?op=help",
 );
 our %friendly_links = (
     "1 build195"     => 'http://10.16.13.195/build/build.cgi',
     "2 build196"     => 'http://10.16.13.196/build/build.cgi',
     '3 license'      => 'http://10.16.13.195/build/project.cgi?op=liclist',
     '4 qareport'     => 'http://10.16.6.204/qa/index.cgi?idx=1',
-    '5 fsreport'     => 'http://10.16.6.204/qa/index3.cgi?op=fstest&idx=1&thm=1',
+    '5 fsreport'     => 'http://10.16.6.204/qa/index.cgi?op=fstest&thm=1',
+    '6 ltpreport'    => 'http://10.16.6.204/qa/index.cgi?op=ltptest&thm=1',
 );
 our %system_command = (
     'Servername'     => 'hostname',
@@ -159,7 +161,7 @@ if ( $input_params{'op'} ne 'logout' ) {
             chomp($msid);
         }
 
-        if ( $msid eq $input_params{'msid'} ) { 
+        if ( $msid eq $input_params{'msid'} ) {
             # I am a login user.
             $mission_params{'msid'} = $input_params{'msid'};
             $mission_params{'user'} = $input_params{'user'};
@@ -284,7 +286,7 @@ sub html_head {
     my ($cpass, $cfail, $cna, $cratio, $crun) = ('#00FF00','#FF0000','#DDDDDD','#00FFFF','#FFFF00');
     my ($bpass, $bfail, $bna, $bratio, $brun) = ('bold','bold','bold','bold','bold');
     my $anchorcss="";
-    
+
     if (defined $input_params{'thm'}) {
         if ($input_params{'thm'} ne '') {
             ($cpass, $cfail, $cna, $cratio, $crun) = ('#FFFFFF','#FFCCCC','#FFFFFF','#B0FFFF','#FFFFB0');
@@ -367,14 +369,24 @@ HTML
     #list the top level menu
     foreach $i (sort keys %menu_links) {
         my $v=$menu_links{$i};
-        $i =~ s/^\S //;
+        $i =~ s/^\S* //;
         print "| &nbsp;<a href=$v>$i</a>&nbsp; \n"
     }
-    if ( $mission_params{'user'} eq 'guest' ) {
-        print "| <a href=$home_link?op=loginpage>Login</a> ";
-    } else {
-        print "| <a href=$home_link?op=logout>Logout</a> ";
-        print " <a href=$home_link?op=myprofile>$mission_params{'user'}</a> ";
+
+    if ( $ENV{'SERVER_ADDR'} ne '10.16.6.204' ) { #shit, that slim guy do not like this.
+        if ( $mission_params{'user'} eq 'guest' ) {
+            print "| <a href=$home_link?op=loginpage>Login</a> ";
+        } else {
+            print "| <a href=$home_link?op=logout>Logout</a> ";
+            print " <a href=$home_link?op=myprofile>$mission_params{'user'}</a> ";
+        }
+    }
+    print "<br>\n";
+    print "Website links: \n";
+    foreach $i (sort keys %friendly_links) {
+        my $v=$friendly_links{$i};
+        $i =~ s/^\S* //;
+        print "| &nbsp;<a href=$v>$i</a>&nbsp; \n";
     }
 
     print "<hr>";
@@ -382,10 +394,18 @@ HTML
 
 sub html_tail {
     my $i;
-    print "<hr> more webpage(cgi) debug info";
+    print "<hr>";
+    print "Website links: \n";
+    foreach $i (sort keys %friendly_links) {
+        my $v=$friendly_links{$i};
+        $i =~ s/^\S* //;
+        print "| &nbsp;<a href=$v>$i</a>&nbsp; \n";
+    }
+    print "<br>\n";
+    print "More webpage(cgi) debug info";
     print " <a href='###' onclick=\"openShutManager(this,'moretext',false,'hide','show')\">show</a>";
     print "<div id='moretext' style='background:#CCFFCC; display:none'>";
-    
+
     print "Input parameters list:<table border=1><tr><td>Name</td><td>Value</td></tr>";
     foreach $i (sort keys %input_params) {
         my $v=$input_params{$i};
@@ -415,13 +435,6 @@ sub html_tail {
     }
     print "</table>";
     print "</div>";
-    print "<br>More links:<br>\n";
-    foreach $i (sort keys %friendly_links) {
-        my $v=$friendly_links{$i};
-        $i =~ s/^\S //;
-        print "| &nbsp;<a href=$v>$i</a>&nbsp; \n";
-    }
-
     print "<br>Copyright, all rights reserved.</body></html>";
 }
 sub func_loginpage {
@@ -445,7 +458,7 @@ sub func_myprofile {
     system ("id $mission_params{'user'}");
     system ("uname -a");
     print "</pre>\n";
-    
+
 }
 sub func_default {
     print "the op is $input_params{'op'}<br>\n";
@@ -455,13 +468,18 @@ sub func_default {
 #----------------------------------------------------------------------------
 sub customer_register {
     #register your operations here.
-    $actions{"default"  }=\&manage_tasks;
+    if ( $ENV{'SERVER_ADDR'} ne '10.16.6.204' ) { #shit, that slim guy do not like this.
+        $actions{"default"  }=\&manage_tasks;
+    } else {
+        $actions{"default"  }=\&show_qatest;
+    }
     $actions{"help"     }=\&serverside_help;
     $actions{"rebuild"  }=\&rebuild_project;
     $actions{"stopbuild"}=\&stopbuild_project;
     $actions{"kill"     }=\&kill_project;
     $actions{"qatest"   }=\&show_qatest;
     $actions{"fstest"   }=\&show_fstest;
+    $actions{"ltptest"  }=\&show_ltptest;
 }
 
 sub serverside_help {
@@ -503,13 +521,15 @@ sub parse_files_by_date {
     if ( $log_num < $num_days ) {
         $num_days = $log_num;
     }
+    close(DIR);
 
     opendir(DIR, $results_dir);
     my @dates = (sort({ $b cmp $a} grep(s/^$filter$/$1/, readdir(DIR))))[0..($num_days-1)];
-  
+    close(DIR);
+
     my %results;
     for my $d (@dates) {
-        if ( ! open (RES, "$results_dir/$d.txt") ) { 
+        if ( ! open (RES, "$results_dir/$d.txt") ) {
            print "Die: Opening $results_dir/$d.txt: $!\n";
         }
 
@@ -565,7 +585,7 @@ sub parse_files_by_date {
         if ($fields > 3) { print "<td class='$class'>$subitem </td>";}
         if ($fields > 4) { print "<td class='$class'>$subsec  </td>";}
 
-        for my $d (@dates) {    
+        for my $d (@dates) {
             my $class = "na";
             my $status = "&nbsp;";
             if (exists($results{$category}{$subitem}{$subsec}{$d})) {
@@ -614,8 +634,8 @@ sub manage_tasks {
             my $byip=`grep CONFIG_REMOTEIP     $top/build_result/l/env.log | sed -e 's,.*=\\(.*\\),\\1,g' `;
             my $byuser=`grep CONFIG_REMOTEUSER $top/build_result/l/env.log | sed -e 's,.*=\\(.*\\),\\1,g' `;
             chomp($byip); chomp($byuser);
-            if ($byip ne "" || $byuser ne "") { 
-                $byuser="runby:$byuser\@$byip"; 
+            if ($byip ne "" || $byuser ne "") {
+                $byuser="runby:$byuser\@$byip";
             }
             print "<br><a name=$tskid>$tskid</a>:  <font size=+1 color=blue ><b>$tit</b></font><br>\n";
             print "script:$hip".'@'."$scr $byuser<br>\n";
@@ -644,8 +664,8 @@ sub manage_tasks {
             }
 	    unlink("/var/www/html/build/link/$tskid");
             symlink("$top/build_result", "/var/www/html/build/link/$tskid");
-            parse_files_by_date(10,"$top/build_result", 
-		'(\d{2}[0,1][0-9][0-3][0-9])\.txt', '.*/build_result', 
+            parse_files_by_date(10,"$top/build_result",
+		'(\d{2}[0,1][0-9][0-3][0-9])\.txt', '.*/build_result',
 		"/build/link/$tskid", $input_params{'idx'});
         }
     }
@@ -797,15 +817,15 @@ sub rebuild_project {
 sub parse_fs_test_result {
 
     my ($top, $flag, $tskid)=(@_);
-    my ($fs_list, $band_list, $band_max);
     my $running="idle";
+    my ($fs_list, $band_list, $band_max);
 
 
     if ( ! -d $top) {
         return 0;
     }
     if ( -f "$top/testing.lock") {
-        $running="running";
+        $running="<font color=red><b>running</b></font>";
     }
 
     $fs_list = `ls $top/w_*_max.log | sed  s,_max.log,, | sed s,.*_,,`;
@@ -818,9 +838,9 @@ sub parse_fs_test_result {
 
     # advanced sort
     #-------------------------------------------------------------------------
-    # @sorted = sort { $a <=> $b } @not_sorted # numerical sort 
-    # @sorted = sort { $a cmp $b } @not_sorted # ASCII-betical sort 
-    # @sorted = sort { lc($a) cmp lc($b) } @not_sorted # alphabetical sort 
+    # @sorted = sort { $a <=> $b } @not_sorted # numerical sort
+    # @sorted = sort { $a cmp $b } @not_sorted # ASCII-betical sort
+    # @sorted = sort { lc($a) cmp lc($b) } @not_sorted # alphabetical sort
     my @allband = sort { $a <=> $b } split(/\s/,$band_list);
     my $nroffs = @allfs;
     my $nrofband = @allband;
@@ -833,56 +853,77 @@ sub parse_fs_test_result {
     unlink("$link/$tskid");
     symlink("$top", "$link/$tskid");
 
+    print "Result: <font color=blue>$top</font> status: $running<br>\n";
+    print "Kernel info:";
+    system ("grep ^uname= $top/testingenv.log | sed -e 's/.*Linux localhost//g'");
+    print "<br>\n";
+    print "Result logs: <a href=/qa/link/$tskid/testing.log>progress</a>";
+    print " &nbsp;|&nbsp; <a href=/qa/link/$tskid>all logs</a>";
+    print " &nbsp;|&nbsp; <a href=/qa/link/$tskid/testingenv.log>configs</a><br>\n";
 
-    print "Project <font size=+1 color=blue><b>$top</b></font> status: $running<br>\n";
-    print "found supported file system: <font color=black><b> @allfs </b></font><br>\n";
-    print "Tested band width: <font color=black><b>@allband</b></font><br>\n";
-    print "| <a href=/qa/link/$tskid/testing.log>progress</a>";
-    print "| <a href=/qa/link/$tskid>all logs</a>";
-    print "| <a href=/qa/link/$tskid/testingenv.log>configs</a><br>\n";
-
-
-    my %results;
-    foreach $fs (@allfs) {
-    foreach $myfop ('r','w') {
-       my $log="gen_${myfop}_${fs}_all.log";
-       if ( ! open (LOG, "$top/$log") ) {
-           next;
-       }
-       my %tmplist;
-       while (<LOG>) { 
-           my ($b,$a,$k) = split(/\s/);
-           $tmplist{$b} =[$a, $k ];
-       }
-       close(LOG);
-       my $tidx=0;
-       foreach my $band (sort { $a <=> $b } keys %tmplist) {
-           $tidx += 1;
-           my ($va,$vk) = @{$tmplist{$band}};
-           $results{$tidx}{$fs}{$myfop} =[$band, $va, $vk ];
-       }
-    }}
-
+    my %results_all;
     my %results_max;
+    my $results_stk;
+
+    foreach $fs (@allfs) {
+    foreach $band (@allband) {
+        $results_stk{$band}{$fs}{'r'}=0;
+        $results_stk{$band}{$fs}{'w'}=0;
+    }}
     foreach $fs (@allfs) {
     foreach $myfop ('r','w') {
-       my $log="gen_${myfop}_${fs}_max.log";
+    foreach $gen ('all','max') {
+       my $log="gen_${myfop}_${fs}_$gen.log";
        if ( ! open (LOG, "$top/$log") ) {
            next;
        }
        my %tmplist;
-       while (<LOG>) { 
+       while (<LOG>) {
            my ($b,$a,$k) = split(/\s/);
            $tmplist{$b} =[$a, $k ];
        }
        close(LOG);
        my $tidx=0;
+       my ($avgband,$avga,$avgk)=(0,0,0);
+       my $stepkmax=0;
+       my @stepk=@allband;
        foreach my $band (sort { $a <=> $b } keys %tmplist) {
            $tidx += 1;
            my ($va,$vk) = @{$tmplist{$band}};
-           $results_max{$tidx}{$fs}{$myfop} =[$band, $va, $vk ];
+           $avgband += $band;
+           $avga    += $va;
+           $avgk    += $vk;
+           if($gen eq 'all') {
+               $results_all{$tidx}{$fs}{$myfop} =[$band, $va, $vk ];
+               if (defined @stepk[1] && $band >= @stepk[1]) {
+                   shift (@stepk);
+                   $stepkmax = 0;
+               }
+               if ( $vk > $stepkmax ) {
+                   $stepkmax = $vk;
+               }
+               $results_stk{@stepk[0]}{$fs}{$myfop}=$stepkmax;
+           } else {
+               $results_max{$tidx}{$fs}{$myfop} =[$band, $va, $vk ];
+           }
        }
-    }}
+       if ($tidx > 0) {
+           $avgband = $avgband/$tidx;
+           $avga    = $avga   /$tidx;
+           $avgk    = $avgk   /$tidx;
+           if($gen eq 'all') {
+               $results_all{0}{$fs}{$myfop} =[$avgband, $avga, $avgk ];
+           } else {
+               $results_max{0}{$fs}{$myfop} =[$avgband, $avga, $avgk ];
+           }
+       }
+    }}}
+    foreach $fs (@allfs) {
+        $results_stk{'max'}{$fs}{'rb'}=$results_max{0}{$fs}{'r'}[0];
+        $results_stk{'max'}{$fs}{'r'} =$results_max{0}{$fs}{'r'}[2];
+        $results_stk{'max'}{$fs}{'wb'}=$results_max{0}{$fs}{'w'}[0];
+        $results_stk{'max'}{$fs}{'w'} =$results_max{0}{$fs}{'w'}[2];
+    }
 
     # table 1
     #-----------------------------------------------------------------
@@ -900,87 +941,139 @@ sub parse_fs_test_result {
     foreach $fs (@allfs) {
         print "<tr><td class=ext3b rowspan='2'>$fs</td><td>Read</td>\n";
         foreach $band (@allband) {
-        print "<td class=fat32b>0</td>\n";
+            my $v=$results_stk{$band}{$fs}{'r'};
+            if ($v == 0) {
+                printf( "<td class=fat32b>-</td>\n");
+            } else {
+                printf( "<td class=fat32b>%2.2f</td>\n",$v);
+            }
         }
-        print "<td class=ext3b>0</td>\n";
-        print "<td class=ext3b>0</td>\n";
+        printf( "<td class=ext3b>%6.2f</td>\n",$results_stk{'max'}{$fs}{'rb'});
+        printf( "<td class=ext3b>%2.1f</td>\n",$results_stk{'max'}{$fs}{'r'} );
         print "</tr>";
 
         print "<tr><td>Write</td>\n";
         foreach $band (@allband) {
-        print "<td class=fat32b>0</td>\n";
+            my $v=$results_stk{$band}{$fs}{'w'};
+            if ($v == 0) {
+                printf( "<td class=fat32b>-</td>\n");
+            } else {
+                printf( "<td class=fat32b>%2.2f</td>\n",$v);
+            }
         }
-        print "<td class=ext3b>0</td>\n";
-        print "<td class=ext3b>0</td>\n";
+        printf( "<td class=ext3b>%6.2f</td>\n",$results_stk{'max'}{$fs}{'wb'});
+        printf( "<td class=ext3b>%2.1f</td>\n",$results_stk{'max'}{$fs}{'w'} );
         print "</tr>";
 
     }
     print "</table></font>";
-    
+
     # table 2
     #-----------------------------------------------------------------
-    my $nrcol=$nroffs * 6;
-    print "Detail test data<br>\n";
-    print "<font size=-1px><table border=1>";
-    print "<tr><td>proj</td><td align='center' colspan='$nrcol'>$top</td></tr>";
-    print "<tr><td>fs</td>";
-    foreach $fs (@allfs) {
-       print "<td class=$fs align='center' colspan='6'>$fs</td>";
-    }
-    print "</tr>";
-    print "<tr><td>op</td>";
-    foreach $fs (@allfs) {
-       print "<td class=$fs align='center' colspan='3'>read</td>";
-       print "<td class=$fs align='center' colspan='3'>write</td>";
-    }
-    print "</tr>";
-    print "<tr><td>index</td>";
-    foreach $fs (@allfs) {
-       print "<td class=${fs}b>bandwidth</td>";
-       print "<td class=${fs}a>&nbsp;app&nbsp;</td>";
-       print "<td class=${fs}k>kernel</td>";
-       print "<td class=${fs}b>bandwidth</td>";
-       print "<td class=${fs}a>&nbsp;app&nbsp;</td>";
-       print "<td class=${fs}k>kernel</td>";
-    }
-    print "</tr>";
+    foreach $gen ('max','all') {
+        my %results;
+        if($gen eq 'all') {
+            %results = %results_all;
+        } else {
+            %results = %results_max;
+        }
+        my $nrcol=$nroffs * 6;
+        print "Detail test data of bandwidth type $gen \n";
+        print " [ <a href='###' onclick=\"openShutManager(this,'${tskid}_table${gen}',false,'hide','show')\">hide</a> ] <br>\n";
+        print "<div id='${tskid}_table${gen}' style='display:block'>";
+        print "<font size=-1px><table border=1>";
+        print "<tr><td>proj</td><td align='center' colspan='$nrcol'>$top of $gen</td></tr>";
+        print "<tr><td>fs</td>";
+        foreach $fs (@allfs) {
+           print "<td class=$fs align='center' colspan='6'>$fs</td>";
+        }
+        print "</tr>";
+        print "<tr><td>op</td>";
+        foreach $fs (@allfs) {
+           print "<td class=$fs align='center' colspan='3'>read</td>";
+           print "<td class=$fs align='center' colspan='3'>write</td>";
+        }
+        print "</tr>";
+        print "<tr><td>index</td>";
+        foreach $fs (@allfs) {
+           print "<td class=${fs}b>bandwidth</td>";
+           print "<td class=${fs}a>&nbsp;app&nbsp;</td>";
+           print "<td class=${fs}k>kernel</td>";
+           print "<td class=${fs}b>bandwidth</td>";
+           print "<td class=${fs}a>&nbsp;app&nbsp;</td>";
+           print "<td class=${fs}k>kernel</td>";
+        }
+        print "</tr>";
 
-    foreach $tidx (sort { $a <=> $b } keys %results) {
-       print "<tr><td>$tidx</td>";
-       foreach $fs (@allfs) {
-          my ($rb,$ra,$rk) = @{$results{$tidx}{$fs}{'r'}};
-          my ($wb,$wa,$wk) = @{$results{$tidx}{$fs}{'w'}};
-          print "<td class=pass>$rb</td>";
-          print "<td class=pass>$ra</td>";
-          print "<td class=pass>$rk</td>";
-          print "<td class=pass>$wb</td>";
-          print "<td class=pass>$wa</td>";
-          print "<td class=pass>$wk</td>";
-       }
-       print "</tr>";
+        foreach $tidx (sort { $a <=> $b } keys %results) {
+           print "<tr><td>$tidx</td>";
+           foreach $fs (@allfs) {
+              my ($rb,$ra,$rk) = @{$results{$tidx}{$fs}{'r'}};
+              my ($wb,$wa,$wk) = @{$results{$tidx}{$fs}{'w'}};
+              if($tidx == 0) {
+                  printf("<td class=$fs>%6d</td>"  ,$rb) ;
+                  printf("<td class=$fs>%3.6f</td>",$ra) ;
+                  printf("<td class=$fs>%3.6f</td>",$rk) ;
+                  printf("<td class=$fs>%6d</td>"  ,$wb) ;
+                  printf("<td class=$fs>%3.6f</td>",$wa) ;
+                  printf("<td class=$fs>%3.6f</td>",$wk) ;
+              } else {
+                  print "<td class=pass>$rb</td>";
+                  print "<td class=pass>$ra</td>";
+                  print "<td class=pass>$rk</td>";
+                  print "<td class=pass>$wb</td>";
+                  print "<td class=pass>$wa</td>";
+                  print "<td class=pass>$wk</td>";
+              }
+           }
+           print "</tr>";
+        }
+        print "</table></font></div>\n";
     }
-
-    print "<tr><td>proj</td><td align='center' colspan='$nrcol'>max bandwidth data</td></tr>";
-    foreach $tidx (sort { $a <=> $b } keys %results_max) {
-       print "<tr><td>$tidx</td>";
-       foreach $fs (@allfs) {
-          my ($rb,$ra,$rk) = @{$results_max{$tidx}{$fs}{'r'}};
-          my ($wb,$wa,$wk) = @{$results_max{$tidx}{$fs}{'w'}};
-          print "<td class=pass>$rb</td>";
-          print "<td class=pass>$ra</td>";
-          print "<td class=pass>$rk</td>";
-          print "<td class=pass>$wb</td>";
-          print "<td class=pass>$wa</td>";
-          print "<td class=pass>$wk</td>";
-       }
-       print "</tr>";
-    }
-    print "</table></font>";
 }
 sub show_fstest {
-    parse_fs_test_result('/local/c2/hdd-k.32/case_sata/test_report',0,'t1');
-    parse_fs_test_result('/local/c2/fs-nandroid/test_report',0,'t2');
-    parse_fs_test_result('/mean/c2/fs-nandroid/test_report',0,'t3');
+    my $results_dir='/mean/c2/fs-nandroid/test_report';
+    my $filter='(\d{6}.\d{2})';
+    my $num_days=60;
+    my $yangday=$results_dir;
+    my @dates;
+
+    print "Project:<font size=+1 color=blue><b>Nand Filesystem test</b></font><br>\n";
+    if ( ! opendir(DIR, $results_dir) ) {
+        print "Die: Couldn't open $results_dir: $!<br>\n";
+        return 0;
+    }
+    my $log_num = grep /^$filter$/i, readdir(DIR);
+    close(DIR);
+    if ( $log_num > 0 ) {
+        if ( $log_num < $num_days ) {
+            $num_days = $log_num;
+        }
+        opendir(DIR, $results_dir);
+        @dates = (sort({ $b cmp $a} grep(s/^$filter$/$1/, readdir(DIR))))[0..($num_days-1)];
+        close(DIR);
+        $yangday="$results_dir/$dates[0]";
+        if ( $log_num > 1 ) {
+            print "More test results: ";
+            my $nr=0;
+            for my $d (@dates) {
+                if ( $nr == 0 ) {
+                    print "<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\n";
+                }
+                $nr +=1;
+                print " &nbsp;&nbsp;<a href=$home_link?op=fstest&thm=1&d=$d>$d</a> ";
+                if ($nr == 10) {
+                    $nr = 0;
+                }
+            }
+            print "<br>\n";
+        }
+    }
+    if (defined $input_params{'d'}) {
+       $yangday="$results_dir/$input_params{'d'}";
+    }
+
+    parse_fs_test_result("$yangday",0,'t3');
 }
 
 sub show_qatest {
@@ -1026,4 +1119,140 @@ sub show_qatest {
         symlink("$hme/test_report", "$link/$tskid");
         parse_files_by_date(10,"$hme/test_report",'(\d{4}.\d{2}.\d{2})\.txt','.*/test_report',"/qa/link/$tskid", $input_params{'idx'});
     }
+    print "<br>";
+    show_fstest();
+    print "<br>";
+    show_ltptest();
+}
+sub parse_ltp_test_result {
+    my ($top, $flag, $tskid)=(@_);
+    my $running="idle";
+
+    if ( ! -d $top) {
+        return 0;
+    }
+    if ( -f "$top/testing.lock") {
+        $running="<font color=red><b>running</b></font>";
+    }
+
+    my $link="/var/www/html/qa/link";
+    unlink("$link/$tskid");
+    symlink("$top", "$link/$tskid");
+
+    print "Result: <font color=blue>$top</font> status: $running<br>\n";
+    print "Kernel info:";
+    system ("grep ^uname= $top/testingenv.log | sed -e 's/.*Linux localhost//g'");
+    print "<br>\n";
+    print "Result logs: <a href=/qa/link/$tskid/testing.log>progress</a>";
+    print " &nbsp;|&nbsp; <a href=/qa/link/$tskid>all logs</a>";
+    print " &nbsp;|&nbsp; <a href=/qa/link/$tskid/testingenv.log>configs</a><br>\n";
+
+    my @results_pass=split(/,/, `grep \ PASS\  $top/result-log | sed 's/.* PASS .*/ PASS, /'` );
+    my @results_fail=split(/,/, `grep \ FAIL\  $top/result-log | sed 's/.* FAIL .*/ FAIL, /'` );
+    my $nr_pass=@results_pass-1;
+    my $nr_fail=@results_fail-1;
+    print "total fail / pass:<b><font size=+2 color=red>$nr_fail</font> / <font size=+2 color=blue>$nr_pass</font></b><br>\n";
+
+    my $log="result-log";
+    if ( ! open (LOG, "$top/$log") ) {
+        return 0;
+    }
+    my %results_faillist;
+    my %results_passlist;
+    my %results_all;
+    my $findex=0;
+    my $pindex=0;
+    while (<LOG>) {
+        if ( $_ =~ /^.*FAIL.*$/ ) {
+            $findex += 1;
+            my ($fun,$fp,$ret) = split(/\s+/);
+            $results_faillist{$fun} =$ret;
+            $results_all{$findex}{'fail'}=[$fun, $ret];
+        } elsif ( $_ =~ /^.*PASS.*$/ ) {
+            $pindex += 1;
+            my ($fun,$fp,$ret) = split(/\s+/);
+            $results_passlist{$fun} =$ret;
+            $results_all{$pindex}{'pass'}=[$fun, $ret];
+        }
+    }
+    close(LOG);
+
+    print "Detail result list \n";
+    print " [ <a href='###' onclick=\"openShutManager(this,'${tskid}_all',false,'hide','show')\">hide</a> ] <br>\n";
+    print "<div id='${tskid}_all' style='display:block'>";
+    print "<font size=-1px><table border=1>";
+    print "<tr><td>Index</td><td>Function</td><td>Return</td><td>Function</td><td>Return</td></tr>";
+    foreach $tidx (sort { $a <=> $b } keys %results_all) {
+        my ($pf,$pr,$ff,$fr) = (
+            $results_all{$tidx}{'pass'}[0],$results_all{$tidx}{'pass'}[1],
+            $results_all{$tidx}{'fail'}[0],$results_all{$tidx}{'fail'}[1]);
+        print "<tr><td>$tidx</td><td class=fail>$ff</td><td class=fail>$fr</td><td class=pass>$pf</td><td class=pass>$pr</td></tr>";
+    }
+    print "</table>";
+    print "</div>";
+
+    foreach $fp ('fail','pass') {
+        my %mylist;
+        if ($fp eq 'fail') {
+            %mylist=%results_faillist;
+        } else {
+            %mylist=%results_passlist;
+        }
+        print "Detail $fp list \n";
+        print " [ <a href='###' onclick=\"openShutManager(this,'${tskid}_$fp',false,'hide','show')\">show</a> ] <br>\n";
+        print "<div id='${tskid}_$fp' style='display:none'>";
+        print "<font size=-1px><table border=1>";
+        print "<tr><td>Index</td><td>Function</td><td>Return</td></tr>";
+        my $tidx=0;
+        foreach $f (sort keys %mylist) {
+           $tidx +=1;
+           print "<tr><td>$tidx</td><td class=$fp>$f</td><td class=$fp>$mylist{$f}</td></tr>";
+        }
+        print "</table>";
+        print "</div>";
+    }
+}
+sub show_ltptest {
+    my $results_dir='/mean/c2/nfsroot/tango3-rootfs/ltp/ltp-full-20090228/test_report';
+    my $filter='(\d{6}.\d{2})';
+    my $num_days=60;
+    my $yangday=$results_dir;
+    my @dates;
+
+    print "Project:<font size=+1 color=blue><b>LTP test</b></font><br>\n";
+    if ( ! opendir(DIR, $results_dir) ) {
+        print "Die: Couldn't open $results_dir: $!<br>\n";
+        return 0;
+    }
+    my $log_num = grep /^$filter$/i, readdir(DIR);
+    close(DIR);
+    if ( $log_num > 0 ) {
+        if ( $log_num < $num_days ) {
+            $num_days = $log_num;
+        }
+        opendir(DIR, $results_dir);
+        @dates = (sort({ $b cmp $a} grep(s/^$filter$/$1/, readdir(DIR))))[0..($num_days-1)];
+        close(DIR);
+        $yangday="$results_dir/$dates[0]";
+        if ( $log_num > 1 ) {
+            print "More test results: ";
+            my $nr=0;
+            for my $d (@dates) {
+                if ( $nr == 0 ) {
+                    print "<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\n";
+                }
+                $nr +=1;
+                print " &nbsp;&nbsp;<a href=$home_link?op=ltptest&thm=1&d=$d>$d</a> ";
+                if ($nr == 10) {
+                    $nr = 0;
+                }
+            }
+            print "<br>\n";
+        }
+    }
+    if (defined $input_params{'d'}) {
+       $yangday="$results_dir/$input_params{'d'}";
+    }
+
+    parse_ltp_test_result("$yangday",0,'ltp');
 }

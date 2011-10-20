@@ -1219,7 +1219,7 @@ sub show_ltptest {
     my $yangday=$results_dir;
     my @dates;
 
-    print "Project:<font size=+1 color=blue><b>Nand Filesystem test</b></font><br>\n";
+    print "Project:<font size=+1 color=blue><b>LTP test</b></font><br>\n";
     if ( ! opendir(DIR, $results_dir) ) {
         print "Die: Couldn't open $results_dir: $!<br>\n";
         return 0;
