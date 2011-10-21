@@ -1035,7 +1035,7 @@ sub parse_fs_test_result {
 }
 sub show_fstest {
     our %known_fstests = (
-	'ltp3' => {
+	'fs3' => {
 		'title'   => 'jazz2t(tango3) android Nand fs test',
 		'homelog' => '/mean/c2/fs-nandroid/test_report',
 		},
