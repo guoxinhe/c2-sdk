@@ -35,20 +35,20 @@ our %actions = (
     'default'        => \&func_default,
 );
 our %menu_links = (
-    '1 Home'         =>  "$home_link",
-    '2 index'        =>  "$home_link?idx=1&thm=1",
-    '3 qatest'       =>  "$home_link?op=qatest",
-    '4 fstest'       =>  "$home_link?op=fstest&thm=1",
-    '5 ltptest'      =>  "$home_link?op=ltptest&thm=1",
+    '1  Home'        =>  "$home_link",
+    '2  index'       =>  "$home_link?idx=1&thm=1",
+    '3  qatest'      =>  "$home_link?op=qatest",
+    '4  fstest'      =>  "$home_link?op=fstest&thm=1",
+    '5  ltptest'     =>  "$home_link?op=ltptest&thm=1",
     '99 help'        =>  "$home_link?op=help",
 );
 our %friendly_links = (
-    "1 build195"     => 'http://10.16.13.195/build/build.cgi',
-    "2 build196"     => 'http://10.16.13.196/build/build.cgi',
-    '3 license'      => 'http://10.16.13.195/build/project.cgi?op=liclist',
-    '4 qareport'     => 'http://10.16.6.204/qa/index.cgi?idx=1',
-    '5 fsreport'     => 'http://10.16.6.204/qa/index.cgi?op=fstest&thm=1',
-    '6 ltpreport'    => 'http://10.16.6.204/qa/index.cgi?op=ltptest&thm=1',
+    "1  build195"    => 'http://10.16.13.195/build/build.cgi',
+    "2  build196"    => 'http://10.16.13.196/build/build.cgi',
+    '3  license'     => 'http://10.16.13.195/build/project.cgi?op=liclist',
+    '4  qareport'    => 'http://10.16.6.204/qa/index.cgi?idx=1',
+    '5  fsreport'    => 'http://10.16.6.204/qa/index.cgi?op=fstest&thm=1',
+    '6  ltpreport'   => 'http://10.16.6.204/qa/index.cgi?op=ltptest&thm=1',
 );
 our %system_command = (
     'Servername'     => 'hostname',
@@ -369,7 +369,7 @@ HTML
     #list the top level menu
     foreach $i (sort keys %menu_links) {
         my $v=$menu_links{$i};
-        $i =~ s/^\S* //;
+        $i =~ s/^\S* +//;
         print "| &nbsp;<a href=$v>$i</a>&nbsp; \n"
     }
 
@@ -385,7 +385,7 @@ HTML
     print "Website links: \n";
     foreach $i (sort keys %friendly_links) {
         my $v=$friendly_links{$i};
-        $i =~ s/^\S* //;
+        $i =~ s/^\S* +//;
         print "| &nbsp;<a href=$v>$i</a>&nbsp; \n";
     }
 
@@ -398,7 +398,7 @@ sub html_tail {
     print "Website links: \n";
     foreach $i (sort keys %friendly_links) {
         my $v=$friendly_links{$i};
-        $i =~ s/^\S* //;
+        $i =~ s/^\S* +//;
         print "| &nbsp;<a href=$v>$i</a>&nbsp; \n";
     }
     print "<br>\n";
