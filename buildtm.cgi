@@ -1237,7 +1237,7 @@ sub parse_ltp_test_result {
 }
 sub show_ltptest {
     our %known_ltptests = (
-	'ltp3' => {
+	'ltp3up' => {
 		'title'   => 'jazz2t(tango3) android ltp test',
 		'homelog' => '/mean/c2/nfsroot/tango3-rootfs/ltp/ltp-full-20090228/test_report',
 		},
