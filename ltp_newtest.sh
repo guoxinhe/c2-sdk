@@ -29,6 +29,8 @@ top=$top
 uname="             $(uname -a)"
 CONFIG_MYIP="       $CONFIG_MYIP"
 ENDOFME
+cat /proc/cpuinfo | grep processor.*:.*[01234567] >>$report_dir/testingenv.log
+
 chmod 777      $report_dir/testingenv.log
 echo "$(date) start testing: pid=$$" >>$report_dir/testing.log
 chmod 777      $report_dir/testing.log
