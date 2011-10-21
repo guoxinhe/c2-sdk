@@ -9,8 +9,9 @@ export PATH="$PATH:./"
 ##############################################################################################
 #testitems="fat32 ext2 ext3 ntfs"
 testitems="yaffs"
-h=`date +%H`;
-if test $h -ge 11; then
+cat /proc/cpuinfo | grep processor.*:.*[1234567]
+ret=$?
+if test $ret -eq 0; then
     report_dir=$TOP/test_reportsmp/$(date +%y%m%d.%H)
 else
     report_dir=$TOP/test_report/$(date +%y%m%d.%H)
