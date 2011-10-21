@@ -640,7 +640,7 @@ sub manage_tasks {
         if ($byip ne "" || $byuser ne "") {
             $byuser="runby:$byuser\@$byip";
         }
-        print "<br><a name=$tskid>$tskid</a>:  <font size=+1 color=blue ><b>$tit</b></font><br>\n";
+        print "<br>Project <a name=$tskid>$tskid</a>:  <font size=+1 color=blue ><b>$tit</b></font><br>\n";
         print "script:$hip".'@'."$scr $byuser<br>\n";
         my $crnt=`ssh build\@$hip \"crontab -l| grep -m 1 $scr\"`;
         if ($crnt) {
@@ -1060,7 +1060,7 @@ sub show_fstest {
         my $yangday=$results_dir;
         my @dates;
  
-        print "Project:<font size=+1 color=blue><b>$tit</b></font><br>\n";
+        print "<br>Project <a name=$tskid>$tskid</a>:  <font size=+1 color=blue ><b>$tit</b></font><br>\n";
         if ( ! opendir(DIR, $results_dir) ) {
             print "Die: Couldn't open $results_dir: $!<br>\n";
             return 0;
@@ -1109,7 +1109,6 @@ sub show_qatest {
             print "| <a href=#$tskid> $tskid </a>\n";
         }
     }
-    print "<br>\n";
     foreach $tskid (sort keys %known_qatasks) {
         my $tit=$known_qatasks{$tskid}{ 'title'   };
         my $cfg=$known_qatasks{$tskid}{ 'config'  };
@@ -1127,7 +1126,7 @@ sub show_qatest {
 
         my @tlock=<$home/*.lock>;
         my $nrlock=@tlock;
-        print "<br><a name=$tskid>$tskid</a>:  <font size=+1 color=blue ><b>$tit</b></font><br>\n";
+        print "<br>Project <a name=$tskid>$tskid</a>:  <font size=+1 color=blue ><b>$tit</b></font><br>\n";
         print "home:$hip".'@'."$hme<br>\n";
         print "script:$hip".'@'."$scr \n";
         if ( -e "$scr.lock" || $nrlock > 0 ) {
@@ -1268,7 +1267,7 @@ sub show_ltptest {
         my $yangday=$results_dir;
         my @dates;
  
-        print "Project:<font size=+1 color=blue><b>$tit</b></font><br>\n";
+        print "<br>Project <a name=$tskid>$tskid</a>:  <font size=+1 color=blue ><b>$tit</b></font><br>\n";
         if ( ! opendir(DIR, $results_dir) ) {
             print "Die: Couldn't open $results_dir: $!<br>\n";
             return 0;
