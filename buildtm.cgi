@@ -626,48 +626,50 @@ sub manage_tasks {
         my $reb=$known_tasks{$tskid}{'rebuild' };
         my $kil=$known_tasks{$tskid}{'kill' };
         my $liv=$known_tasks{$tskid}{'live' };
-        if ( -x $scr && $liv ne 'off' ) {
-            my $top= `dirname $scr`;
-            chomp($top);
-            my @tlock=<$top/*.lock>;
-            my $nrlock=@tlock;
-            my $byip=`grep CONFIG_REMOTEIP     $top/build_result/l/env.log | sed -e 's,.*=\\(.*\\),\\1,g' `;
-            my $byuser=`grep CONFIG_REMOTEUSER $top/build_result/l/env.log | sed -e 's,.*=\\(.*\\),\\1,g' `;
-            chomp($byip); chomp($byuser);
-            if ($byip ne "" || $byuser ne "") {
-                $byuser="runby:$byuser\@$byip";
-            }
-            print "<br><a name=$tskid>$tskid</a>:  <font size=+1 color=blue ><b>$tit</b></font><br>\n";
-            print "script:$hip".'@'."$scr $byuser<br>\n";
-            my $crnt=`ssh build\@$hip \"crontab -l| grep -m 1 $scr\"`;
-            if ($crnt) {
-                print "crontab task: <font face='courier new'><b>$crnt</b></font><br>"
+        if ( ! -x $scr || $liv eq 'off' ) {
+            next;
+        }
+
+        my $top= `dirname $scr`;
+        chomp($top);
+        my @tlock=<$top/*.lock>;
+        my $nrlock=@tlock;
+        my $byip=`grep CONFIG_REMOTEIP     $top/build_result/l/env.log | sed -e 's,.*=\\(.*\\),\\1,g' `;
+        my $byuser=`grep CONFIG_REMOTEUSER $top/build_result/l/env.log | sed -e 's,.*=\\(.*\\),\\1,g' `;
+        chomp($byip); chomp($byuser);
+        if ($byip ne "" || $byuser ne "") {
+            $byuser="runby:$byuser\@$byip";
+        }
+        print "<br><a name=$tskid>$tskid</a>:  <font size=+1 color=blue ><b>$tit</b></font><br>\n";
+        print "script:$hip".'@'."$scr $byuser<br>\n";
+        my $crnt=`ssh build\@$hip \"crontab -l| grep -m 1 $scr\"`;
+        if ($crnt) {
+            print "crontab task: <font face='courier new'><b>$crnt</b></font><br>"
+        } else {
+            print "no crontab item for this project<br>"
+        }
+        print "op : <a href=/build/link/$tskid/l/progress.log>progress</a> | ";
+        print "<a href=/build/link/$tskid/l>all logs</a> |";
+        print "<a href=/build/link/$tskid/l/env.log>settings</a> ";
+        if ( -e "$scr.lock" || $nrlock > 0 ) {
+            print ",status: <font color=red><b>running</b></font>. ";
+            if ( $kil eq 'on') {
+            print "<a href=$home_link?op=stopbuild&p=$tskid>stop build</a><br>";
             } else {
-                print "no crontab item for this project<br>"
+            print "stop build disabled";
             }
-            print "op : <a href=/build/link/$tskid/l/progress.log>progress</a> | ";
-            print "<a href=/build/link/$tskid/l>all logs</a> |";
-            print "<a href=/build/link/$tskid/l/env.log>settings</a> ";
-            if ( -e "$scr.lock" || $nrlock > 0 ) {
-                print ",status: <font color=red><b>running</b></font>. ";
-                if ( $kil eq 'on') {
-                print "<a href=$home_link?op=stopbuild&p=$tskid>stop build</a><br>";
-                } else {
-                print "stop build disabled";
-                }
+        } else {
+            if ( $reb eq 'on') {
+            print ",status: inactive. <a href=$home_link?op=rebuild&p=$tskid>rebuild</a><br>";
             } else {
-                if ( $reb eq 'on') {
-                print ",status: inactive. <a href=$home_link?op=rebuild&p=$tskid>rebuild</a><br>";
-                } else {
-                print ",status: inactive. rebuild disabled<br>";
-                }
+            print ",status: inactive. rebuild disabled<br>";
             }
-	    unlink("/var/www/html/build/link/$tskid");
-            symlink("$top/build_result", "/var/www/html/build/link/$tskid");
-            parse_files_by_date(10,"$top/build_result",
+        }
+	unlink("/var/www/html/build/link/$tskid");
+        symlink("$top/build_result", "/var/www/html/build/link/$tskid");
+        parse_files_by_date(10,"$top/build_result",
 		'(\d{2}[0,1][0-9][0-3][0-9])\.txt', '.*/build_result',
 		"/build/link/$tskid", $input_params{'idx'});
-        }
     }
 }
 
@@ -1032,48 +1034,69 @@ sub parse_fs_test_result {
     }
 }
 sub show_fstest {
-    my $results_dir='/mean/c2/fs-nandroid/test_report';
-    my $filter='(\d{6}.\d{2})';
-    my $num_days=60;
-    my $yangday=$results_dir;
-    my @dates;
-
-    print "Project:<font size=+1 color=blue><b>Nand Filesystem test</b></font><br>\n";
-    if ( ! opendir(DIR, $results_dir) ) {
-        print "Die: Couldn't open $results_dir: $!<br>\n";
-        return 0;
-    }
-    my $log_num = grep /^$filter$/i, readdir(DIR);
-    close(DIR);
-    if ( $log_num > 0 ) {
-        if ( $log_num < $num_days ) {
-            $num_days = $log_num;
+    our %known_fstests = (
+	'ltp3' => {
+		'title'   => 'jazz2t(tango3) android Nand fs test',
+		'homelog' => '/mean/c2/fs-nandroid/test_report',
+		},
+    );
+    my $tskid;
+    foreach $tskid (sort keys %known_fstests) {
+        my $hlg=$known_fstests{$tskid}{'homelog' };
+        if ( -d $hlg ) {
+            print "| <a href=#$tskid> $tskid </a>\n";
         }
-        opendir(DIR, $results_dir);
-        @dates = (sort({ $b cmp $a} grep(s/^$filter$/$1/, readdir(DIR))))[0..($num_days-1)];
+    }
+    print "<br>\n";
+    foreach $tskid (sort keys %known_fstests) {
+        my $tit=$known_fstests{$tskid}{'title' };
+        my $hlg=$known_fstests{$tskid}{'homelog' };
+        if ( ! -d $hlg ) {
+            next;
+        }
+        my $results_dir=$hlg;
+        my $filter='(\d{6}.\d{2})';
+        my $num_days=60;
+        my $yangday=$results_dir;
+        my @dates;
+ 
+        print "Project:<font size=+1 color=blue><b>$tit</b></font><br>\n";
+        if ( ! opendir(DIR, $results_dir) ) {
+            print "Die: Couldn't open $results_dir: $!<br>\n";
+            return 0;
+        }
+        my $log_num = grep /^$filter$/i, readdir(DIR);
         close(DIR);
-        $yangday="$results_dir/$dates[0]";
-        if ( $log_num > 1 ) {
-            print "More test results: ";
-            my $nr=0;
-            for my $d (@dates) {
-                if ( $nr == 0 ) {
-                    print "<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\n";
-                }
-                $nr +=1;
-                print " &nbsp;&nbsp;<a href=$home_link?op=fstest&thm=1&d=$d>$d</a> ";
-                if ($nr == 10) {
-                    $nr = 0;
-                }
+        if ( $log_num > 0 ) {
+            if ( $log_num < $num_days ) {
+                $num_days = $log_num;
             }
-            print "<br>\n";
+            opendir(DIR, $results_dir);
+            @dates = (sort({ $b cmp $a} grep(s/^$filter$/$1/, readdir(DIR))))[0..($num_days-1)];
+            close(DIR);
+            $yangday="$results_dir/$dates[0]";
+            if ( $log_num > 1 ) {
+                print "More test results: ";
+                my $nr=0;
+                for my $d (@dates) {
+                    if ( $nr == 0 ) {
+                        print "<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\n";
+                    }
+                    $nr +=1;
+                    print " &nbsp;&nbsp;<a href=$home_link?op=fstest&thm=1&d=$d>$d</a> ";
+                    if ($nr == 10) {
+                        $nr = 0;
+                    }
+                }
+                print "<br>\n";
+            }
         }
+        if (defined $input_params{'d'}) {
+           $yangday="$results_dir/$input_params{'d'}";
+        }
+ 
+        parse_fs_test_result("$yangday",0,'t3');
     }
-    if (defined $input_params{'d'}) {
-       $yangday="$results_dir/$input_params{'d'}";
-    }
-
-    parse_fs_test_result("$yangday",0,'t3');
 }
 
 sub show_qatest {
@@ -1186,7 +1209,8 @@ sub parse_ltp_test_result {
         my ($pf,$pr,$ff,$fr) = (
             $results_all{$tidx}{'pass'}[0],$results_all{$tidx}{'pass'}[1],
             $results_all{$tidx}{'fail'}[0],$results_all{$tidx}{'fail'}[1]);
-        print "<tr><td>$tidx</td><td class=fail>$ff</td><td class=fail>$fr</td><td class=pass>$pf</td><td class=pass>$pr</td></tr>";
+        print "<tr><td>$tidx</td><td class=fail>$ff</td><td class=fail>$fr</td>";
+        print "<td class=pass>$pf</td><td class=pass>$pr</td></tr>";
     }
     print "</table>";
     print "</div>";
@@ -1213,46 +1237,72 @@ sub parse_ltp_test_result {
     }
 }
 sub show_ltptest {
-    my $results_dir='/mean/c2/nfsroot/tango3-rootfs/ltp/ltp-full-20090228/test_report';
-    my $filter='(\d{6}.\d{2})';
-    my $num_days=60;
-    my $yangday=$results_dir;
-    my @dates;
-
-    print "Project:<font size=+1 color=blue><b>LTP test</b></font><br>\n";
-    if ( ! opendir(DIR, $results_dir) ) {
-        print "Die: Couldn't open $results_dir: $!<br>\n";
-        return 0;
-    }
-    my $log_num = grep /^$filter$/i, readdir(DIR);
-    close(DIR);
-    if ( $log_num > 0 ) {
-        if ( $log_num < $num_days ) {
-            $num_days = $log_num;
+    our %known_ltptests = (
+	'ltp3' => {
+		'title'   => 'jazz2t(tango3) android ltp test',
+		'homelog' => '/mean/c2/nfsroot/tango3-rootfs/ltp/ltp-full-20090228/test_report',
+		},
+	'ltp3smp' => {
+		'title'   => 'jazz2t(tango3) android ltp test',
+		'homelog' => '/mean/c2/nfsroot/tango3-rootfs/ltp/ltp-full-20090228/test_reportsmp',
+		},
+    );
+    my $tskid;
+    foreach $tskid (sort keys %known_ltptests) {
+        my $hlg=$known_ltptests{$tskid}{'homelog' };
+        if ( -d $hlg ) {
+            print "| <a href=#$tskid> $tskid </a>\n";
         }
-        opendir(DIR, $results_dir);
-        @dates = (sort({ $b cmp $a} grep(s/^$filter$/$1/, readdir(DIR))))[0..($num_days-1)];
+    }
+    print "<br>\n";
+    foreach $tskid (sort keys %known_ltptests) {
+        my $tit=$known_ltptests{$tskid}{'title' };
+        my $hlg=$known_ltptests{$tskid}{'homelog' };
+        if ( ! -d $hlg ) {
+            next;
+        }
+
+        my $results_dir=$hlg;
+        my $filter='(\d{6}.\d{2})';
+        my $num_days=60;
+        my $yangday=$results_dir;
+        my @dates;
+ 
+        print "Project:<font size=+1 color=blue><b>$tit</b></font><br>\n";
+        if ( ! opendir(DIR, $results_dir) ) {
+            print "Die: Couldn't open $results_dir: $!<br>\n";
+            return 0;
+        }
+        my $log_num = grep /^$filter$/i, readdir(DIR);
         close(DIR);
-        $yangday="$results_dir/$dates[0]";
-        if ( $log_num > 1 ) {
-            print "More test results: ";
-            my $nr=0;
-            for my $d (@dates) {
-                if ( $nr == 0 ) {
-                    print "<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\n";
-                }
-                $nr +=1;
-                print " &nbsp;&nbsp;<a href=$home_link?op=ltptest&thm=1&d=$d>$d</a> ";
-                if ($nr == 10) {
-                    $nr = 0;
-                }
+        if ( $log_num > 0 ) {
+            if ( $log_num < $num_days ) {
+                $num_days = $log_num;
             }
-            print "<br>\n";
+            opendir(DIR, $results_dir);
+            @dates = (sort({ $b cmp $a} grep(s/^$filter$/$1/, readdir(DIR))))[0..($num_days-1)];
+            close(DIR);
+            $yangday="$results_dir/$dates[0]";
+            if ( $log_num > 1 ) {
+                print "More test results: ";
+                my $nr=0;
+                for my $d (@dates) {
+                    if ( $nr == 0 ) {
+                        print "<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\n";
+                    }
+                    $nr +=1;
+                    print " &nbsp;&nbsp;<a href=$home_link?op=ltptest&thm=1&d=$d>$d</a> ";
+                    if ($nr == 10) {
+                        $nr = 0;
+                    }
+                }
+                print "<br>\n";
+            }
         }
+        if (defined $input_params{'d'}) {
+           $yangday="$results_dir/$input_params{'d'}";
+        }
+ 
+        parse_ltp_test_result("$yangday",0,'ltp');
     }
-    if (defined $input_params{'d'}) {
-       $yangday="$results_dir/$input_params{'d'}";
-    }
-
-    parse_ltp_test_result("$yangday",0,'ltp');
 }
