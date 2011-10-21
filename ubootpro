@@ -12,14 +12,21 @@ server side:
 uboot's env:
 bootargs=mem=256m,128m,64m console=ttyS0 nfsroot=10.16.6.204:/mean/c2/nfsroot/tango3-rootfs root=nfs rw ip=10.16.6.172 init=/init
 bootfile /mean/c2/nfsroot/vmlinux.bin
-set serverip
-set ipaddr
-set gatewayip
-set netmask
+
+smp:
+bootargs=mem=256m,128m,64m console=ttyS0 nfsroot=10.16.6.204:/mean/c2/nfsroot/tango3-rootfs root=nfs rw ip=10.16.6.173 init=/init
+set serverip 10.16.13.195
+set ipaddr 10.16.6.173
+set bootfile /build2/android/jazz2t-c2sdk_android/c2/zvmlinux-smp.bin
+set gatewayip 10.16.6.1
+set netmask 255.255.255.0
 nfs;go
+
 rn ltp: /mean/c2/nfsroot/tango3-rootfs/ltp/ltp-full-20090228/runltp
 by    : /ltp/ltp-full-20090228/runltp
 run ltp's result: /mean/c2/nfsroot/tango3-rootfs/ltp/ltp-full-20090228/results
+
+
 
 fget=sleep 3500a;nand device 0;nand erase 0x600000;usbstart;nandfw usb 0x600000 kernel.img;nandfw usb 0xe00000 recovery.img;nandfw usb 0x2000000 root.img 1;nandfw usb 0x6000000 system.img 1;nandfw usb 0x13000000 data.img 1;run bootcmd
 
