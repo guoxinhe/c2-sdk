@@ -1302,6 +1302,6 @@ sub show_ltptest {
            $yangday="$results_dir/$input_params{'d'}";
         }
  
-        parse_ltp_test_result("$yangday",0,'ltp');
+        parse_ltp_test_result("$yangday",0,"$tskid");
     }
 }
