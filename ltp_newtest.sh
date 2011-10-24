@@ -34,6 +34,7 @@ cat /proc/cpuinfo | grep processor.*:.*[01234567] >>$report_dir/testingenv.log
 chmod 777      $report_dir/testingenv.log
 echo "$(date) start testing: pid=$$" >>$report_dir/testing.log
 chmod 777      $report_dir/testing.log
+cp $CONFIG_SCRIPT $report_dir/
 ##############################################################################################
 
 #$TOP/runltplite.sh
