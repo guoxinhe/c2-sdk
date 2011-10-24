@@ -814,6 +814,15 @@ sub rebuild_project {
     print "<font color=red size=+1><b>Start running $hip:$scr</b></font><br>\n";
     print "this may take ours, please hold this page and<br>\n";
     print "never refresh it, click it or goes back to previous page!<br>\n";
+    my $ulevel=userlevel();
+    if ( $ulevel == 0 ) {
+    print <<HTML; <font color=red ><b>Sugges you login to this website<br>
+    After login, build server can trace your actions and give you better supports<br>
+    Using your c2's account login, when first login, the default password is 123456.
+    Thanks. (Server).
+    </b></font>
+HTML
+    }
     system "sleep 1 && echo '<pre>' && ssh build\@$hip $scr --byip $browserip --byuser $mission_params{'user'} & ";
 }
 sub parse_fs_test_result {
