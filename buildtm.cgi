@@ -1253,6 +1253,14 @@ sub show_ltptest {
 		'title'   => 'jazz2t(tango3) android ltp test',
 		'homelog' => '/mean/c2/nfsroot/tango3-rootfs/ltp/ltp-full-20090228/test_reportsmp',
 		},
+	'ltp4up' => {
+		'title'   => 'jazz2(tango) android ltp test',
+		'homelog' => '/mean/c2/nfsroot/jazz2-rootfs/ltp/ltp-full-20090228/test_report',
+		},
+	'ltp4smp' => {
+		'title'   => 'jazz2(tango) android ltp test',
+		'homelog' => '/mean/c2/nfsroot/jazz2-rootfs/ltp/ltp-full-20090228/test_reportsmp',
+		},
     );
     my $tskid;
     foreach $tskid (sort keys %known_ltptests) {
