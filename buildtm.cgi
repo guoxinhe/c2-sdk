@@ -1216,8 +1216,17 @@ sub parse_ltp_test_result {
         my ($pf,$pr,$ff,$fr) = (
             $results_all{$tidx}{'pass'}[0],$results_all{$tidx}{'pass'}[1],
             $results_all{$tidx}{'fail'}[0],$results_all{$tidx}{'fail'}[1]);
-        print "<tr><td>$tidx</td><td class=fail>$ff</td><td class=fail>$fr</td>";
-        print "<td class=pass>$pf</td><td class=pass>$pr</td></tr>";
+        my ($clsps,$clsfl) = ('','');
+        if (defined $results_all{$tidx}{'pass'}[0]) {
+            $clsps='class=pass'; 
+        } else { $pf='&nbsp;';$pr='&nbsp;';
+        }
+        if (defined $results_all{$tidx}{'fail'}[0]) {
+            $clsfl='class=fail'; 
+        } else { $ff='&nbsp;';$fr='&nbsp;';
+        }
+        print "<tr><td>$tidx</td><td $clsfl>$ff</td><td $clsfl>$fr</td>";
+        print "<td $clsps>$pf</td><td $clsps>$pr</td></tr>";
     }
     print "</table>";
     print "</div>";
