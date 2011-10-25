@@ -1140,6 +1140,7 @@ sub show_fstest {
 }
 
 sub show_qatest {
+    print "<a href='https://access.c2micro.com/index.php/QA#Automation_Plan'>QA's Wiki</a> \n";
     my $tskid;
     my $link="/var/www/html/qa/link";
     foreach $tskid (sort keys %known_qatasks) {
@@ -1207,7 +1208,12 @@ sub parse_ltp_test_result {
     print "<br>\n";
     print "Result logs: <a href=/qa/link/$tskid/testing.log>progress</a>";
     print " &nbsp;|&nbsp; <a href=/qa/link/$tskid>all logs</a>";
-    print " &nbsp;|&nbsp; <a href=/qa/link/$tskid/testingenv.log>configs</a><br>\n";
+    print " &nbsp;|&nbsp; <a href=/qa/link/$tskid/testingenv.log>configs</a>\n";
+    my @pagename=('all fail/pass','all fail','all pass');
+    foreach my $i (0..2) {
+    print " &nbsp;|&nbsp; <a href=### onclick=\"aSheetManager(this,'$tskid',$i)\">$pagename[$i]</a>\n";
+    }
+    print "<br>\n";
 
     my @results_pass=split(/,/, `grep \ PASS\  $top/result-log | sed 's/.* PASS .*/ PASS, /'` );
     my @results_fail=split(/,/, `grep \ FAIL\  $top/result-log | sed 's/.* FAIL .*/ FAIL, /'` );
@@ -1239,9 +1245,10 @@ sub parse_ltp_test_result {
     }
     close(LOG);
 
+    my $page_index=0;
     print "Detail result list \n";
-    print " [ <a href='###' onclick=\"openShutManager(this,'${tskid}_all',false,'hide','show')\">hide</a> ] <br>\n";
-    print "<div id='${tskid}_all' style='display:block'>";
+    print " [ <a href='###' onclick=\"openShutManager(this,'${tskid}_$page_index',false,'hide','show')\">hide</a> ] <br>\n";
+    print "<div id='${tskid}_$page_index' style='display:block'>";
     print "<font size=-1px><table border=1>";
     print "<tr><td>Index</td><td>Function</td><td>Return</td><td>Function</td><td>Return</td></tr>";
     foreach $tidx (sort { $a <=> $b } keys %results_all) {
@@ -1260,8 +1267,9 @@ sub parse_ltp_test_result {
         print "<tr><td>$tidx</td><td $clsfl>$ff</td><td $clsfl>$fr</td>";
         print "<td $clsps>$pf</td><td $clsps>$pr</td></tr>";
     }
-    print "</table>";
+    print "</table></font>";
     print "</div>";
+    $page_index += 1;
 
     foreach $fp ('fail','pass') {
         my %mylist;
@@ -1271,8 +1279,8 @@ sub parse_ltp_test_result {
             %mylist=%results_passlist;
         }
         print "Detail $fp list \n";
-        print " [ <a href='###' onclick=\"openShutManager(this,'${tskid}_$fp',false,'hide','show')\">show</a> ] <br>\n";
-        print "<div id='${tskid}_$fp' style='display:none'>";
+        print " [ <a href='###' onclick=\"openShutManager(this,'${tskid}_$page_index',false,'hide','show')\">show</a> ] <br>\n";
+        print "<div id='${tskid}_$page_index' style='display:none'>";
         print "<font size=-1px><table border=1>";
         print "<tr><td>Index</td><td>Function</td><td>Return</td></tr>";
         my $tidx=0;
@@ -1280,8 +1288,9 @@ sub parse_ltp_test_result {
            $tidx +=1;
            print "<tr><td>$tidx</td><td class=$fp>$f</td><td class=$fp>$mylist{$f}</td></tr>";
         }
-        print "</table>";
+        print "</table></font>";
         print "</div>";
+        $page_index += 1;
     }
 }
 sub show_ltptest {
