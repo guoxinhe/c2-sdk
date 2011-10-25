@@ -362,6 +362,22 @@ sub html_head {
            }
         }
     }
+    function aSheetManager(srcObj,gName,onID) {
+        var i;
+        var targetObj=999999;
+        var name=gName +"_"+onID;
+        targetObj=document.getElementById(name);
+        if(targetObj) {
+            for (i=0;i<256;i++) {
+                name=gName +"_"+i;
+                var obj=document.getElementById(name);
+                if(obj) {
+                    obj.style.display="none";
+                }
+            }
+            targetObj.style.display="block";
+        }
+    }
 </script>
 </head>
 <body>
@@ -458,6 +474,22 @@ sub func_myprofile {
     system ("id $mission_params{'user'}");
     system ("uname -a");
     print "</pre>\n";
+    foreach $i (0..7) {
+        print " | <a href=### onclick=\"aSheetManager(this,'mygroup',$i)\">Page $i</a>"
+    }
+    my @folder=('/','/etc','/proc','/var','/dev','/home','/boot','/usr');
+    foreach $i (0..7) {
+        if ($i == 0) {
+        print "<div id='mygroup_$i' style='background:#CCFFCC; display:block'>";
+        } else {
+        print "<div id='mygroup_$i' style='background:#CCFFCC; display:none'>";
+        };
+        print "this is seet $i<br><pre>";
+        my $fd=$folder[$i];
+        system ("echo ls -l $fd");
+        print "</pre>this is seet $i<br>";
+        print "</div>";
+    }
 
 }
 sub func_default {
