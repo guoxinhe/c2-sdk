@@ -8,6 +8,13 @@ our %known_tasks = (
 		'script'  => '/build2/android/jazz2t-br051/build-jazz2t-sw_media-android-br051.sh',
                 'hostip'  => '10.16.13.195',
                 'rebuild' => 'on',
+                'kill'    => 'off',
+		},
+	'proj1a-bc' => {
+		'title'   => 'jazz2t + android sw_media u-boot br=jazz2t-Android-0_5-1_Branch, engr backup build',
+		'script'  => '/build2/android/jazz2t-br051-bc/build-jazz2t-sw_media-android-br051.sh',
+                'hostip'  => '10.16.13.195',
+                'rebuild' => 'on',
                 'kill'    => 'on',
 		},
 	'proj1b' => {

@@ -367,7 +367,7 @@ sub html_head {
         var targetObj=999999;
         var name=gName +"_"+onID;
         targetObj=document.getElementById(name);
-        if(targetObj) {
+        if(targetObj || onID==0) {
             for (i=0;i<256;i++) {
                 name=gName +"_"+i;
                 var obj=document.getElementById(name);
@@ -375,7 +375,7 @@ sub html_head {
                     obj.style.display="none";
                 }
             }
-            targetObj.style.display="block";
+            if(targetObj) targetObj.style.display="block";
         }
     }
 </script>
@@ -474,19 +474,21 @@ sub func_myprofile {
     system ("id $mission_params{'user'}");
     system ("uname -a");
     print "</pre>\n";
-    foreach $i (0..7) {
-        print " | <a href=### onclick=\"aSheetManager(this,'mygroup',$i)\">Page $i</a>"
+    my @pagename=('Hide all','a','b','c','d','e','f','g','h');
+    foreach $i (0..8) {
+        print " | <a href=### onclick=\"aSheetManager(this,'mygroup',$i)\">Page $i: $pagename[$i]</a>"
     }
-    my @folder=('/','/etc','/proc','/var','/dev','/home','/boot','/usr');
-    foreach $i (0..7) {
-        if ($i == 0) {
+    my @folder=('','/boot','/','/etc','/proc','/var','/dev','/usr','/home');
+    foreach $i (1..8) {
+        if ($i == 1) {
         print "<div id='mygroup_$i' style='background:#CCFFCC; display:block'>";
         } else {
         print "<div id='mygroup_$i' style='background:#CCFFCC; display:none'>";
         };
-        print "this is seet $i<br><pre>";
+        print "this is seet $i<pre>";
         my $fd=$folder[$i];
         system ("echo ls -l $fd");
+        system ("ls -l $fd");
         print "</pre>this is seet $i<br>";
         print "</div>";
     }
@@ -1209,8 +1211,8 @@ sub parse_ltp_test_result {
     print "Result logs: <a href=/qa/link/$tskid/testing.log>progress</a>";
     print " &nbsp;|&nbsp; <a href=/qa/link/$tskid>all logs</a>";
     print " &nbsp;|&nbsp; <a href=/qa/link/$tskid/testingenv.log>configs</a>\n";
-    my @pagename=('all fail/pass','all fail','all pass');
-    foreach my $i (0..2) {
+    my @pagename=('hide all','all fail/pass','all fail','all pass');
+    foreach my $i (0..3) {
     print " &nbsp;|&nbsp; <a href=### onclick=\"aSheetManager(this,'$tskid',$i)\">$pagename[$i]</a>\n";
     }
     print "<br>\n";
@@ -1245,7 +1247,7 @@ sub parse_ltp_test_result {
     }
     close(LOG);
 
-    my $page_index=0;
+    my $page_index=1;
     print "Detail result list \n";
     print " [ <a href='###' onclick=\"openShutManager(this,'${tskid}_$page_index',false,'hide','show')\">hide</a> ] <br>\n";
     print "<div id='${tskid}_$page_index' style='display:block'>";
