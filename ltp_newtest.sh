@@ -48,8 +48,16 @@ LOGFILE=$report_dir/result-log
 OUTPUTFILE=$report_dir/result-output
 FAILCMDFILE=$report_dir/result-failed
 TMPDIR=$report_dir/result-temp
-$TOP/runltp -c 2 -i 2 -m 2,4,10240,1 -D 2,10,10240,1 -p -q \
-	-l $LOGFILE -o $OUTPUTFILE -C $FAILCMDFILE -d $TMPDIR
+
+#TOP/runltp -c 2 -i 2 -m 2,4,10240,1 -D 2,10,10240,1 -p -q \
+$TOP/runltp                                          -p -q \
+	-l $LOGFILE -o $OUTPUTFILE -d $TMPDIR -C $FAILCMDFILE \
+	>$report_dir/runltplite.log 2>&1
+
+#TOP/runltplite.sh -i 1024 -m 128 -p -q \
+$TOP/runltplite.sh                -p -q \
+	-l $LOGFILE-lite -o $OUTPUTFILE-lite -d $TMPDIR-lite \
+	>$report_dir/runltplite.log 2>&1
 
 echo "$(date) testing all done:):):):):):):):):) " >>$report_dir/testing.log
 cp $report_dir/testing.lock $report_dir/testing.done

@@ -41,7 +41,7 @@ cp /qatestcfg.sh          $CONFIG_BOARDLOG/
 sync
 cp /nfshome/qaboardtest.sh /qaboardtest.sh
 sync
-
+dinnertime="02 06 11 17";
 morningreboot()
 {
   #poll for a basic crontab task
@@ -51,10 +51,15 @@ morningreboot()
   while true;do
     h=`date +%H`;
     m=`date +%M`;
+    if test $m -eq 10; then
+        /nfshome/setdate.sh
+    fi
     mkdir -p  $CONFIG_BOARDLOG
     echo "$(date): morning boot daemon footprint" >>/qadaemon.log
     echo "$(date): morning boot daemon footprint" >>$CONFIG_BOARDLOG/qadaemon.log
     sync;
+
+    for rebooth in $dinnertime; do
     if test "$h" = "$rebooth"; then
     if test $m -ge $rebootm; then
         echo "$(date): Reboot" >>/qadaemon.log
@@ -62,6 +67,7 @@ morningreboot()
         reboot -f;
     fi
     fi
+    done
     sleep 60;
   done
 }
@@ -69,13 +75,18 @@ morningreboot()
 morningreboot &
 
 #there maybe lots of test plans to execute, detect and run them.
-test "$CONFIG_TEST_FS"  = "1" && /nfshome/fs-nandroid/fs_newtest.sh
-sync
-test "$CONFIG_TEST_LTP" = "1" && /ltp/ltp-full-20090228/ltp_newtest.sh
-sync
+if test "$CONFIG_TEST_FS"  = "1" ; then
+    /nfshome/fs-nandroid/fs_newtest.sh
+    /nfshome/nfsroot/jazz2-rootfs/ltp/ltp-full-20090228/ltp_newtest.sh
+    sync
+fi
+if test "$CONFIG_TEST_LTP" = "1" ; then
+    /ltp/ltp-full-20090228/ltp_newtest.sh
+    sync
+fi
 
 
-sleep 3600
+sleep 28800; #3600 * 8 = 28800
 /nfshome/setdate.sh
 echo "$(date): Reboot" >>/qa.log
 echo "$(date): Reboot" >>$CONFIG_BOARDLOG/qa.log
