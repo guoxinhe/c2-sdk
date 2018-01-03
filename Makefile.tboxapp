@@ -1,0 +1,343 @@
+#///////////////////////////////////////////////////////////////////////////////
+# COPYRIGHT	 SiRun（Beijing）Technology Co.,Ltd.
+#///////////////////////////////////////////////////////////////////////////////
+# version: V1.0.0
+# date: 2017/07/13
+# explict:
+# history:
+# 001   20170716   zhangkh    create 
+#///////////////////////////////////////////////////////////////////////////////
+#
+#
+#change this will upgrade tarball, app's version name, number.
+PACKAGENAME=app_tbox_opencpu
+VERSIONNAME=1.0.5
+VERSIONNUMBER=10005
+TARBALL=tbox-ota-$(VERSIONNAME).bin.tar.gz
+#///////////////////////////////////////////////////////////////////////////////
+# The Names of app
+#///////////////////////////////////////////////////////////////////////////////
+APP_NAME = app_tbox_opencpu
+ARCH = $(shell arch)
+HOMEDIR = $(shell pwd)
+OBJPATH = $(HOMEDIR)/obj
+OUTPATH = $(HOMEDIR)/out
+TSPPLATFORM = OTA_V2
+#TSPPLATFORM = OTA_V3
+#EXAMTYPE = national
+#EXAMTYPE = enterprise
+#///////////////////////////////////////////////////////////////////////////////
+# makefile variable
+#/////////////////////////////////////////////////////////////////////////////// 
+
+COMPILER_ROOT=/opt/ql-ol-sdk/ql-ol-crosstool/sysroots
+#GNUPATH=$(COMPILER_ROOT)/x86_64-linux/usr/bin/arm-oe-linux-gnueabi
+GNUPATH=$(COMPILER_ROOT)/x86_64-oesdk-linux/usr/bin/arm-oe-linux-gnueabi
+GNUBINPATH  =   $(GNUPATH)
+OBJEXTSTR   =   o
+SRCEXTSTR   =   c
+CPPEXTSTR   =   cpp
+CCEXTSTR    =   cc
+DEPEXTSTR   =   d
+
+CC    = $(GNUBINPATH)/arm-oe-linux-gnueabi-gcc
+CPP   = $(GNUBINPATH)/arm-oe-linux-gnueabi-g++
+LD    = $(GNUBINPATH)/arm-oe-linux-gnueabi-ld
+AS    = $(GNUBINPATH)/arm-oe-linux-gnueabi-as
+AR    = $(GNUBINPATH)/arm-oe-linux-gnueabi-ar
+STRIP = $(GNUBINPATH)/arm-oe-linux-gnueabi-strip
+SED   = sed
+CAT   = cat
+RM    = rm
+ECHO  = echo
+
+#///////////////////////////////////////////////////////////////////////////////
+# compile option relative to processor(need change)
+#///////////////////////////////////////////////////////////////////////////////
+CFLAGS := -W
+CFLAGS  += -ldl 
+CFLAGS  += -D__POSIX_SOURCE
+CFLAGS += -g
+#CFLAGS += o2
+CFLAGS += -march=armv7-a
+CFLAGS += -mfloat-abi=soft
+CFLAGS += -mfpu=vfp
+CFLAGS += --sysroot=$(COMPILER_ROOT)/armv7a-vfp-neon-oe-linux-gnueabi
+CFLAGS +=  -Wno-unused-function
+
+ifeq ($(TSPPLATFORM),OTA_V2)
+CFLAGS += -DOTA_V2_PLATFORM
+else ifeq ($(TSPPLATFORM),OTA_V3)
+CFLAGS += -DOTA_V3_PLATFORM
+endif
+
+ifeq ($(EXAMTYPE),national)
+CFLAGS += -DNATIONAL_PThREAD
+
+endif
+CFLAGS += -DDEBUGVERSION -DVERSIONNAME=\"$(VERSIONNAME)\" -DVERSIONNUMBER=$(VERSIONNUMBER)
+
+LDFLAGS += -lpthread
+LDFLAGS += -lprotobuf
+LDFLAGS += -lssl
+LDFLAGS += -lcrypto
+LDFLAGS += -lsqlite3
+LDFLAGS += -lglib-2.0
+LDFLAGS += -lrt
+LDFLAGS += -ldsutils 
+LDFLAGS += -lql_data_wwan
+LDFLAGS += -lql_lib_audio
+LDFLAGS += -lql_at
+LDFLAGS += -lql_sleep_wakeup
+LDFLAGS += -lql_timer
+LDFLAGS += -ldsi_netctrl
+LDFLAGS += -ldsi_netctrl
+LDFLAGS += -ldsutils
+LDFLAGS += -lqmi
+LDFLAGS += -lqmi_cci 
+LDFLAGS += -lqmi_common_so
+LDFLAGS += -lqmiservices
+DEP_CFLAGS = -MM
+
+#///////////////////////////////////////////////////////////////////////
+# define sorce file path(need change)
+#///////////////////////////////////////////////////////////////////////
+#COMM
+VPATH += $(HOMEDIR)/comm/src
+#QUECEL
+VPATH += $(HOMEDIR)/quectel/src
+#AVN
+VPATH += $(HOMEDIR)/avn/src
+#MCU
+VPATH += $(HOMEDIR)/mcu/src
+
+#TSP
+VPATH += $(HOMEDIR)/tsp/src
+#NATIONAL
+VPATH += $(HOMEDIR)/national/src
+
+#GPS
+VPATH += $(HOMEDIR)/gps/src
+#I2C
+VPATH += $(HOMEDIR)/i2c/src
+
+ifeq ($(TSPPLATFORM), OTA_V3)
+#OTA_V3
+VPATH += $(HOMEDIR)/otaV3/src
+VPATH += $(HOMEDIR)/otaV3/proto
+else ifeq ($(TSPPLATFORM), OTA_V2)
+#OTA_V2
+VPATH += $(HOMEDIR)/otaV2/src
+endif
+
+#///////////////////////////////////////////////////////////////////////
+# head path
+#///////////////////////////////////////////////////////////////////////
+# OS
+        
+INCFLAGS := -I$(COMPILER_ROOT)/armv7a-vfp-neon-oe-linux-gnueabi/usr/include
+INCFLAGS := -I$(COMPILER_ROOT)/armv7a-vfp-neon-oe-linux-gnueabi/usr/include/qmi
+INCFLAGS += -I$(COMPILER_ROOT)/armv7a-vfp-neon-oe-linux-gnueabi/usr/include/glib-2.0
+INCFLAGS += -I$(COMPILER_ROOT)/armv7a-vfp-neon-oe-linux-gnueabi/usr/lib/glib-2.0/include
+INCFLAGS += -I$(HOMEDIR)/include
+INCFLAGS += -I$(HOMEDIR)/comm/inc
+INCFLAGS += -I$(HOMEDIR)/quectel/inc
+
+INCFLAGS += -I$(HOMEDIR)/avn/inc
+INCFLAGS += -I$(HOMEDIR)/mcu/inc
+INCFLAGS += -I$(HOMEDIR)/tsp/inc
+INCFLAGS += -I$(HOMEDIR)/national/inc
+INCFLAGS += -I$(HOMEDIR)/gps/inc
+INCFLAGS += -I$(HOMEDIR)/i2c/inc
+INCFLAGS += -I$(HOMEDIR)/libexternal/proto_image/out/include
+INCFLAGS += -L$(HOMEDIR)/libexternal/proto_image/out/lib
+INCFLAGS += -I$(HOMEDIR)/libexternal/sqlite3_image/usr/include
+INCFLAGS += -L$(HOMEDIR)/libexternal/sqlite3_image/usr/lib
+INCFLAGS += -L$(HOMEDIR)/libexternal/quectel
+INCFLAGS += -L$(COMPILER_ROOT)/armv7a-vfp-neon-oe-linux-gnueabi/lib
+
+ifeq ($(TSPPLATFORM),OTA_V2)
+INCFLAGS += -I$(HOMEDIR)/otaV2/inc
+else ifeq ($(TSPPLATFORM),OTA_V3)
+INCFLAGS += -I$(HOMEDIR)/otaV3/inc
+INCFLAGS += -I$(HOMEDIR)/otaV3/proto/proto
+endif
+
+#///////////////////////////////////////////////////////////////////////
+# src list
+#///////////////////////////////////////////////////////////////////////
+#COMM
+TBOX_SOURCE +=  mainHandle.c              \
+                taskExcHandle.c           \
+                taskPhraseCfg.c           \
+                pthreadSync.c             \
+                paramsDb.c                \
+                timer.c                   \
+                quarktools.c              \
+                quarkqueue.c              \
+                quarksplit.c              \
+                md5.c
+
+#NATIONAL
+TBOX_SOURCE +=  nationalHandle.c         \
+				        nationalMain.c           \
+				        sqlite3National.c        \
+				        nalDataServer.c
+
+TBOX_SOURCE +=  gpioSysfs.c              \
+								ql_sim.c                 \
+								ql_gpio.c                \
+								ql_i2c.c                 \
+								ql_wwan.c                \
+								ql_timer.c
+
+#TBOX_SOURCE +=  gpioSysfs.c             \
+                ql_dev.c                 \
+                ql_network.c             \
+                ql_nw.c                  \
+                ql_sim.c                 \
+                ql_sms.c                 \
+                ql_sms_parser.c          \
+                ql_timer.c               \
+                ql_vcall.c                      
+                          
+         
+
+ifeq ($(TSPPLATFORM),OTA_V3)
+#OTA_V3
+TBOX_SOURCE_CPP +=  otaTaskDecode.cpp   \
+                    otaTaskEncode.cpp   \
+                    otaTaskFunction.cpp \
+                    otaTaskMsg.cpp
+
+TBOX_SOURCE_CC +=  connect.pb.cc        \
+                   connectAck.pb.cc    
+                                
+else ifeq ($(TSPPLATFORM),OTA_V2)
+#OTA_V2
+TBOX_SOURCE +=  otaTaskV2Register.c     \
+                otaTaskV2Main.c         \
+                otaTaskV2Login.c        \
+                otaTaskV2DataPackage.c  \
+                otaTaskV2DataDispatcher.c \
+                otaTaskV2DataCenter.c   \
+                otaTaskV2KeepAlive.c    \
+                otaTaskV2Control.c      \
+                mcuCpuDataProcess.c     \
+                meterTaskProcess.c
+				
+TBOX_SOURCE +=  logx.c                 \
+                spi.c                  \
+                cardata.c              \
+                pesh.c peshlib.c       \
+                cpumcu.c ql_uart.c uart1.c
+                
+TBOX_SOURCE +=  otaTaskV2Relogin.c     \
+                otaTaskV2Logout.c      \
+                otaTaskV2Upgrade.c     \
+                otaTaskV2LinkHold.c    \
+		otaTaskV2ECall.c       \
+		otaTaskV2Time.c        \
+		otaTaskV2Report.c      \
+	              otaTaskV2Diagnostic.c  \
+	              otaTaskV2Fault.c
+
+endif
+
+#AVN
+TBOX_SOURCE +=  avnTask.c              \
+                callstate.c            \
+                ecall.c                \
+                handletask.c           \
+                netstate.c             \
+                rec.c                  \
+                send.c                 \
+                transfer.c             \
+                vincode.c 
+#TSP
+TBOX_SOURCE +=  netmodem.c             \
+                tspdataserver.c
+
+#GPS
+TBOX_SOURCE +=  parseGpsData.c 			
+
+
+#I2C
+TBOX_SOURCE +=  iicGsensor.c 			
+
+#///////////////////////////////////////////////////////////////////////
+# obj
+#///////////////////////////////////////////////////////////////////
+TBOX_OBJS := $(addprefix $(OBJPATH)/,$(TBOX_SOURCE:.c=.o))
+TBOX_OBJS += $(addprefix $(OBJPATH)/,$(TBOX_SOURCE_CPP:.cpp=.o))
+TBOX_OBJS += $(addprefix $(OBJPATH)/,$(TBOX_SOURCE_CC:.cc=.o))
+
+$(APP_NAME) : checkide $(TBOX_OBJS)
+	$(ECHO) "Linking.... $(OUTPATH)/$(APP_NAME)"
+	$(CPP) -o $(OUTPATH)/$(APP_NAME) $(CFLAGS) $(INCFLAGS) $(TBOX_OBJS) $(LDFLAGS)
+	$(STRIP) $(OUTPATH)/$(APP_NAME)
+	#$(RM) -f $(OBJPATH)/*.o
+	$(ECHO) "build Ok"
+    
+#////////////////////////////////////////////////////////////////////////
+# rule
+#////////////////////////////////////////////////////////////////////////
+$(OBJPATH)/%.$(OBJEXTSTR) : %.$(SRCEXTSTR)
+	$(ECHO) "Compiling $< ...."
+	$(ECHO) "Compiling $< ...." 1>&2
+	$(CPP) $(CFLAGS) $(INCFLAGS) -c -o $@ $<
+
+$(OBJPATH)/%.$(OBJEXTSTR) : %.$(CPPEXTSTR)
+	$(ECHO) "Compiling $< ...."
+	$(ECHO) "Compiling $< ...." 1>&2
+	$(CPP) $(CFLAGS) $(INCFLAGS) -c -o $@ $<
+
+$(OBJPATH)/%.$(OBJEXTSTR) : %.$(CCEXTSTR)
+	$(ECHO) "Compiling $< ...."
+	$(ECHO) "Compiling $< ...." 1>&2
+	$(CPP) $(CFLAGS) $(INCFLAGS) -c -o $@ $<
+
+checkide: $(OBJPATH) $(OUTPATH) $(COMPILER_ROOT)
+
+$(OUTPATH):
+	mkdir -p $(OUTPATH)
+$(OBJPATH):
+	mkdir -p $(OBJPATH)
+$(COMPILER_ROOT):
+	@echo Please link your Cross compiler to $@
+	@echo sudo ln -s ~/ql-ol-sdk /opt/ql-ol-sdk
+	
+re:
+	make clean
+	make mk
+out/upgrade.sh:
+	@cp -f ../tboxupgrade/script/upgrade.sh out/
+	@sed -i -e 's/^versionName=.*/versionName="$(VERSIONNAME)"/1' \
+		-e 's/^versionNumber=.*/versionNumber=$(VERSIONNUMBER)/1'\
+		-e 's/^packageName=.*/packageName=$(PACKAGENAME)/1'\
+		-e 's/^packageMD5=.*/packageMD5="$(shell md5sum out/app_tbox_opencpu | sed -e 's/ .*//g' -e 's/\r//g'| tr a-z A-Z)"/1'\
+		-e 's,^releaseTime=.*,releaseTime="$(shell date +%Y/%m/%d-%H:%M)",1'\
+		-e 's|^releaseDescription=.*|releaseDescription="$(shell git log -n 1 --oneline)"|1'\
+		-e 's,^releaseBy=.*,releaseBy="$(shell uname -n -s)",1'\
+		 out/upgrade.sh
+	#diff ../tboxupgrade/script/upgrade.sh out/upgrade.sh
+out/$(TARBALL):
+	@cd out && tar czf $(TARBALL) app_tbox_opencpu upgrade.sh
+ball:
+	@rm -rf out/$(TARBALL) out/upgrade.sh
+	@touch comm/src/mainHandle.c
+	@make
+	@make out/upgrade.sh
+	@make out/$(TARBALL)
+	@mkdir -p ~/up
+	@cp -f out/$(APP_NAME) ~/up/
+	@cp -f out/$(TARBALL) ~/up
+	@echo copied to ~/up/$(TARBALL) ~/up/$(APP_NAME)
+
+#///////////////////////////////////////////////////////////////////////
+# clean
+#///////////////////////////////////////////////////////////////////////
+clean:
+	$(ECHO) "Clean Project.... "
+	$(RM) -rf $(APP_NAME) $(TBOX_OBJS)
+	$(ECHO) "Clean Done"	
