@@ -29,7 +29,7 @@ DEBUGSCR=0
 
 md5str()
 {
-    md5sum $1 | sed -e 's/ .*//g' -e 's/\r//g'| tr a-z A-Z
+    md5sum $1 | sed -e 's/ .*//g' -e 's/\n//g' -e 's/\r//g'| tr a-z A-Z
 }
 upgrade_myself()
 {
@@ -109,28 +109,66 @@ md5_check()
     nrErr=0
     f=0
     df=
-    for i in `cat $DLD/urllist`; do
+    echo "Start md5 check on $(date)"
+    echo
+    for i in `cat $DLD/$URLLIST`; do
         f=$((1-f))
         if test $f -eq 1; then
             df=$i
             continue;
         fi
-        echo url file is: $df
-        df=$(echo $df | sed -e 's/.*\///g' -e 's/\r//g')
-        echo checking download file $df
-        echo md5sum $DLD/$df
-        MD5=$(md5sum "$DLD/$df" | sed -e 's/ .*//g' -e 's/\r//g'| tr a-z A-Z)
-        MD52=$(echo $i | sed -e 's/\r//g' | tr a-z A-Z)
-        echo $MD5
-        echo $MD52
-        test "$MD5" = "$MD52" && echo good download
-        test "$MD5" = "$MD52" || echo bad download
-        test "$MD5" = "$MD52" || nrErr=$((nrErr+1))
+        df=$(echo $df | sed -e 's/.*\///g' -e 's/\n//g' -e 's/\r//g')
+        MD52=$(echo $i | sed -e 's/\n//g' -e 's/\r//g' | tr a-z A-Z)
+        echo checking file md5 $df
+	if test -e $DLD/$df; then
+            MD5=$(md5str "$DLD/$df")
+            test "$MD5" = "$MD52" && echo good download
+            test "$MD5" = "$MD52" || echo bad download
+            test "$MD5" = "$MD52" || nrErr=$((nrErr+1))
+	fi
         echo
     done
     test $nrErr -eq 0 && echo "Download: everything downloaded.       [   OK   ]"
     test $nrErr -ne 0 && echo "Download: something downloaded fail.   [  FAIL  ]"
     echo "Check md5 Time=$(date)"
+}
+md5_check_download()
+{
+    #instead of wget --no-check-certificate -P $DLD -i $DLD/$URLLIST
+    nrErr=0
+    f=0
+    df=
+    echo "Start download on $(date)"
+    echo
+    for i in `cat $DLD/$URLLIST`; do
+        f=$((1-f))
+        if test $f -eq 1; then
+            df=$i
+            continue;
+        fi
+	wgeturl=$(echo $df | sed -e 's/\n//g' -e 's/\r//g')
+        df=$(echo $df | sed -e 's/.*\///g' -e 's/\n//g' -e 's/\r//g')
+        MD52=$(echo $i | sed -e 's/\n//g' -e 's/\r//g' | tr a-z A-Z)
+        echo checking before download $wgeturl to $DLD/$df
+	if test -e $DLD/$df; then
+            MD5=$(md5str "$DLD/$df")
+            test "$MD5" = "$MD52" && echo "\talready downloaded. skip"
+            test "$MD5" = "$MD52" && continue; #found alread downloaded.
+            echo remove exist bad download file "$DLD/$df"
+            rm -f "$DLD/$df"
+	fi
+        echo "\tstart download..."
+        wget --no-check-certificate -O $DLD/$df $wgeturl
+        echo "checking download file md5..."
+        MD5=$(md5str "$DLD/$df")
+        test "$MD5" = "$MD52" && echo good download md5: $MD5
+        test "$MD5" = "$MD52" || echo bad download md5: $MD5 vs $MD52
+        test "$MD5" = "$MD52" || nrErr=$((nrErr+1))
+        echo
+    done
+    test $nrErr -eq 0 && echo "Download: everything downloaded.       [   OK   ]"
+    test $nrErr -ne 0 && echo "Download: something downloaded fail.   [  FAIL  ]"
+    echo "Finish download on $(date)"
 }
 do_upgrades()
 {
@@ -144,11 +182,11 @@ do_upgrades()
             df=$i
             continue;
         fi
-        df=$(echo $df | sed -e 's/\r//g')
-        MD52=$(echo $i | sed -e 's/\r//g' | tr a-z A-Z)
+        df=$(echo $df | sed -e 's/\n//g' -e 's/\r//g')
+        MD52=$(echo $i | sed -e 's/\n//g' -e 's/\r//g' | tr a-z A-Z)
         echo url file is: $df >>$DLD/upgrade.log
         echo md5=$MD52 >>$DLD/upgrade.log
-        df=$(echo $df | sed -e 's/.*\///g' -e 's/\r//g')
+        df=$(echo $df | sed -e 's/.*\///g' -e 's/\n//g' -e 's/\r//g')
         rm -rf $DLD/tmp
         mkdir $DLD/tmp
         case $df in
@@ -203,15 +241,15 @@ if test $DOWNLIST -eq 1; then
     echo "versionNumber=$URLVER" >$DLD/versioninfo.txt
     echo "downloadUrl=$URL" >>$DLD/versioninfo.txt
     diff -q $DLD/versioninfo.txt $DLD/versioninfo.old.txt || (
+	rm -f $DLD/$URLLIST
+        echo "download Urllist $(date)" >>$DLD/download.log
         wget --no-check-certificate -O $DLD/$URLLIST $URL
-        echo "downloadUrllistTime=$(date)" >>$DLD/download.log
         cp $DLD/versioninfo.txt $DLD/versioninfo.old.txt)
 fi
 
 if test $DOWNLOAD -eq 1; then
     diff -q $DLD/$URLLIST $DLD/${URLLIST}.old || (
-        wget --no-check-certificate -P $DLD -i $DLD/$URLLIST
-        echo "downloadPackageTime=$(date)" >>$DLD/download.log
+	md5_check_download >> $DLD/download.log
         cp $DLD/$URLLIST $DLD/${URLLIST}.old)
 fi
 
