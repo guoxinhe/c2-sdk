@@ -19,6 +19,8 @@ test -e $EMMC || DLD=~/download
 URL=http://sirunv2.oss-cn-hangzhou.aliyuncs.com/fota/100926
 URLVER=100
 URLLIST=urllist
+INITDISK=1
+DOINSUPG=1
 DOWNLIST=0
 DOWNLOAD=0
 MD5CHECK=0
@@ -33,10 +35,12 @@ md5str()
 }
 upgrade_myself()
 {
+    test -e app_tbox_opencpu || (echo "No target software found, install nothing")
+    test -e app_tbox_opencpu || return
+
     test -e $installDir || mkdir -p $installDir
     test -e $installTo || (cp -rf $0 $installTo;chmod 755 $installTo)
     diff -q $installTo $0 >/dev/null 2>&1 || (cp -rf $0 $installTo;chmod 755 $installTo)
-    test -e app_tbox_opencpu || return
     MD5=$(md5str app_tbox_opencpu)
     if test "$MD5" = "$packageMD5" ; then
         echo package md5 verified
@@ -147,6 +151,11 @@ md5_check_download()
             continue;
         fi
 	wgeturl=$(echo $df | sed -e 's/\n//g' -e 's/\r//g')
+        case $wgeturl in
+        http:*|https:*|ftp:*)
+            ;;
+        *) continue ;;#something invalid.
+        esac
         df=$(echo $df | sed -e 's/.*\///g' -e 's/\n//g' -e 's/\r//g')
         MD52=$(echo $i | sed -e 's/\n//g' -e 's/\r//g' | tr a-z A-Z)
         echo checking before download $wgeturl to $DLD/$df
@@ -194,14 +203,14 @@ do_upgrades()
         *.tar.bz2|*.bz2)  tar xjf $DLD/$df -C $DLD/tmp;;
         *) 	echo "not support format: $df";;
         esac
-	test -x $DLD/tmp/upgrade.sh || (cd $DLD/tmp;echo "$(date) upgrade $df"; ls;) >>$DLD/upgrade.log
-	test -x $DLD/tmp/upgrade.sh && (cd $DLD/tmp;echo "$(date) upgrade $df"; ./upgrade.sh;)>>$DLD/upgrade.log
+	test -x $DLD/tmp/upgrade.sh && (cd $DLD/tmp;echo "$(date) upgrade $df"; ./upgrade.sh;)>>$DLD/upgrade.log && continue
+	test -x $DLD/tmp/install.sh && (cd $DLD/tmp;echo "$(date) install $df"; ./install.sh;)>>$DLD/install.log && continue
+	test -x $DLD/tmp/upgrade.sh -o -x $DLD/tmp/install.sh || (cd $DLD/tmp;
+		echo "$(date) no install/upgrade script found for $df"; ls -l;) >>$DLD/upgrade.log
         echo
     done
 }
 
-test -e $EMMCP || check_emmc
-upgrade_myself
 while [ $# -gt 0 ] ; do
     case $1 in
     downlist) DOWNLIST=1; shift;;
@@ -236,15 +245,28 @@ if test $DEBUGSCR -eq 1; then
 	echo "DEBUGSCR = " $DEBUGSCR
 fi
 
+if test $INITDISK -eq 1; then #always
+    test -e $EMMCP || check_emmc
+fi
+
+if test $DOINSUPG -eq 1; then #always
+    upgrade_myself
+fi
+
 test -e $DLD ||mkdir -p $DLD
 if test $DOWNLIST -eq 1; then
     echo "versionNumber=$URLVER" >$DLD/versioninfo.txt
     echo "downloadUrl=$URL" >>$DLD/versioninfo.txt
+    case $URL in
+    http:*|https:*|ftp:*)
     diff -q $DLD/versioninfo.txt $DLD/versioninfo.old.txt || (
 	rm -f $DLD/$URLLIST
         echo "download Urllist $(date)" >>$DLD/download.log
         wget --no-check-certificate -O $DLD/$URLLIST $URL
         cp $DLD/versioninfo.txt $DLD/versioninfo.old.txt)
+	;;
+    *) 	echo "not support url: $URL" ;;
+    esac
 fi
 
 if test $DOWNLOAD -eq 1; then

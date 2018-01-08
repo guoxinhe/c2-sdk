@@ -11,9 +11,9 @@
 #
 #change this will upgrade tarball, app's version name, number.
 PACKAGENAME=app_tbox_opencpu
-VERSIONNAME=1.0.5
-VERSIONNUMBER=10005
-TARBALL=tbox-ota-$(VERSIONNAME).bin.tar.gz
+VERSIONNAME=1.0.9
+VERSIONNUMBER=10009
+TARBALL=$(PACKAGENAME)-$(VERSIONNAME).bin.tar.gz
 #///////////////////////////////////////////////////////////////////////////////
 # The Names of app
 #///////////////////////////////////////////////////////////////////////////////
@@ -219,11 +219,12 @@ TBOX_SOURCE +=  otaTaskV2Register.c     \
                 otaTaskV2Main.c         \
                 otaTaskV2Login.c        \
                 otaTaskV2DataPackage.c  \
-                otaTaskV2DataDispatcher.c \
+                otaTaskV2Dispatcher.c   \
                 otaTaskV2DataCenter.c   \
                 otaTaskV2KeepAlive.c    \
                 otaTaskV2Control.c      \
-                mcuCpuDataProcess.c     \
+
+notuse=                mcuCpuDataProcess.c     \
                 meterTaskProcess.c
 				
 TBOX_SOURCE +=  logx.c                 \
@@ -235,10 +236,13 @@ TBOX_SOURCE +=  logx.c                 \
 TBOX_SOURCE +=  otaTaskV2Relogin.c     \
                 otaTaskV2Logout.c      \
                 otaTaskV2Upgrade.c     \
+                otaTaskV2GetConfig.c   \
+                otaTaskV2SetConfig.c   \
                 otaTaskV2LinkHold.c    \
 		otaTaskV2ECall.c       \
 		otaTaskV2Time.c        \
 		otaTaskV2Report.c      \
+	        otaTaskV2ECUReport.c   \
 	              otaTaskV2Diagnostic.c  \
 	              otaTaskV2Fault.c
 
@@ -309,29 +313,31 @@ $(COMPILER_ROOT):
 	
 re:
 	make clean
-	make mk
-out/upgrade.sh:
-	@cp -f ../tboxupgrade/script/upgrade.sh out/
+	make ball
+SCR_UPGRADE=../upgrade/app_tbox/upgrade.sh
+$(OUTPATH)/upgrade.sh: $(SCR_UPGRADE) $(OUTPATH)/$(APP_NAME)
+	@cp -f $(SCR_UPGRADE)  $(OUTPATH)/
 	@sed -i -e 's/^versionName=.*/versionName="$(VERSIONNAME)"/1' \
 		-e 's/^versionNumber=.*/versionNumber=$(VERSIONNUMBER)/1'\
 		-e 's/^packageName=.*/packageName=$(PACKAGENAME)/1'\
-		-e 's/^packageMD5=.*/packageMD5="$(shell md5sum out/app_tbox_opencpu | sed -e 's/ .*//g' -e 's/\r//g'| tr a-z A-Z)"/1'\
+		-e 's/^packageMD5=.*/packageMD5="$(shell md5sum $(OUTPATH)/$(APP_NAME) | sed -e 's/ .*//g' -e 's/\r//g'| tr a-z A-Z)"/1'\
 		-e 's,^releaseTime=.*,releaseTime="$(shell date +%Y/%m/%d-%H:%M)",1'\
-		-e 's|^releaseDescription=.*|releaseDescription="$(shell git log -n 1 --oneline)"|1'\
+		-e 's|^releaseDescription=.*|releaseDescription="$(shell git log -n 1 --oneline|tr -d \')"|1'\
 		-e 's,^releaseBy=.*,releaseBy="$(shell uname -n -s)",1'\
-		 out/upgrade.sh
-	#diff ../tboxupgrade/script/upgrade.sh out/upgrade.sh
-out/$(TARBALL):
-	@cd out && tar czf $(TARBALL) app_tbox_opencpu upgrade.sh
+		 $(OUTPATH)/upgrade.sh
+
+$(OUTPATH)/$(TARBALL): $(OUTPATH)/$(APP_NAME) $(OUTPATH)/upgrade.sh
+	@cd $(OUTPATH) && tar czf $(TARBALL) $(APP_NAME) upgrade.sh
+
 ball:
-	@rm -rf out/$(TARBALL) out/upgrade.sh
+	@rm -rf $(OUTPATH)/$(TARBALL) $(OUTPATH)/upgrade.sh
 	@touch comm/src/mainHandle.c
 	@make
-	@make out/upgrade.sh
-	@make out/$(TARBALL)
+	@make $(OUTPATH)/upgrade.sh
+	@make $(OUTPATH)/$(TARBALL)
 	@mkdir -p ~/up
-	@cp -f out/$(APP_NAME) ~/up/
-	@cp -f out/$(TARBALL) ~/up
+	@cp -f $(OUTPATH)/$(APP_NAME) ~/up/
+	@cp -f $(OUTPATH)/$(TARBALL) ~/up
 	@echo copied to ~/up/$(TARBALL) ~/up/$(APP_NAME)
 
 #///////////////////////////////////////////////////////////////////////
