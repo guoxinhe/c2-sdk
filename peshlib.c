@@ -1,52 +1,32 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef MYMODULETEST //this mayrun in x86
+#ifndef DEBUGVERSION
+#define DEBUGVERSION 1
+#endif
+void taskOtaV2InsertRequest(int ma, int mid){}
+void dumpConfigParams( void ){}
+int ttyLevel=0;
+int debugLevel=0;
+#define logSetTTYLevel(a)  do{ttyLevel=(a);}while(0)
+#define logGetTTYLevel() (ttyLevel)
+#define logSetDebugLevel(a) (debugLevel=(a),(a))
+#define logGetDebugLevel() (debugLevel)
+#define logAddModule(a) do{}while(0)
+#define logRmModule(a) do{}while(0)
+#define logListModules(a) do{}while(0)
+#else
 #include "logx.h"
 #include "paramsDb.h"
+extern void taskOtaV2InsertRequest(int ma, int mid);
+extern void dumpConfigParams( void );
+#endif
 
-int xatoiad(const char *nptr, int *advanced) {
-    //read simple integer from string. format:
-    //[0[b|B|x|X]]?[0~9|a~f|A~F]*
-    //binary: 0B010101 0b010101, start with 0b,0B,follow 0.1
-    //oct: 07654321, start with 0, follow 0-7
-    //dec: 98765432, normal format.
-    //hex: 0x0f0f0f 0X0F0F0F, start with 0x,0X,follow 0-9,a-f,A-F
-    const char *old=nptr;
-    int base=10;
-    char ch;
-    while(*nptr == ' '||*nptr == '\t') {//jump white space.
-	nptr++;
-    }
-    if(*nptr=='0') {
-	ch=*(nptr+1);
-	if(ch=='\0') return 0;
-	else if(ch=='x' || ch=='X') {base=16; nptr+=2;}
-	else if(ch=='b' || ch=='B') {base=2; nptr+=2;}
-	else {base=8; nptr+=2;}//8based.
-    } else {
-	//return atoi(nptr);
-    }
-    int val=0,v;
-    while(*nptr != '\0') {
-	ch=*nptr;
-	if('0'<=ch&&ch<='9') v=ch-'0';
-	else if('A'<=ch&&ch<='F') v=10+ch-'A';
-	else if('a'<=ch&&ch<='f') v=10+ch-'a';
-	else break;
-	if(v>=base) break;
-	val=val*base+v;
-	nptr++;
-    }
-
-    *advanced=nptr-old;
-
-    return val;
-}
-int xatoi(const char *nptr) {
-	int len;
-	return xatoiad(nptr,&len);
-}
-
+#ifdef DEBUGVERSION
+extern int xatoiad(const char *nptr, int *advanced);
+extern int xatoi(const char *nptr);
 void printTboxHelp(void) {
 	printf("tbox cmd [args] [target list]\n");
 	printf("\tbuild on %s %s %s\n", "Linux",  __DATE__,__TIME__);
@@ -55,24 +35,24 @@ void printTboxSubHelp(char *buf) {
 	printf("Usage of %s: TBD\n",buf);
 }
 void printV2Help(void) {
-	printf("v2 <message flag><aid> start a v2 flowchat. i.e: v2 004B start a keep alive request.\n"
+	printf("v2 <message flag><aid> start a v2 flowchat. i.e: v2 0x4B start a keep alive request.\n"
 		"support flowchat(message flag, aid, zh-cn in utf-8)\n"
 		"\t0x00 0x01*注册绑定              \n"
 		"\t0x00 0x02*登录                  \n"
 		"\t0x00 0x03*登出[预留]            \n"
 		"\t0x00 0x04*重新登录[预留]        \n"
-		"\t0x00 0x0B*取消息心跳[预留]      \n"
-		"\t0x00 0x05 配置读取              \n"
-		"\t0x00 0x07 配置下发              \n"
-		"\t0x00 0x06 版本升级              \n"
+		"\t0x00 0x0B*取消息心跳[预留] heart\n"
+		"\t0x00 0x05*配置读取              \n"
+		"\t0x00 0x07*配置下发              \n"
+		"\t0x00 0x06*版本升级 upgrade      \n"
 		"\t0x00 0x2B 通讯保持[预留]        \n"
-		"\t0x00 0x4B*持续活跃              \n"
+		"\t0x00 0x4B*持续活跃 live         \n"
 		"\t0x01 0xF1*车辆控制下发          \n"
 		"\t0x01 0xF2 Can数据采集上报[预留] \n"
-		"\t0x01 0xF3 故障状态上报          \n"
+		"\t0x01 0xF3*故障状态上报 ecu      \n"
 		"\t0x01 0xF4 远程诊断[预留]        \n"
-		"\t0x01 0xF5*车辆状态数据上报      \n"
-		"\t0x01 0xF6*E-Call服务            \n"
+		"\t0x01 0xF5*车辆状态数据上报report\n"
+		"\t0x01 0xF6*E-Call服务 ecall      \n"
 		"\t0x01 0xF7 高频数据上报          \n"
 		"\t0x01 0xF8 Wifi网络通道控制      \n"
 		"\t0x01 0xF9 流量上报[预留]        \n"
@@ -80,7 +60,7 @@ void printV2Help(void) {
 		"\t0x04 0xE1 国标车辆登入[预留]    \n"
 		"\t0x04 0xE2 国标车辆登出[预留]    \n"
 		"\t0x04 0xE3 国标补发信息上报[预留]\n"
-		"\t0x03 0x01 终端校时              \n"
+		"\t0x03 0x01*终端校时 time         \n"
 		"\t0x01 0xFB 故障信号上报[预留]    \n"
 		"\n");
 }
@@ -100,8 +80,6 @@ void printCustomerHelp(void) {
 		"\n");
 }
 
-extern void taskOtaV2InsertRequest(int ma, int mid);
-extern void dumpConfigParams( void );
 void parseV2Command(char *buf, int len) {
 	int adv;
 	int ma=xatoiad(buf,&adv);
@@ -183,14 +161,19 @@ int parseCommandBufferApp(char *buf, int len) {
 		printV2Help();
 		return 0;
 	}
+	if(cmp("v2 ecu")) {
+		taskOtaV2InsertRequest(0x01F3,0);
+		printf("\nReport 1F3 will start...\n");
+		return 0;
+	}
 	if(cmp("v2 report")) {
 		taskOtaV2InsertRequest(0x01F5,0);
-		printf("\nReport will start...\n");
+		printf("\nReport 1F5 will start...\n");
 		return 0;
 	}
 	if(cmp("v2 ecall")) {
 		taskOtaV2InsertRequest(0x01F6,0);
-		printf("\nEcall will start...\n");
+		printf("\nEcall 1F6 will start...\n");
 		return 0;
 	}
 	if(cmp("v2 upgrade")) {
@@ -208,6 +191,11 @@ int parseCommandBufferApp(char *buf, int len) {
 		printf("\nHeartbeat will start...\n");
 		return 0;
 	}
+	if(cmpn(8,"v2 live")) {
+		taskOtaV2InsertRequest(0x004B,0);
+		printf("\nLive report will start...\n");
+		return 0;
+	}
 	if(cmpn(3,"v2 ")) {
 		if(strlen(buf+pos)>=1)
 			parseV2Command(buf+pos,len-pos);
@@ -221,3 +209,5 @@ int parseCommandBufferApp(char *buf, int len) {
 
 	return -1;
 }
+#endif
+

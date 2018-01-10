@@ -7,7 +7,7 @@ versionNumber=102
 releaseTime=2017/12/29:14:22
 releaseDescription="Make support command and args"
 releaseBy="Xinhe.Guo"
-installDir=~/bin
+installDir=/usr/local/bin
 installTo=$installDir/$(basename $0)
 
 #-- for ota
@@ -35,18 +35,37 @@ md5str()
 }
 upgrade_myself()
 {
-    test -e app_tbox_opencpu || (echo "No target software found, install nothing")
-    test -e app_tbox_opencpu || return
+    test -e /usr/local || ln -s /usrdata/local /usr/local
+    test -e /usrdata/local/bin || mkdir -p /usrdata/local/bin
+    test -e /usr/local/bin || mkdir -p /usr/local/bin
 
+    oldv=0
+    appname=app_tbox_opencpu
+    appdst=/usr/local/bin
+
+    #check files and version number
+    test -e $appname || (echo "No target software found, install nothing")
+    test -e $appname || return
+    test -x $appdst/$appname && oldv=$($appdst/$appname --versionnumber)
+    test $oldv -gt $versionNumber && (echo "installed version is newer, no need upgrade")
+    test $oldv -eq $versionNumber && (echo "installed version is up to date, no need upgrade")
+    test $oldv -ge $versionNumber && return # no need upgrade.
+
+    #update script
     test -e $installDir || mkdir -p $installDir
-    test -e $installTo || (cp -rf $0 $installTo;chmod 755 $installTo)
-    diff -q $installTo $0 >/dev/null 2>&1 || (cp -rf $0 $installTo;chmod 755 $installTo)
-    MD5=$(md5str app_tbox_opencpu)
+    test -e $installTo || (cp -rf $0 $installTo;chmod 755 $installTo; echo "copied $0 to $installTo")
+    diff -q $installTo $0 >/dev/null 2>&1 || (cp -rf $0 $installTo;chmod 755 $installTo; echo "copied $0 to $installTo")
+
+    #compatiable with old code.
+    test -e ~/bin || mkdir -p ~/bin
+    cp -f $0 ~/bin/; chmod 755 ~/bin/$(basename $0)
+
+    MD5=$(md5str $appname)
     if test "$MD5" = "$packageMD5" ; then
         echo package md5 verified
-        cp -f app_tbox_opencpu ~/ ;
-	chmod 755 ~/app_tbox_opencpu
-        echo $packageName upgrade done.
+        cp -f $appname $appdst/ ;
+	chmod 755 $appdst/$appname
+        echo $packageName upgraded to $appdst/$appname, version $versionName
     else
         echo package md5 $MD5 not equal $packageMD5. refuse upgrade.
     fi

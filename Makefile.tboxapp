@@ -11,9 +11,16 @@
 #
 #change this will upgrade tarball, app's version name, number.
 PACKAGENAME=app_tbox_opencpu
-VERSIONNAME=1.0.9
-VERSIONNUMBER=10009
+VERSIONNAME=1.0.10
+VERSIONNUMBER=10010
+ifeq ($(BUILDFOR),)
+BUILDFOR=debug
+endif
+ifeq ($(BUILDFOR),)
 TARBALL=$(PACKAGENAME)-$(VERSIONNAME).bin.tar.gz
+else
+TARBALL=$(PACKAGENAME)-$(VERSIONNAME)-$(BUILDFOR).bin.tar.gz
+endif
 #///////////////////////////////////////////////////////////////////////////////
 # The Names of app
 #///////////////////////////////////////////////////////////////////////////////
@@ -75,7 +82,10 @@ ifeq ($(EXAMTYPE),national)
 CFLAGS += -DNATIONAL_PThREAD
 
 endif
-CFLAGS += -DDEBUGVERSION -DVERSIONNAME=\"$(VERSIONNAME)\" -DVERSIONNUMBER=$(VERSIONNUMBER)
+CFLAGS += -DVERSIONNAME=\"$(VERSIONNAME)\" -DVERSIONNUMBER=$(VERSIONNUMBER)
+ifeq ($(BUILDFOR),debug)
+CFLAGS += -DDEBUGVERSION=1
+endif
 
 LDFLAGS += -lpthread
 LDFLAGS += -lprotobuf
@@ -339,6 +349,10 @@ ball:
 	@cp -f $(OUTPATH)/$(APP_NAME) ~/up/
 	@cp -f $(OUTPATH)/$(TARBALL) ~/up
 	@echo copied to ~/up/$(TARBALL) ~/up/$(APP_NAME)
+debug:
+	make BUILDFOR=debug re
+release:
+	make BUILDFOR=release re
 
 #///////////////////////////////////////////////////////////////////////
 # clean
