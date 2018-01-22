@@ -1,0 +1,183 @@
+
+#build env
+QL_SDK_PATH=/opt/ql-ol-sdk/ql-ol-extsdk
+SDKTARGETSYSROOT=/opt/ql-ol-sdk/ql-ol-crosstool/sysroots/armv7a-vfp-neon-oe-linux-gnueabi
+#version info
+PACKAGENAME=autosleepd
+VERSIONNAME=1.0.1
+VERSIONNUMBER=10001
+ifeq ($(BUILDFOR),)
+BUILDFOR=debug
+endif
+ifeq ($(BUILDFOR),)
+TARBALL=$(PACKAGENAME)-$(VERSIONNAME).bin.tar.gz
+else
+TARBALL=$(PACKAGENAME)-$(VERSIONNAME)-$(BUILDFOR).bin.tar.gz
+endif
+
+CFLAGS += -DVERSIONNAME=\"$(VERSIONNAME)\" -DVERSIONNUMBER=$(VERSIONNUMBER)
+CFLAGS += -DVERSIONDESC="\"$(shell git log -n 1 --oneline|tr -d \")\""
+CFLAGS += -DRELEASEBY="\"$(shell whoami)@$(shell uname -n) $(shell uname -o)\""
+ifeq ($(BUILDFOR),debug)
+CFLAGS += -DDEBUGVERSION=1
+endif
+
+APP_NAME = autosleepd
+HOMEDIR = $(shell pwd)
+OBJPATH = $(HOMEDIR)/obj
+OUTPATH = $(HOMEDIR)/out
+#--------------------------------------------------------------
+#               Quectel OpenLinux
+#--------------------------------------------------------------
+QL_SDK_PATH   ?= $(shell pwd)/../..
+
+#QL_EXP_TARGETS = example_sleep_wakelock autosleepd
+QL_EXP_TARGETS = autosleepd
+#QL_EXP_LDLIBS  = -lql_common_api
+
+#--------------------------------------------------------
+# TOOLS BASIC CONFIG
+# Note: No Need to change them
+#--------------------------------------------------------
+CPPFLAGS += -I./                     \
+            -I./inc                  \
+            -I../../include          \
+            -I$(QL_SDK_PATH)/include        \
+            -I$(QL_SDK_PATH)/lib/interface/inc        \
+            -I$(SDKTARGETSYSROOT)/usr/include               \
+            -I$(SDKTARGETSYSROOT)/usr/include               \
+            -I$(SDKTARGETSYSROOT)/usr/include/data          \
+            -I$(SDKTARGETSYSROOT)/usr/include/dsutils       \
+            -I$(SDKTARGETSYSROOT)/usr/include/qmi           \
+            -I$(SDKTARGETSYSROOT)/usr/include/qmi-framework \
+
+LDFLAGS += -L./ -L$(QL_SDK_PATH)/lib -lrt ${QL_EXP_LDLIBS}
+
+USR_LIB=$(QL_SDK_PATH)/lib/libql_common_api.a
+
+#LOCAL_SRC_FILES = example_sleep_wakelock.c
+LOCAL_SRC_FILES = comm/src/autosleepd.c
+
+all: $(QL_EXP_TARGETS)
+.PHPNY: all
+
+
+%:comm/src/%.c
+#	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $^ -o $@
+	$(COMPILE.c) $(LOCAL_SRC_FILES)
+	$(LINK.o) *.o $(USR_LIB) -o $@
+
+clean:
+	rm -rf $(QL_EXP_TARGETS) *.o $(OBJPATH) $(OUTPATH)
+
+#---------------------------------------------------------------------------------------------
+
+COMPILER_ROOT=/opt/ql-ol-sdk/ql-ol-crosstool/sysroots
+SRC_UPGRADE=comm/upgrade/upgrade.sh
+SRC_RELEASENOTE=comm/releasenote/releasenote.txt
+$(OUTPATH):
+	mkdir -p $(OUTPATH)
+$(OBJPATH):
+	mkdir -p $(OBJPATH)
+$(COMPILER_ROOT):
+	@echo Please link your Cross compiler to $@
+	@echo sudo ln -s ~/ql-ol-sdk /opt/ql-ol-sdk
+.PHONY:env
+env: $(OBJPATH) $(OUTPATH) $(COMPILER_ROOT)
+	@echo ${COMPILE.c} | grep "arm-oe-linux-gnueabi-gcc" 2>&1 >/dev/null || echo "please run source ql-ol-sdk-20171026/ql-ol-crosstool/ql-ol-crosstool-env-init"
+	@echo ${COMPILE.c} | grep "arm-oe-linux-gnueabi-gcc" 2>&1 >/dev/null
+$(OUTPATH)/upgrade.sh: $(SRC_UPGRADE) $(OUTPATH)/$(APP_NAME)
+	@cp -f $(SRC_UPGRADE)  $@
+	@sed -i -e 's/^versionName=.*/versionName="$(VERSIONNAME)"/1' \
+		-e 's/^versionNumber=.*/versionNumber=$(VERSIONNUMBER)/1'\
+		-e 's/^packageName=.*/packageName=$(PACKAGENAME)/1'\
+		-e 's/^packageMD5=.*/packageMD5="$(shell md5sum $(OUTPATH)/$(APP_NAME) | sed -e 's/ .*//g' -e 's/\r//g'| tr a-z A-Z)"/1'\
+		-e 's,^releaseTime=.*,releaseTime="$(shell date +%Y/%m/%d-%H:%M)",1'\
+		-e 's|^releaseDescription=.*|releaseDescription="$(shell git log -n 1 --oneline|tr -d \')"|1'\
+		-e 's,^releaseBy=.*,releaseBy="$(shell uname -n -s)",1'\
+		 $@
+$(OUTPATH)/releasenote.txt: $(SRC_RELEASENOTE) $(OUTPATH)/$(APP_NAME)
+	@cp -f $(SRC_RELEASENOTE)  $@
+	@sed -i -e 's/^versionName=.*/versionName="$(VERSIONNAME)"/1' \
+		-e 's/^versionNumber=.*/versionNumber=$(VERSIONNUMBER)/1'\
+		-e 's/^packageName=.*/packageName=$(PACKAGENAME)/1'\
+		-e 's/^packageMD5=.*/packageMD5="$(shell md5sum $(OUTPATH)/$(APP_NAME) | sed -e 's/ .*//g' -e 's/\r//g'| tr a-z A-Z)"/1'\
+		-e 's,^releaseTime=.*,releaseTime="$(shell date +%Y/%m/%d-%H:%M)",1'\
+		-e 's|^releaseDescription=.*|releaseDescription="$(shell git log -n 1 --oneline|tr -d \')"|1'\
+		-e 's,^releaseBy=.*,releaseBy="$(shell uname -n -s)",1'\
+		 $@
+$(OUTPATH)/$(TARBALL): $(OUTPATH)/$(APP_NAME) $(OUTPATH)/upgrade.sh $(OUTPATH)/releasenote.txt
+	@cd $(OUTPATH) && tar czf $(TARBALL) $(APP_NAME) upgrade.sh releasenote.txt
+
+ball:
+	@rm -rf $(OUTPATH)/$(TARBALL) $(OUTPATH)/upgrade.sh $(OUTPATH)/releasenote.txt
+	@touch comm/src/autosleepd.c
+	@make outbin
+	@make $(OUTPATH)/upgrade.sh
+	@make $(OUTPATH)/releasenote.txt
+	@make $(OUTPATH)/$(TARBALL)
+	@mkdir -p ~/up
+	@cp -f $(OUTPATH)/$(APP_NAME) ~/up/
+	@cp -f $(OUTPATH)/$(TARBALL) ~/up
+	@echo copied to ~/up/$(TARBALL) ~/up/$(APP_NAME)
+
+re:
+	make clean
+	make ball
+debug:
+	make BUILDFOR=debug re
+release:
+	make BUILDFOR=release re
+.PHONY:checkmake
+checkmake:  
+	@echo -e "CURDIR =		\n	${CURDIR}"  
+	@echo -e "\nMAKE_VERSION =	\n	${MAKE_VERSION}"  
+	@echo -e "\nMAKEFILE_LIST =	\n	${MAKEFILE_LIST}"  
+	@echo -e "\nCOMPILE.c =		\n	${COMPILE.c}"
+	@echo -e "\nCOMPILE.cc =	\n	${COMPILE.cc}"
+	@echo -e "\nCOMPILE.cpp =	\n	${COMPILE.cpp}"
+	@echo -e "\nLINK.cc =		\n	${LINK.cc}"
+	@echo -e "\nLINK.o =		\n	${LINK.o}"
+	@echo -e "\nCPPFLAGS =		\n	${CPPFLAGS}"
+	@echo -e "\nCFLAGS =		\n	${CFLAGS}"
+	@echo -e "\nCXXFLAGS =		\n	${CXXFLAGS}"
+	@echo -e "\nLDFLAGS =		\n	${LDFLAGS}"
+	@echo -e "\nLDLIBS =		\n	${LDLIBS}"
+	@echo -e "\nSDKTARGETSYSROOT =	\n	${SDKTARGETSYSROOT}"
+	@echo -e "\nQL_EXP_LDLIBS =	\n	${QL_EXP_LDLIBS}"
+
+OBJEXTSTR   =   o
+SRCEXTSTR   =   c
+CPPEXTSTR   =   cpp
+CCEXTSTR    =   cc
+DEPEXTSTR   =   d
+ECHO  = @echo
+VPATH += $(HOMEDIR)/comm/src
+TBOX_SOURCE +=  autosleepd.c
+TBOX_OBJS := $(addprefix $(OBJPATH)/,$(TBOX_SOURCE:.c=.o))
+
+outbin: env $(OUTPATH)/$(APP_NAME)
+	@echo $(TBOX_OBJS)
+	@echo $@
+
+$(OUTPATH)/$(APP_NAME):$(TBOX_OBJS) 
+	@echo $(TBOX_OBJS)
+	$(LINK.o) $(TBOX_OBJS) $(USR_LIB) -o $@
+
+$(OBJPATH)/%.$(OBJEXTSTR) : %.$(SRCEXTSTR)
+	$(ECHO) "Compiling $< ...."
+	$(ECHO) "Compiling $< ...." 1>&2
+	$(COMPILE.c) -o $@ $<
+#do not use $(CPP) $(CFLAGS) $(INCFLAGS) -c -o $@ $<
+$(OBJPATH)/%.$(OBJEXTSTR) : %.$(CPPEXTSTR)
+	$(ECHO) "Compiling $< ...."
+	$(ECHO) "Compiling $< ...." 1>&2
+	$(COMPILE.cpp) -o $@ $<
+#do not use $(CPP) $(CFLAGS) $(INCFLAGS) -c -o $@ $<
+
+$(OBJPATH)/%.$(OBJEXTSTR) : %.$(CCEXTSTR)
+	$(ECHO) "Compiling $< ...."
+	$(ECHO) "Compiling $< ...." 1>&2
+	$(COMPILE.cc) -o $@ $<
+#do not use $(CPP) $(CFLAGS) $(INCFLAGS) -c -o $@ $<
+
