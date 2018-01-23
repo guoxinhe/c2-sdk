@@ -6,26 +6,12 @@ SDKTARGETSYSROOT=/opt/ql-ol-sdk/ql-ol-crosstool/sysroots/armv7a-vfp-neon-oe-linu
 PACKAGENAME=autosleepd
 VERSIONNAME=1.0.1
 VERSIONNUMBER=10001
-ifeq ($(BUILDFOR),)
-BUILDFOR=debug
-endif
-ifeq ($(BUILDFOR),)
-TARBALL=$(PACKAGENAME)-$(VERSIONNAME).bin.tar.gz
-else
-TARBALL=$(PACKAGENAME)-$(VERSIONNAME)-$(BUILDFOR).bin.tar.gz
-endif
-
-CFLAGS += -DVERSIONNAME=\"$(VERSIONNAME)\" -DVERSIONNUMBER=$(VERSIONNUMBER)
+CFLAGS += -DVERSIONNAME="\"$(VERSIONNAME)\""
+CFLAGS += -DVERSIONNUMBER=$(VERSIONNUMBER)
 CFLAGS += -DVERSIONDESC="\"$(shell git log -n 1 --oneline|tr -d \")\""
 CFLAGS += -DRELEASEBY="\"$(shell whoami)@$(shell uname -n) $(shell uname -o)\""
-ifeq ($(BUILDFOR),debug)
-CFLAGS += -DDEBUGVERSION=1
-endif
+CFLAGS += -DRELEASETIME="\"$(shell date +%Y/%m/%d\ %H:%M:%S\ %Z)\""
 
-APP_NAME = autosleepd
-HOMEDIR = $(shell pwd)
-OBJPATH = $(HOMEDIR)/obj
-OUTPATH = $(HOMEDIR)/out
 #--------------------------------------------------------------
 #               Quectel OpenLinux
 #--------------------------------------------------------------
@@ -62,15 +48,48 @@ all: $(QL_EXP_TARGETS)
 .PHPNY: all
 
 
-%:comm/src/%.c
+%:%.c
 #	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $^ -o $@
 	$(COMPILE.c) $(LOCAL_SRC_FILES)
 	$(LINK.o) *.o $(USR_LIB) -o $@
 
 clean:
-	rm -rf $(QL_EXP_TARGETS) *.o $(OBJPATH) $(OUTPATH)
+	rm -rf $(QL_EXP_TARGETS) *.o
 
+.PHONY:checkmake
+checkmake:  
+	@echo -e "CURDIR =		\n	${CURDIR}"  
+	@echo -e "\nMAKE_VERSION =	\n	${MAKE_VERSION}"  
+	@echo -e "\nMAKEFILE_LIST =	\n	${MAKEFILE_LIST}"  
+	@echo -e "\nCOMPILE.c =		\n	${COMPILE.c}"
+	@echo -e "\nCOMPILE.cc =	\n	${COMPILE.cc}"
+	@echo -e "\nCOMPILE.cpp =	\n	${COMPILE.cpp}"
+	@echo -e "\nLINK.cc =		\n	${LINK.cc}"
+	@echo -e "\nLINK.o =		\n	${LINK.o}"
+	@echo -e "\nCPPFLAGS =		\n	${CPPFLAGS}"
+	@echo -e "\nCFLAGS =		\n	${CFLAGS}"
+	@echo -e "\nCXXFLAGS =		\n	${CXXFLAGS}"
+	@echo -e "\nLDFLAGS =		\n	${LDFLAGS}"
+	@echo -e "\nLDLIBS =		\n	${LDLIBS}"
+	@echo -e "\nSDKTARGETSYSROOT =	\n	${SDKTARGETSYSROOT}"
+	@echo -e "\nQL_EXP_LDLIBS =	\n	${QL_EXP_LDLIBS}"
 #---------------------------------------------------------------------------------------------
+ifeq ($(BUILDFOR),)
+BUILDFOR=debug
+endif
+ifeq ($(BUILDFOR),)
+TARBALL=$(PACKAGENAME)-$(VERSIONNAME).bin.tar.gz
+else
+TARBALL=$(PACKAGENAME)-$(VERSIONNAME)-$(BUILDFOR).bin.tar.gz
+endif
+ifeq ($(BUILDFOR),debug)
+CFLAGS += -DDEBUGVERSION=1
+endif
+
+APP_NAME = autosleepd
+HOMEDIR = $(shell pwd)
+OBJPATH = $(HOMEDIR)/obj
+OUTPATH = $(HOMEDIR)/out
 
 COMPILER_ROOT=/opt/ql-ol-sdk/ql-ol-crosstool/sysroots
 SRC_UPGRADE=comm/upgrade/upgrade.sh
@@ -128,23 +147,6 @@ debug:
 	make BUILDFOR=debug re
 release:
 	make BUILDFOR=release re
-.PHONY:checkmake
-checkmake:  
-	@echo -e "CURDIR =		\n	${CURDIR}"  
-	@echo -e "\nMAKE_VERSION =	\n	${MAKE_VERSION}"  
-	@echo -e "\nMAKEFILE_LIST =	\n	${MAKEFILE_LIST}"  
-	@echo -e "\nCOMPILE.c =		\n	${COMPILE.c}"
-	@echo -e "\nCOMPILE.cc =	\n	${COMPILE.cc}"
-	@echo -e "\nCOMPILE.cpp =	\n	${COMPILE.cpp}"
-	@echo -e "\nLINK.cc =		\n	${LINK.cc}"
-	@echo -e "\nLINK.o =		\n	${LINK.o}"
-	@echo -e "\nCPPFLAGS =		\n	${CPPFLAGS}"
-	@echo -e "\nCFLAGS =		\n	${CFLAGS}"
-	@echo -e "\nCXXFLAGS =		\n	${CXXFLAGS}"
-	@echo -e "\nLDFLAGS =		\n	${LDFLAGS}"
-	@echo -e "\nLDLIBS =		\n	${LDLIBS}"
-	@echo -e "\nSDKTARGETSYSROOT =	\n	${SDKTARGETSYSROOT}"
-	@echo -e "\nQL_EXP_LDLIBS =	\n	${QL_EXP_LDLIBS}"
 
 OBJEXTSTR   =   o
 SRCEXTSTR   =   c
@@ -174,7 +176,6 @@ $(OBJPATH)/%.$(OBJEXTSTR) : %.$(CPPEXTSTR)
 	$(ECHO) "Compiling $< ...." 1>&2
 	$(COMPILE.cpp) -o $@ $<
 #do not use $(CPP) $(CFLAGS) $(INCFLAGS) -c -o $@ $<
-
 $(OBJPATH)/%.$(OBJEXTSTR) : %.$(CCEXTSTR)
 	$(ECHO) "Compiling $< ...."
 	$(ECHO) "Compiling $< ...." 1>&2
