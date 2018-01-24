@@ -1,0 +1,30 @@
+
+all:go
+go: 2048.c
+	gcc -o $@ $^
+2048.c:
+	wget https://raw.githubusercontent.com/mevdschee/2048.c/master/2048.c
+apts:
+	sudo apt-get install bastet
+	sudo apt-get install greed
+	sudo apt-get install moon-buggy
+	sudo apt-get install ninvaders
+	sudo apt-get install nsnake
+	sudo apt-get install pacman4console
+	sudo apt-get install sudoku
+	sudo apt-get install nethack-console
+	sudo apt-get install robotfindskitten
+	sudo apt-get install bsdgames
+
+
+
+
+
+
+
+
+
+
+
+
+
