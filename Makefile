@@ -1,7 +1,7 @@
 #change this will upgrade tarball, app's version name, number.
 PACKAGENAME=sdk
-VERSIONNAME=1.0.4
-VERSIONNUMBER=10004
+VERSIONNAME=1.0.6
+VERSIONNUMBER=10006
 OUTPATH=..
 TARBALL=$(PACKAGENAME)-$(VERSIONNAME).git.tar.gz
 
